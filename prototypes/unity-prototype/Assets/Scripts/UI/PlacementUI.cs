@@ -268,7 +268,7 @@ public class PlacementUI : MonoBehaviour
     {
         var msgObj = new GameObject("FloatingMessage");
         msgObj.transform.SetParent(uiAnchor);
-        msgObj.transform.localPosition = Vector3.zero;
+        msgObj.transform.localPosition = new Vector3(0, 0, uiDepth * 0.5f);
         msgObj.transform.localRotation = Quaternion.identity;
 
         var tmp = msgObj.AddComponent<TextMeshPro>();

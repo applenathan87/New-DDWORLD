@@ -101,9 +101,9 @@ public class Hand3D : MonoBehaviour
         dimQuad = GameObject.CreatePrimitive(PrimitiveType.Quad);
         dimQuad.name = "DimOverlay3D";
         dimQuad.transform.SetParent(mainCamera.transform);
-        // drawAnchor보다 살짝 뒤에 배치
-        dimQuad.transform.localPosition = new Vector3(0, 0, handDepth * 0.75f);
-        dimQuad.transform.localRotation = Quaternion.identity;
+        // drawAnchor보다 살짝 뒤에 배치, 쿼터뷰 카메라 각도에 맞춰 기울임
+        dimQuad.transform.localPosition = new Vector3(0, 0, 4.7f);
+        dimQuad.transform.localRotation = Quaternion.Euler(21.65f, 0f, 0f);
         // 화면 전체를 확실히 덮도록 고정 크기
         dimQuad.transform.localScale = new Vector3(50f, 50f, 1f);
 
