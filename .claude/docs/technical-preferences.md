@@ -1,87 +1,78 @@
 # Technical Preferences
 
-<!-- Populated by /setup-engine. Updated as the user makes decisions throughout development. -->
-<!-- All agents reference this file for project-specific standards and conventions. -->
+<!-- DDworld 프로젝트 설정. 에이전트들이 이 파일을 참조합니다. -->
 
 ## Engine & Language
 
-- **Engine**: [TO BE CONFIGURED — run /setup-engine]
-- **Language**: [TO BE CONFIGURED]
-- **Rendering**: [TO BE CONFIGURED]
-- **Physics**: [TO BE CONFIGURED]
+- **Engine**: Unity 6.3 LTS
+- **Language**: C#
+- **Rendering**: URP (Universal Render Pipeline) — 쿼터뷰 3D
+- **Physics**: Unity Physics (기본)
 
 ## Input & Platform
 
-<!-- Written by /setup-engine. Read by /ux-design, /ux-review, /test-setup, /team-ui, and /dev-story -->
-<!-- to scope interaction specs, test helpers, and implementation to the correct input methods. -->
-
-- **Target Platforms**: [TO BE CONFIGURED — e.g., PC, Console, Mobile, Web]
-- **Input Methods**: [TO BE CONFIGURED — e.g., Keyboard/Mouse, Gamepad, Touch, Mixed]
-- **Primary Input**: [TO BE CONFIGURED — the dominant input for this game]
-- **Gamepad Support**: [TO BE CONFIGURED — Full / Partial / None]
-- **Touch Support**: [TO BE CONFIGURED — Full / Partial / None]
-- **Platform Notes**: [TO BE CONFIGURED — any platform-specific UX constraints]
+- **Target Platforms**: PC (Steam)
+- **Input Methods**: Keyboard/Mouse
+- **Primary Input**: Mouse (카드 드래그 & 그리드 배치)
+- **Gamepad Support**: Partial (추후 고려)
+- **Touch Support**: None
+- **Platform Notes**: Steam 출시 대상. 16:9 / 16:10 가로 모드. 최소 해상도 1280x720.
 
 ## Naming Conventions
 
-- **Classes**: [TO BE CONFIGURED]
-- **Variables**: [TO BE CONFIGURED]
-- **Signals/Events**: [TO BE CONFIGURED]
-- **Files**: [TO BE CONFIGURED]
-- **Scenes/Prefabs**: [TO BE CONFIGURED]
-- **Constants**: [TO BE CONFIGURED]
+- **Classes**: PascalCase (`BattleManager`, `UnitData`)
+- **Variables**: camelCase (`soldierCount`, `currentRound`)
+- **Signals/Events**: PascalCase with On prefix (`OnBattleStarted`, `OnRoundEnded`)
+- **Files**: PascalCase matching class name (`GameManager.cs`, `Deck.cs`)
+- **Scenes/Prefabs**: PascalCase (`BattleGrid.prefab`, `CardSlot.prefab`)
+- **Constants**: UPPER_SNAKE_CASE (`MAX_HAND_SIZE`, `GRID_SIZE`)
 
 ## Performance Budgets
 
-- **Target Framerate**: [TO BE CONFIGURED]
-- **Frame Budget**: [TO BE CONFIGURED]
-- **Draw Calls**: [TO BE CONFIGURED]
-- **Memory Ceiling**: [TO BE CONFIGURED]
+- **Target Framerate**: 60 FPS
+- **Frame Budget**: 16.6ms
+- **Draw Calls**: < 200 (쿼터뷰 2.5D, 유닛 수 제한적)
+- **Memory Ceiling**: 2GB
 
 ## Testing
 
-- **Framework**: [TO BE CONFIGURED]
-- **Minimum Coverage**: [TO BE CONFIGURED]
-- **Required Tests**: Balance formulas, gameplay systems, networking (if applicable)
+- **Framework**: Unity Test Framework (NUnit)
+- **Minimum Coverage**: 밸런스 공식, 전투 로직, 덱 시스템은 반드시 테스트
+- **Required Tests**: RPS 상성 공식, 틱 기반 전투, 루트 계산, 덱 셔플/드로우
 
 ## Forbidden Patterns
 
-<!-- Add patterns that should never appear in this project's codebase -->
-- [None configured yet — add as architectural decisions are made]
+- 싱글턴 남용 — DI(Dependency Injection) 우선
+- 하드코딩된 밸런스 값 — ScriptableObject 또는 외부 데이터로 관리
+- Update()에서 매 프레임 할당 — 오브젝트 풀링 사용
 
 ## Allowed Libraries / Addons
 
-<!-- Add approved third-party dependencies here -->
-- [None configured yet — add as dependencies are approved]
+- DOTween (애니메이션)
+- TextMeshPro (텍스트 렌더링)
+- Addressables (에셋 관리)
+- UI Toolkit (런타임 UI)
 
 ## Architecture Decisions Log
 
-<!-- Quick reference linking to full ADRs in docs/architecture/ -->
 - [No ADRs yet — use /architecture-decision to create one]
 
 ## Engine Specialists
 
-<!-- Written by /setup-engine when engine is configured. -->
-<!-- Read by /code-review, /architecture-decision, /architecture-review, and team skills -->
-<!-- to know which specialist to spawn for engine-specific validation. -->
-
-- **Primary**: [TO BE CONFIGURED — run /setup-engine]
-- **Language/Code Specialist**: [TO BE CONFIGURED]
-- **Shader Specialist**: [TO BE CONFIGURED]
-- **UI Specialist**: [TO BE CONFIGURED]
-- **Additional Specialists**: [TO BE CONFIGURED]
-- **Routing Notes**: [TO BE CONFIGURED]
+- **Primary**: `unity-specialist`
+- **Language/Code Specialist**: (C# — Unity 내장)
+- **Shader Specialist**: `unity-shader-specialist`
+- **UI Specialist**: `unity-ui-specialist`
+- **Additional Specialists**: `unity-addressables-specialist`
+- **Routing Notes**: DOTS는 사용하지 않음 (MonoBehaviour 기반)
 
 ### File Extension Routing
 
-<!-- Skills use this table to select the right specialist per file type. -->
-<!-- If a row says [TO BE CONFIGURED], fall back to Primary for that file type. -->
-
 | File Extension / Type | Specialist to Spawn |
 |-----------------------|---------------------|
-| Game code (primary language) | [TO BE CONFIGURED] |
-| Shader / material files | [TO BE CONFIGURED] |
-| UI / screen files | [TO BE CONFIGURED] |
-| Scene / prefab / level files | [TO BE CONFIGURED] |
-| Native extension / plugin files | [TO BE CONFIGURED] |
+| `.cs` (게임 코드) | `unity-specialist` |
+| `.shader`, `.shadergraph` | `unity-shader-specialist` |
+| `.uxml`, `.uss` (UI Toolkit) | `unity-ui-specialist` |
+| `.prefab`, `.unity` (씬/프리팹) | `unity-specialist` |
+| `.asmdef` (어셈블리 정의) | `unity-specialist` |
 | General architecture review | Primary |
