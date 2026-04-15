@@ -53,6 +53,7 @@ public class BattleSimulator : MonoBehaviour
 
         // 경계선 시각화
         DrawFieldBounds();
+        DrawLaneBoundaryLines();
 
         CollectSoldiers();
         StartCoroutine(RunBattle());
@@ -260,6 +261,41 @@ public class BattleSimulator : MonoBehaviour
         lr.SetPosition(1, new Vector3(fieldMaxX, y, fieldMinZ));
         lr.SetPosition(2, new Vector3(fieldMaxX, y, fieldMaxZ));
         lr.SetPosition(3, new Vector3(fieldMinX, y, fieldMaxZ));
+    }
+
+    /// <summary>
+    /// 자유 추적 전환 라인 (하얀 선 2개: 플레이어→적3열, 적→플레이어3열)
+    /// </summary>
+    private void DrawLaneBoundaryLines()
+    {
+        var bf = BattleField.Instance;
+        if (bf == null) return;
+
+        var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
+        var mat = new Material(shader);
+        mat.color = new Color(1f, 1f, 1f, 0.5f);
+
+        float y = 0.04f;
+
+        // 플레이어 측 라인: 적 3열째 (col 11)
+        DrawVerticalLine("LaneLine_Player", bf.GetTileWorldPosition(11, 0).x, y, mat);
+        // 적 측 라인: 플레이어 3열째 (col 2)
+        DrawVerticalLine("LaneLine_Enemy", bf.GetTileWorldPosition(2, 0).x, y, mat);
+    }
+
+    private void DrawVerticalLine(string name, float x, float y, Material mat)
+    {
+        var obj = new GameObject(name);
+        var lr = obj.AddComponent<LineRenderer>();
+        lr.useWorldSpace = true;
+        lr.positionCount = 2;
+        lr.startWidth = 0.02f;
+        lr.endWidth = 0.02f;
+        lr.material = mat;
+        lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+
+        lr.SetPosition(0, new Vector3(x, y, fieldMinZ));
+        lr.SetPosition(1, new Vector3(x, y, fieldMaxZ));
     }
 
     private void ResetTileColors()

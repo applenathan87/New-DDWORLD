@@ -344,9 +344,16 @@ public class BalanceTestManager : MonoBehaviour
             Destroy(s.gameObject);
         }
         foreach (var a in FindObjectsByType<Arrow>(FindObjectsSortMode.None)) Destroy(a.gameObject);
-        // 경계선
+        // 경계선 + 라인 제거
         var bounds = GameObject.Find("FieldBounds");
         if (bounds != null) Destroy(bounds);
+        var line1 = GameObject.Find("LaneLine_Player");
+        if (line1 != null) Destroy(line1);
+        var line2 = GameObject.Find("LaneLine_Enemy");
+        if (line2 != null) Destroy(line2);
+        // 폭발 이펙트 제거
+        foreach (var fx in FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+            if (fx.gameObject.name == "ExplosionEffect") Destroy(fx.gameObject);
         // 결과 화면
         if (BattleSimulator.Instance != null)
             BattleSimulator.Instance.ClearResultScreen();

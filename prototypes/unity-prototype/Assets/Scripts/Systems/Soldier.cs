@@ -343,7 +343,7 @@ public class Soldier : MonoBehaviour
     }
 
     /// <summary>
-    /// 함정 밟기 체크 — 함정은 타겟팅 안 되고 밟아야 발동
+    /// 함정 밟기 체크 — 함정에 닿으면 타일 전체 범위 폭발 + 넉백
     /// </summary>
     private void CheckTrapCollision(List<Soldier> enemies)
     {
@@ -355,16 +355,66 @@ public class Soldier : MonoBehaviour
             float dist = Vector3.Distance(transform.position, trap.transform.position);
             if (dist < 0.4f)
             {
-                // 함정 발동!
-                int trapDmg = trap.unitData.trapDamage > 0 ? trap.unitData.trapDamage : 10;
-                TakeDamage(trapDmg);
-                trap.isDead = true;
-                trap.battleStarted = false;
-                trap.gameObject.SetActive(false);
-                Debug.Log($"[함정 발동] {unitData.unitName}이 함정을 밟음! {trapDmg} 데미지");
-                ShowFloatingText("함정!", Color.red);
+                // 함정 폭발! 타일 범위 내 모든 적에게 데미지 + 넉백
+                TriggerTrapExplosion(trap);
             }
         }
+    }
+
+    private void TriggerTrapExplosion(Soldier trap)
+    {
+        int trapDmg = trap.unitData.trapDamage > 0 ? trap.unitData.trapDamage : 10;
+        float explosionRadius = BattleField.Instance != null ? BattleField.Instance.tileSize : 1f;
+        Vector3 trapPos = trap.transform.position;
+
+        // 범위 내 모든 적(= 함정과 반대편 병사)에게 데미지 + 넉백
+        var allSoldiers = FindObjectsByType<Soldier>(FindObjectsSortMode.None);
+        foreach (var s in allSoldiers)
+        {
+            if (s.isDead || s.isTrap) continue;
+            if (s.isPlayerSide == trap.isPlayerSide) continue; // 같은 편이면 무시
+
+            float d = Vector3.Distance(s.transform.position, trapPos);
+            if (d <= explosionRadius)
+            {
+                s.TakeDamage(trapDmg, trap);
+            }
+        }
+
+        // 플로팅 텍스트
+        trap.ShowFloatingText("폭발!", Color.red);
+        Debug.Log($"[함정 폭발] 범위 {explosionRadius} 내 적에게 {trapDmg} 데미지");
+
+        // 빨간 네모 이펙트 (타일 크기)
+        CreateExplosionEffect(trapPos, explosionRadius);
+
+        // 함정 제거
+        trap.isDead = true;
+        trap.battleStarted = false;
+        trap.gameObject.SetActive(false);
+    }
+
+    private void CreateExplosionEffect(Vector3 pos, float size)
+    {
+        var quad = GameObject.CreatePrimitive(PrimitiveType.Quad);
+        quad.name = "ExplosionEffect";
+        quad.transform.position = new Vector3(pos.x, 0.04f, pos.z);
+        quad.transform.rotation = Quaternion.Euler(90, 0, 0);
+        quad.transform.localScale = new Vector3(size, size, 1f);
+        Object.Destroy(quad.GetComponent<Collider>());
+
+        var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
+        var mat = new Material(shader);
+        mat.color = new Color(1f, 0.1f, 0.1f, 0.6f);
+        mat.SetFloat("_Surface", 1);
+        mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+        mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+        mat.SetInt("_ZWrite", 0);
+        mat.renderQueue = 3050;
+        quad.GetComponent<Renderer>().material = mat;
+
+        // 2초 후 서서히 사라짐
+        Object.Destroy(quad, 2f);
     }
 
     private void ApplySeparation(List<Soldier> allies, float fieldMinX, float fieldMaxX, float fieldMinZ, float fieldMaxZ, float dt)
