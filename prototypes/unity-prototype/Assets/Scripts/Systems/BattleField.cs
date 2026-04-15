@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 using DG.Tweening;
+using TMPro;
 
 /// <summary>
 /// 전장 카메라 컨트롤러.
@@ -16,6 +17,9 @@ public class BattleField : MonoBehaviour
     public int rows = 5;      // 1~5
     public float tileSize = 1f;
     public float tileGap = 0.08f;
+
+    [Header("폰트 (밸런스 테스트 씬용)")]
+    public TMP_FontAsset koreanFont;
 
     [Header("카메라 설정")]
     public float cameraMoveDuration = 1f;
@@ -151,7 +155,9 @@ public class BattleField : MonoBehaviour
                     }
 
                     var battleTile = tile.AddComponent<BattleTile>();
-                    if (Hand3D.Instance != null)
+                    if (koreanFont != null)
+                        battleTile.koreanFont = koreanFont;
+                    else if (Hand3D.Instance != null)
                         battleTile.koreanFont = Hand3D.Instance.koreanFont;
                     else if (PlacementUI.Instance != null)
                         battleTile.koreanFont = PlacementUI.Instance.koreanFont;

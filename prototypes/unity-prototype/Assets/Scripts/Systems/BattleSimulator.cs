@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using TMPro;
 
 /// <summary>
 /// 전투 시뮬레이션. 개별 병사가 독립적으로 이동/타겟팅/공격한다.
@@ -9,6 +10,9 @@ using UnityEngine;
 public class BattleSimulator : MonoBehaviour
 {
     public static BattleSimulator Instance { get; private set; }
+
+    [Header("폰트")]
+    public TMP_FontAsset koreanFont;
 
     [Header("시뮬레이션 설정")]
     public float moveSpeedBase = 2f;
@@ -156,6 +160,83 @@ public class BattleSimulator : MonoBehaviour
         Debug.Log($"=== 라운드 종료: {result} ===");
         LogBattleStats();
         PlacementUI.Instance?.ShowPhaseTitle(result);
+        ShowResultScreen(result);
+    }
+
+    private GameObject resultScreen;
+
+    private void ShowResultScreen(string result)
+    {
+        // 이전 결과 화면 제거
+        if (resultScreen != null) Destroy(resultScreen);
+
+        resultScreen = new GameObject("ResultScreen");
+
+        var cam = Camera.main;
+        if (cam == null) return;
+
+        resultScreen.transform.SetParent(cam.transform);
+        resultScreen.transform.localPosition = new Vector3(0, 0, 5f);
+        resultScreen.transform.localRotation = Quaternion.identity;
+
+        // 통계 텍스트 조립
+        string stats = $"<size=150%>{result}</size>\n\n";
+        stats += BuildSideStats("아군", playerSoldiers);
+        stats += "\n";
+        stats += BuildSideStats("적군", enemySoldiers);
+        stats += "\n<size=80%><color=#888>R: 재배치  B: 전투 시작</color></size>";
+
+        var textObj = new GameObject("ResultText");
+        textObj.transform.SetParent(resultScreen.transform);
+        textObj.transform.localPosition = new Vector3(0, 0, -0.01f);
+        textObj.transform.localRotation = Quaternion.identity;
+
+        var tmp = textObj.AddComponent<TextMeshPro>();
+        if (koreanFont != null) tmp.font = koreanFont;
+        tmp.text = stats;
+        tmp.fontSize = 1.5f;
+        tmp.alignment = TextAlignmentOptions.Center;
+        tmp.color = Color.white;
+        tmp.rectTransform.sizeDelta = new Vector2(1.4f, 0.95f);
+        tmp.raycastTarget = false;
+        tmp.richText = true;
+    }
+
+    /// <summary>
+    /// 결과 화면 제거 (BalanceTestManager에서 호출)
+    /// </summary>
+    public void ClearResultScreen()
+    {
+        if (resultScreen != null) Destroy(resultScreen);
+    }
+
+    private string BuildSideStats(string sideName, List<Soldier> soldiers)
+    {
+        var stats = new Dictionary<string, (int total, int alive, int dmgDealt, int dmgTaken, int kills)>();
+
+        foreach (var s in soldiers)
+        {
+            string name = s.unitData.unitName;
+            if (!stats.ContainsKey(name))
+                stats[name] = (0, 0, 0, 0, 0);
+
+            var st = stats[name];
+            st.total++;
+            if (!s.isDead) st.alive++;
+            st.dmgDealt += s.totalDamageDealt;
+            st.dmgTaken += s.totalDamageTaken;
+            st.kills += s.killCount;
+            stats[name] = st;
+        }
+
+        string text = $"<color=#FFD700>[ {sideName} ]</color>\n";
+        foreach (var kvp in stats)
+        {
+            var s = kvp.Value;
+            string aliveColor = s.alive > 0 ? "#4CAF50" : "#F44336";
+            text += $"  {kvp.Key}: <color={aliveColor}>{s.alive}/{s.total}</color> | 딜 {s.dmgDealt} | 피해 {s.dmgTaken} | 처치 {s.kills}\n";
+        }
+        return text;
     }
 
     private void DrawFieldBounds()
@@ -233,21 +314,10 @@ public class BattleSimulator : MonoBehaviour
     }
 
     /// <summary>
-    /// 상성 배수 계산 (Soldier.Attack에서 호출)
+    /// 상성 배수 계산 — 현재 비활성화 (행동 패턴으로 차별화)
     /// </summary>
     public float GetTypeMultiplier(RpsType attacker, RpsType defender)
     {
-        if (attacker == RpsType.None || defender == RpsType.None) return 1f;
-        if (attacker == defender) return 1f;
-
-        // Rock(기병) > Paper(궁병), Scissors(창병) > Rock(기병), Paper(궁병) > Scissors(창병)
-        if ((attacker == RpsType.Rock && defender == RpsType.Paper) ||
-            (attacker == RpsType.Scissors && defender == RpsType.Rock) ||
-            (attacker == RpsType.Paper && defender == RpsType.Scissors))
-        {
-            return typeAdvantage;
-        }
-
-        return typeDisadvantage;
+        return 1f;
     }
 }

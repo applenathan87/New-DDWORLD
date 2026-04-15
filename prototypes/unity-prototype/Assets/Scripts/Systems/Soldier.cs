@@ -26,8 +26,14 @@ public class Soldier : MonoBehaviour
     [HideInInspector] public Soldier target;
     private float attackTimer;
     private float moveSpeed;
-    private float attackRange;   // 공격 사거리 (월드 단위)
+    private float currentSpeed;
+    private float acceleration;
+    private float attackRange;
     private float attackInterval;
+
+    // 넉백
+    private Vector3 knockbackVelocity;
+    private const float KNOCKBACK_DECAY = 8f; // 넉백 감쇠 속도 (높을수록 빨리 멈춤)
 
     // HP바
     private GameObject hpBarBg;
@@ -68,6 +74,8 @@ public class Soldier : MonoBehaviour
             moveSpeed = baseMoveSpeed / data.moveEveryTick;
         else
             moveSpeed = 0f;
+        currentSpeed = 0f;
+        acceleration = moveSpeed * 3f; // 최대 속도의 3배 가속 → 약 0.33초에 풀스피드
 
         // 공격 사거리
         if (data.attackRange > 0)
@@ -104,9 +112,9 @@ public class Soldier : MonoBehaviour
         // 부모에서 분리 → 월드 좌표로 독립
         transform.SetParent(null);
 
-        // 사거리 시각화 (원거리 유닛만)
-        if (data.attackRange > 0)
-            CreateRangeIndicator();
+        // 사거리 시각화 + 방향 화살표
+        CreateRangeIndicator();
+        CreateDirectionArrow();
     }
 
     // === 사거리 시각화 ===
@@ -129,9 +137,12 @@ public class Soldier : MonoBehaviour
         lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 
         var mat = new Material(Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color"));
-        Color rangeColor = isPlayerSide
-            ? new Color(0.3f, 0.6f, 1f, 0.4f)
-            : new Color(1f, 0.3f, 0.3f, 0.4f);
+        bool isRanged = unitData.attackRange > 0;
+        Color rangeColor;
+        if (isRanged)
+            rangeColor = isPlayerSide ? new Color(0.3f, 0.6f, 1f, 0.4f) : new Color(1f, 0.3f, 0.3f, 0.4f);
+        else
+            rangeColor = isPlayerSide ? new Color(0.3f, 0.9f, 0.4f, 0.3f) : new Color(0.9f, 0.5f, 0.2f, 0.3f);
         mat.color = rangeColor;
         mat.SetFloat("_Surface", 1);
         mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
@@ -186,15 +197,31 @@ public class Soldier : MonoBehaviour
 
         if (dist <= attackRange)
         {
+            currentSpeed = 0f; // 공격 중엔 속도 리셋
             Attack();
         }
         else if (moveSpeed > 0)
         {
+            // 가속: 0 → 최대 속도까지 점진적으로
+            currentSpeed = Mathf.MoveTowards(currentSpeed, moveSpeed, acceleration * dt);
+
             Vector3 moveDir = (target.transform.position - transform.position).normalized;
-            Vector3 pos = transform.position + moveDir * moveSpeed * dt;
+            Vector3 pos = transform.position + moveDir * currentSpeed * dt;
             pos.x = Mathf.Clamp(pos.x, fieldMinX, fieldMaxX);
             pos.z = Mathf.Clamp(pos.z, fieldMinZ, fieldMaxZ);
             transform.position = pos;
+        }
+
+        // 넉백 속도 적용 + 감쇠
+        if (knockbackVelocity.sqrMagnitude > 0.001f)
+        {
+            Vector3 pos = transform.position + knockbackVelocity * dt;
+            pos.x = Mathf.Clamp(pos.x, fieldMinX, fieldMaxX);
+            pos.z = Mathf.Clamp(pos.z, fieldMinZ, fieldMaxZ);
+            pos.y = transform.position.y;
+            transform.position = pos;
+
+            knockbackVelocity = Vector3.Lerp(knockbackVelocity, Vector3.zero, KNOCKBACK_DECAY * dt);
         }
 
         ApplySeparation(allies, fieldMinX, fieldMaxX, fieldMinZ, fieldMaxZ, dt);
@@ -269,21 +296,88 @@ public class Soldier : MonoBehaviour
         }
         else
         {
-            // 근접: 즉시 데미지
+            // 근접: 즉시 데미지 + 넉백
             totalDamageDealt += damage;
-            bool killed = target.TakeDamage(damage);
+            bool killed = target.TakeDamage(damage, this);
             if (killed) killCount++;
         }
     }
 
+    // === 방향 화살표 ===
+
+    private LineRenderer dirArrow;
+    private const float ARROW_LENGTH = 0.2f;
+    private const float ARROW_HEAD = 0.06f;
+
+    private void CreateDirectionArrow()
+    {
+        var obj = new GameObject("DirArrow");
+        dirArrow = obj.AddComponent<LineRenderer>();
+        dirArrow.useWorldSpace = true;
+        dirArrow.positionCount = 4; // 줄기 2점 + 화살촉 2점
+        dirArrow.startWidth = 0.015f;
+        dirArrow.endWidth = 0.015f;
+        dirArrow.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+
+        var mat = new Material(Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color"));
+        mat.color = isPlayerSide ? new Color(0.8f, 0.8f, 1f, 0.6f) : new Color(1f, 0.8f, 0.8f, 0.6f);
+        dirArrow.material = mat;
+    }
+
+    private void UpdateDirectionArrow()
+    {
+        if (dirArrow == null) return;
+
+        if (isDead || target == null || target.isDead)
+        {
+            dirArrow.enabled = false;
+            return;
+        }
+        dirArrow.enabled = true;
+
+        Vector3 pos = transform.position;
+        pos.y = 0.03f;
+
+        Vector3 dir = (target.transform.position - transform.position).normalized;
+        dir.y = 0;
+
+        Vector3 tip = pos + dir * ARROW_LENGTH;
+        Vector3 right = Vector3.Cross(Vector3.up, dir).normalized;
+
+        // 줄기
+        dirArrow.SetPosition(0, pos);
+        dirArrow.SetPosition(1, tip);
+        // 화살촉 (< 모양)
+        dirArrow.SetPosition(2, tip - dir * ARROW_HEAD + right * ARROW_HEAD);
+        dirArrow.SetPosition(3, tip - dir * ARROW_HEAD - right * ARROW_HEAD);
+    }
+
     // === HP ===
 
+    private const float KNOCKBACK_FORCE = 0.08f; // 데미지 1당 밀려나는 거리
+
     public bool TakeDamage(int damage)
+    {
+        return TakeDamage(damage, null);
+    }
+
+    public bool TakeDamage(int damage, Soldier attacker)
     {
         if (isDead) return true;
 
         currentHP -= damage;
         totalDamageTaken += damage;
+
+        bool willDie = currentHP <= 0;
+
+        // 넉백: 살아남았을 때만 — 속도를 부여하여 부드럽게 밀려남
+        if (attacker != null && !willDie)
+        {
+            Vector3 knockDir = (transform.position - attacker.transform.position).normalized;
+            knockDir.y = 0;
+            knockbackVelocity += knockDir * damage * KNOCKBACK_FORCE * 10f;
+            currentSpeed = 0f;
+        }
 
         if (!hpBarVisible)
         {
@@ -325,6 +419,7 @@ public class Soldier : MonoBehaviour
 
         if (hpBarRoot != null) hpBarRoot.gameObject.SetActive(false);
         if (rangeIndicator != null) rangeIndicator.SetActive(false);
+        if (dirArrow != null) dirArrow.enabled = false;
     }
 
     // === HP바 ===
@@ -338,9 +433,10 @@ public class Soldier : MonoBehaviour
 
         // 사거리 원이 병사를 따라감
         if (rangeIndicator != null && !isDead)
-        {
             UpdateRangeIndicatorPositions();
-        }
+
+        // 방향 화살표
+        UpdateDirectionArrow();
     }
 
     private void CreateHPBar(Color soldierColor)

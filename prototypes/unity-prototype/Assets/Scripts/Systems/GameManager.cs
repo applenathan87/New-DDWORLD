@@ -64,9 +64,13 @@ public class GameManager : MonoBehaviour
         Instance = this;
     }
 
+    // 밸런스 테스트 씬에서 코드로 생성 시 자동 시작 방지
+    [HideInInspector] public bool skipAutoStart;
+
     private void Start()
     {
-        StartNewGame();
+        if (!skipAutoStart)
+            StartNewGame();
     }
 
     /// <summary>
@@ -183,6 +187,9 @@ public class GameManager : MonoBehaviour
         else enemyWins++;
 
         Debug.Log($"[스코어] 플레이어 {playerWins} - {enemyWins} 상대");
+
+        // 밸런스 테스트 씬에서는 다음 라운드로 넘어가지 않음
+        if (skipAutoStart) return;
 
         if (playerWins >= WINS_NEEDED || enemyWins >= WINS_NEEDED)
         {

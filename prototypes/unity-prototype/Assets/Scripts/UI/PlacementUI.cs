@@ -54,7 +54,8 @@ public class PlacementUI : MonoBehaviour
         if (BattleSimulator.Instance == null)
         {
             var simObj = new GameObject("BattleSimulator");
-            simObj.AddComponent<BattleSimulator>();
+            var sim = simObj.AddComponent<BattleSimulator>();
+            sim.koreanFont = koreanFont;
         }
 
         // GameManager 이벤트 구독

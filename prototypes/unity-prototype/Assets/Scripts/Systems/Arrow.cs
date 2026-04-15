@@ -123,7 +123,7 @@ public class Arrow : MonoBehaviour
         if (hit && target != null && !target.isDead)
         {
             if (shooter != null) shooter.totalDamageDealt += damage;
-            bool killed = target.TakeDamage(damage);
+            bool killed = target.TakeDamage(damage, shooter);
             if (killed && shooter != null) shooter.killCount++;
         }
 
