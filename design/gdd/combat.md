@@ -1,9 +1,9 @@
 # Combat System (전투시스템)
 
-> **Status**: Draft
+> **Status**: In Review
 > **Author**: nathan (볼트 GDD 이전)
-> **Last Updated**: 2026-04-14
-> **Last Verified**: 2026-04-14
+> **Last Updated**: 2026-04-15
+> **Last Verified**: 2026-04-15
 > **Implements Pillar**: 심리전 — "읽었다!"의 쾌감
 
 ## Summary
@@ -52,6 +52,74 @@ DDworld의 전투는 고전 '배틀십'의 격자 배치와 '가위바위보' �
 | Result | 전투 종료 | 정산 완료 | 승패 판정, 잔존 병사 → Economy 시스템으로 전달 |
 | Match End | 3선승 달성 | 최종 정산 완료 | 누적 판돈 정산, 매치 종료 |
 
+### Battle Simulation (전투 시뮬레이션)
+
+#### Movement Model
+
+그리드는 배치 전용이다. 전투가 시작되면 병사들은 병종별 이동속도로 연속적으로
+움직인다. 틱(tick)은 시뮬레이션 업데이트 단위로만 사용하며, 이동은 칸 단위가
+아닌 속도 기반이다.
+
+```
+position += direction * move_speed * tick_duration
+```
+
+| Variable | Type | Range | Description |
+|----------|------|-------|-------------|
+| move_speed | float | 0-10 | 병종별 이동속도 (0 = 고정 유닛) |
+| tick_duration | float | 0.5s | 시뮬레이션 업데이트 간격 |
+
+#### Tick Resolution Order
+
+매 틱마다 모든 유닛이 동시에 행동한다. 처리 순서:
+
+1. 이동 — 모든 유닛의 새 위치를 계산 (이전 위치 기준)
+2. 트리거 — 함정 발동 체크 (적이 함정 위치에 진입했는가)
+3. 공격 — 사거리 내 적에게 데미지 적용
+4. 사망 — HP ≤ 0인 병사 제거
+5. 상태 — 패닉 등 특수 상태 체크 및 전환
+
+#### Damage Application (데미지 적용)
+
+병사 개별 행동, 개별 HP. 매 틱마다 각 병사는 독립적으로 가장 가까운 적 병사
+1명을 공격한다.
+
+```
+soldier_damage = base_damage * type_advantage_multiplier
+target.hp -= soldier_damage
+if target.hp <= 0: remove(target)
+```
+
+분대 인원이 많을수록 총 데미지 출력이 자연스럽게 높아진다.
+(예: 민병대 20명 × 낮은 데미지 vs 기병 5명 × 높은 데미지)
+
+#### Movement Principle (이동 원칙)
+
+**일직선 전진이 기본이다.** 모든 유닛은 배치 위치에서 정면(적 진영 방향)으로
+직진한다. "가장 가까운 적을 추적"하지 않는다. 배치 열(column)이 전투 매칭을
+결정하며, 이것이 배치 읽기의 핵심이다.
+
+**연쇄 반응**: 정면 적과 교전하여 적을 전멸시키면, 에어바운드하여 가장 가까운
+다음 적을 탐색하고 이동한다. 정면에 적이 아예 없었을 경우에도 끝칸 도달 후
+주변 탐색으로 전환한다.
+
+```
+1. 정면으로 직진
+2. 적과 접촉 → 교전
+3. 적 전멸 → 가장 가까운 다음 적 탐색 → 이동 (연쇄)
+4. 정면에 적 없이 끝칸 도달 → 주변 탐색 → 이동
+```
+
+#### Unit Behavior Patterns (병종별 행동 패턴)
+
+| 병종 | 이동속도 | 행동 패턴 | 특수 메카닉 |
+|------|----------|-----------|-------------|
+| 기병 (Cavalry) | 빠름 | 정면 직진 돌격. 접촉 시 공격. 적 전멸 후 연쇄 이동 | **돌격 모드**: 틱 이동거리가 charge_threshold 이상일 때 발동, 첫 타격에 돌격 보너스 데미지 |
+| 창병 (Spearman) | 보통 | 정면 전진. 적과 접촉 시 제자리 방어 전투. 적 전멸 후 연쇄 이동 | **대돌격 방어**: 기병 돌격 모드의 보너스 데미지를 무효화 |
+| 궁병 (Archer) | 없음 (고정) | 배치 위치 고정. 정면 사거리 내 적에게 원거리 공격 | **사거리**: [미정 — 프로토타입에서 조율]. 적이 접근하면 근접 전투 (약함) |
+| 민병대 (Militia) | 느림 | 정면 방향으로 퍼지며 전진 (통솔 불가 모티프). 직선이 아닌 부채꼴 확산 | **패닉**: 분대 인원이 50% 이하로 떨어지면 1초간 공격 중단 + 적 반대 방향으로 랜덤 도주. 1초 후 복귀하여 공격 재개 |
+| 함정 (Trap) | 없음 (고정) | 배치 위치에 숨겨진 상태로 대기. 적에게 비공개 | **발동**: 적 유닛이 함정 위치에 진입하면 범위 데미지 발동 후 소멸. 1회용 |
+
 ### Interactions with Other Systems
 
 | System | Direction | Data Flow |
@@ -80,24 +148,40 @@ effective_damage = base_damage * type_advantage_multiplier
 | **창병 (가위)** | 1.5 | 1.0 | 0.5 |
 | **궁병 (보)** | 0.5 | 1.5 | 1.0 |
 
-### Squad Damage (분대 데미지)
+### Soldier Damage (개인 데미지)
+
+각 병사가 독립적으로 공격한다. 분대 총 데미지 출력은 생존 병사 수에 자연스럽게
+비례한다.
 
 ```
-squad_damage = base_damage * type_advantage * (alive_count / max_count)
+soldier_damage = base_damage * type_advantage_multiplier
+```
+
+**Expected output range**: base_damage * 0.5 (상성 불리) ~ base_damage * 1.5 (상성 유리)
+
+**분대 총 데미지** (참고용): alive_count × soldier_damage
+
+### Charge Bonus (돌격 보너스)
+
+기병이 충분한 거리를 이동한 상태에서 첫 타격 시 추가 데미지. 창병의
+대돌격 방어에 의해 무효화된다.
+
+```
+charge_damage = base_damage * charge_multiplier  (if distance_moved >= charge_threshold)
 ```
 
 | Variable | Type | Range | Source | Description |
 |----------|------|-------|--------|-------------|
-| alive_count | int | 0-20 | runtime | 현재 생존 병사 수 |
-| max_count | int | 5-20 | UnitData SO | 분대 최대 인원 |
+| charge_multiplier | float | [미정] | config | 돌격 보너스 배수 |
+| charge_threshold | float | [미정] | config | 돌격 발동 최소 이동거리 |
 
-**Expected output range**: 0 (전멸) ~ base_damage * 1.5 (풀 분대 + 상성 유리)
+**Note**: 창병과 교전 시 charge_multiplier = 0 (대돌격 방어)
 
 ## Edge Cases
 
 | Scenario | Expected Behavior | Rationale |
 |----------|------------------|-----------|
-| 양쪽 유닛이 동시에 전멸 | [미정 — 공격자 우선 또는 무승부 처리] | 결정 필요 |
+| 양쪽 유닛이 동시에 전멸 | 양쪽 모두 1승 획득. 추가 라운드 진행 | 동시 전멸은 양측 실력이 동등한 결과. 3선승 조건에 양쪽 동시 도달 시 추가 라운드 |
 | 배치 시간 초과 | AI가 남은 카드를 랜덤 배치 | 게임 진행 보장 |
 | 배치를 1장도 하지 않음 | AI가 전체 손패에서 5장 랜덤 배치 | 게임 진행 보장 |
 | 상대 이탈 (disconnect) | AI가 남은 라운드 대행 | 매치 완결 보장 |
@@ -213,8 +297,10 @@ NOT 리얼타임 전략(스타크래프트) — APM이 필요하면 안 됨.
 
 | Question | Owner | Deadline | Resolution |
 |----------|-------|----------|-----------|
-| 양쪽 동시 전멸 시 처리 방법? | nathan | [미정] | |
-| 병종별 구체적 행동 패턴 (창병, 궁병)? | nathan | [미정] | 기병: 일직선 돌진 확정. 나머지 미정 |
+| 양쪽 동시 전멸 시 처리 방법? | nathan | 해결됨 | 양쪽 모두 1승 획득 |
+| 병종별 구체적 행동 패턴? | nathan | 해결됨 | 5병종 전부 확정 — Battle Simulation 섹션 참조 |
+| 민병대/함정의 상성 위치? | nathan | 보류 | 행동 패턴 확정 후 프로토타입에서 밸런스 테스트 후 결정 |
 | 배치 제한 시간은 몇 초? | nathan | [미정] | |
-| 민병대/함정의 상성 위치? | nathan | [미정] | 기본 3병과(기병/창병/궁병) 외 특수 유닛 |
 | 그리드 배치에 제한 규칙이 있는가? (예: 궁병은 뒷줄만) | nathan | [미정] | |
+| 궁병 사거리는? | nathan | [미정] | 프로토타입에서 조율 |
+| 돌격 보너스 배수(charge_multiplier)와 발동 거리(charge_threshold)는? | nathan | [미정] | 프로토타입에서 조율 |

@@ -1,9 +1,9 @@
 # Economy System (경제시스템)
 
-> **Status**: Draft
+> **Status**: In Review
 > **Author**: nathan (볼트 GDD 이전)
-> **Last Updated**: 2026-04-14
-> **Last Verified**: 2026-04-14
+> **Last Updated**: 2026-04-15
+> **Last Verified**: 2026-04-15
 > **Implements Pillar**: 역전의 희열 — 지고 있어도 뒤집을 수 있는 희망
 
 ## Summary
@@ -35,6 +35,7 @@ DDworld의 경제시스템은 전투 결과와 보상을 직접 연결하는 '�
 2. 계산된 가치를 중앙 '판돈(Pot)'에 적립한다
 3. 5판 3선승 후, 최종 승자가 누적된 판돈을 전부 획득한다
 4. 패자는 판돈을 얻지 못한다
+5. 획득한 판돈은 **덱 강화 통화**로 사용된다 (다음 매치 전 덱 구성 변경/업그레이드)
 
 ### States and Transitions
 
@@ -55,8 +56,8 @@ DDworld의 경제시스템은 전투 결과와 보상을 직접 연결하는 '�
 | System | Direction | Data Flow |
 |--------|-----------|-----------|
 | Combat | Economy ← Combat | 라운드 종료 시 잔존 병사 수/HP 수신 |
-| Deck | [미정] | 메타 성장 → 덱 강화 가능성 |
-| Meta Progression | [미정] | 판돈 → 메타 자원 변환 |
+| Deck | Economy → Deck | 판돈 통화로 다음 매치 전 덱 구성 변경/업그레이드 |
+| Meta Progression | Economy가 곧 메타 통화 | 판돈 = 덱 강화 통화 (MVP 수준 간단한 메타 성장) |
 
 ## Formulas
 
@@ -69,12 +70,26 @@ soldier_value = base_value * (current_hp / max_hp)
 
 | Variable | Type | Range | Source | Description |
 |----------|------|-------|--------|-------------|
-| alive_soldiers | array | 0-25 | Combat result | 라운드 종료 시 생존 병사 목록 |
-| base_value | float | [미정] | UnitData SO | 병종별 기본 가치 |
+| alive_soldiers | array | 0-25 | Combat result | 라운드 종료 시 생존 병사 목록 (개별 병사 단위) |
+| base_value | float | 계산값 | UnitData SO | 병종별 병사 1명 가치 = squad_value / squad_size |
+| squad_value | float | 10 | config | 분대당 균등 가치 (모든 병종 동일) |
 | current_hp | float | 0-max | Combat result | 현재 HP |
 | max_hp | float | > 0 | UnitData SO | 최대 HP |
 
-**Expected output range**: 0 (전멸) ~ [미정] (풀 분대 생존)
+**분대당 균등 가치 모델:**
+
+| 병종 | 분대 인원 | 분대 가치 | 병사 1명 가치 (base_value) |
+|------|----------|-----------|---------------------------|
+| 기병 (Cavalry) | 5명 | 10 | 2.0 |
+| 창병 (Spearman) | 10명 | 10 | 1.0 |
+| 궁병 (Archer) | [미정] | 10 | [미정] |
+| 민병대 (Militia) | 20명 | 10 | 0.5 |
+| 함정 (Trap) | [미정] | [미정] | [미정 — 특수 유닛] |
+
+어떤 병종으로 이기든 풀 분대 생존 시 판돈 기여값이 동일하다.
+기권 전략의 핵심: 약한 카드로 채워 적의 판돈 적립을 최소화.
+
+**Expected output range**: 0 (전멸) ~ 50 (배치 5분대 × 10 = 풀 생존 최대치)
 
 ### Total Pot (누적 판돈)
 
@@ -96,7 +111,7 @@ winner_reward = total_pot * winner_multiplier
 
 | Scenario | Expected Behavior | Rationale |
 |----------|------------------|-----------|
-| 양쪽 모두 병사 전멸 (무승부) | [미정 — 판돈 적립 없음 또는 양쪽 모두 적립] | Combat의 동시 전멸 규칙과 연동 |
+| 양쪽 모두 병사 전멸 (무승부) | 판돈 적립 0 (양쪽 생존 병사 없음). 양쪽 모두 1승 획득 (Combat 규칙) | 생존 병사 없으면 가치 0, 판돈에 기여 없음 |
 | 3:0 스윕 승리 | 정상 정산 — 3라운드 판돈만 누적 | 판돈이 적어 스윕은 보상이 낮음 |
 | 3:2 접전 승리 | 정상 정산 — 5라운드 판돈 누적 | 접전일수록 판돈 커짐 |
 | 기권(최소 배치) 라운드 | 적은 병사 → 적은 판돈 적립 | 기권 전략의 보상 |
@@ -113,7 +128,7 @@ winner_reward = total_pot * winner_multiplier
 
 | Parameter | Current Value | Safe Range | Effect of Increase | Effect of Decrease |
 |-----------|--------------|------------|-------------------|-------------------|
-| 병종별 base_value | [미정] | [미정] | 해당 병종 가치 상승 → 배치 우선도 변화 | 가치 하락 |
+| squad_value (분대 가치) | 10 | 5 ~ 20 | 판돈 스케일 증가, 매치 보상 증가 | 판돈 작아짐 |
 | winner_multiplier | 1.0 | 0.5 ~ 2.0 | 승리 보상 증가 | 승리 보상 감소 |
 | HP 비율 반영 여부 | 반영 (current/max) | on/off | 정밀한 가치 산정 | 생존 여부만 판단 |
 
@@ -171,7 +186,8 @@ winner_reward = total_pot * winner_multiplier
 
 | Question | Owner | Deadline | Resolution |
 |----------|-------|----------|-----------|
-| 병종별 base_value 기준은? | nathan | [미정] | 분대 인원/등급 기반 예상 |
-| 판돈 외 메타 자원이 있는가? | nathan | [미정] | 성장시스템과 연계 |
-| 패자에게도 소량 보상? | nathan | [미정] | 연패 시 이탈 방지 고려 |
-| 시즌/랭크 시스템과의 연결? | nathan | [미정] | 메타루프 구체화 필요 |
+| 병종별 base_value 기준은? | nathan | 해결됨 | 분대당 균등 가치 (squad_value=10, 병사당 = 10/인원) |
+| 판돈 외 메타 자원이 있는가? | nathan | 해결됨 | MVP에서는 판돈이 유일한 통화 (덱 강화용) |
+| 패자에게도 소량 보상? | nathan | [미정] | 연패 시 이탈 방지 고려. 프로토타입 후 결정 |
+| 시즌/랭크 시스템과의 연결? | nathan | MVP 범위 밖 | 향후 확장 |
+| 덱 강화로 뭘 살 수 있는가? | nathan | [미정] | 새 병종? 스탯 업? 특수 카드? 프로토타입 후 결정 |
