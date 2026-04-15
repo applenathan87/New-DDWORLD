@@ -34,9 +34,15 @@ public class BattleSimulator : MonoBehaviour
         Instance = this;
     }
 
+    public void ResetState()
+    {
+        battleRunning = false;
+        StopAllCoroutines();
+    }
+
     public void StartBattle()
     {
-        if (battleRunning) return;
+        battleRunning = false; // 이전 상태 리셋
 
         var bf = BattleField.Instance;
         if (bf != null)

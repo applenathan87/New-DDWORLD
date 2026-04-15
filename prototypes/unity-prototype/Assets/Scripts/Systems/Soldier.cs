@@ -35,8 +35,8 @@ public class Soldier : MonoBehaviour
     private bool inLanePhase = true;  // true: 행 직진, false: 자유 추적
     private float laneBoundaryX;      // 적 3열째 X 좌표 (여기 도달하면 자유 추적)
     private float laneDirection;      // +1(플레이어→적) or -1(적→플레이어)
-    private bool hasCharged;          // 기병 돌격 사용 여부
     private bool hasEngaged;          // 전투 경험 여부 (교전 후 자유 추적 전환)
+    private float lastSpeedBeforeAttack; // 공격 직전 속도 (돌격 판정용)
     [HideInInspector] public bool isTrap; // 함정 여부 (타겟팅에서 제외)
 
     // 넉백
@@ -105,7 +105,6 @@ public class Soldier : MonoBehaviour
 
         // 레인 설정
         inLanePhase = true;
-        hasCharged = false;
         laneDirection = isPlayerSide ? 1f : -1f;
         isTrap = data.trapDamage > 0;
 
@@ -231,7 +230,11 @@ public class Soldier : MonoBehaviour
                 ? transform.position.x >= laneBoundaryX
                 : transform.position.x <= laneBoundaryX;
             if (reached || (hasEngaged && (target == null || target.isDead)))
+            {
                 inLanePhase = false;
+                currentSpeed = 0f;  // 자유 추적 전환 시 속도 리셋 (돌격 방지)
+                target = null;      // 새로 탐색
+            }
         }
 
         if (inLanePhase)
@@ -247,6 +250,7 @@ public class Soldier : MonoBehaviour
 
                 if (target != null)
                 {
+                    lastSpeedBeforeAttack = currentSpeed;
                     currentSpeed = 0f;
                     Attack();
                 }
@@ -262,31 +266,21 @@ public class Soldier : MonoBehaviour
             }
             else
             {
-                // 근접: 같은 행 정면 적 탐색
-                if (target == null)
-                    target = FindEnemyInLane(enemies);
-
-                if (target != null)
+                // 근접: 공격 범위 내 적 확인 (인접 행 포함)
+                Soldier inRange = FindEnemyInMeleeRange(enemies);
+                if (inRange != null)
                 {
-                    float dist = Vector3.Distance(transform.position, target.transform.position);
-                    if (dist <= attackRange)
-                    {
-                        currentSpeed = 0f;
-                        Attack();
-                    }
-                    else if (moveSpeed > 0)
-                    {
-                        currentSpeed = Mathf.MoveTowards(currentSpeed, moveSpeed, acceleration * dt);
-                        Vector3 moveDir = (target.transform.position - transform.position).normalized;
-                        Vector3 pos = transform.position + moveDir * currentSpeed * dt;
-                        pos.x = Mathf.Clamp(pos.x, fieldMinX, fieldMaxX);
-                        pos.z = Mathf.Clamp(pos.z, fieldMinZ, fieldMaxZ);
-                        transform.position = pos;
-                    }
+                    target = inRange;
+                    lastSpeedBeforeAttack = currentSpeed;
+                    currentSpeed = 0f;
+                    Attack();
                 }
-                else if (moveSpeed > 0)
+                else
                 {
-                    // 적 없으면 행 끝을 향해 직진
+                    // 공격 범위에 아무도 없으면 X 방향 직진
+                    if (target == null)
+                        target = FindEnemyInLane(enemies);
+
                     currentSpeed = Mathf.MoveTowards(currentSpeed, moveSpeed, acceleration * dt);
                     Vector3 pos = transform.position;
                     pos.x += laneDirection * currentSpeed * dt;
@@ -306,6 +300,7 @@ public class Soldier : MonoBehaviour
                 float dist = Vector3.Distance(transform.position, target.transform.position);
                 if (dist <= attackRange)
                 {
+                    lastSpeedBeforeAttack = currentSpeed;
                     currentSpeed = 0f;
                     Attack();
                 }
@@ -336,6 +331,27 @@ public class Soldier : MonoBehaviour
         }
 
         ApplySeparation(allies, fieldMinX, fieldMaxX, fieldMinZ, fieldMaxZ, dt);
+    }
+
+    /// <summary>
+    /// 근접 공격 범위 내 적 탐색 (레인 직진 중 옆 행 포함)
+    /// </summary>
+    private Soldier FindEnemyInMeleeRange(List<Soldier> enemies)
+    {
+        Soldier nearest = null;
+        float nearestDist = float.MaxValue;
+
+        foreach (var e in enemies)
+        {
+            if (e.isDead || e.isTrap) continue;
+            float dist = Vector3.Distance(transform.position, e.transform.position);
+            if (dist <= attackRange && dist < nearestDist)
+            {
+                nearestDist = dist;
+                nearest = e;
+            }
+        }
+        return nearest;
     }
 
     /// <summary>
@@ -523,13 +539,13 @@ public class Soldier : MonoBehaviour
 
         int damage = unitData.attack;
 
-        // === 기병 돌격 ===
+        // === 기병 돌격 (최고 속도 도달 시 발동) ===
         bool isCavalry = unitData.category == UnitCategory.Cavalry;
         bool targetIsSpearman = target.unitData.rpsType == RpsType.Scissors;
+        bool atFullSpeed = lastSpeedBeforeAttack >= moveSpeed * 0.9f;
 
-        if (isCavalry && !hasCharged)
+        if (isCavalry && atFullSpeed)
         {
-            hasCharged = true;
             hasEngaged = true;
 
             if (targetIsSpearman)

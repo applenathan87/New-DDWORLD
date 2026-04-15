@@ -21,6 +21,6 @@ MonoBehaviour:
   attack: 6
   defense: 0
   moveEveryTick: 4
-  attackRange: 3
+  attackRange: 1.5
   shootEveryTick: 3
   trapDamage: 0

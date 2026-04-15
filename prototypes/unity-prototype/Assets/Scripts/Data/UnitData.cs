@@ -25,7 +25,7 @@ public class UnitData : ScriptableObject
     public int moveEveryTick;       // N틱마다 1칸 이동 (0이면 이동 안 함)
 
     [Header("원거리 (궁병 전용)")]
-    public int attackRange;         // 사거리 (0이면 근접)
+    public float attackRange;       // 사거리 (0이면 근접, 칸 단위)
     public int shootEveryTick;      // N틱마다 1회 사격 (0이면 사격 안 함)
 
     [Header("특수 (함정 전용)")]

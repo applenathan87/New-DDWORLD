@@ -88,9 +88,9 @@ public class BalanceTestManager : MonoBehaviour
         if (kb.digit1Key.wasPressedThisFrame) DoPlace(Preset_CavalryVsSpearman);
         if (kb.digit2Key.wasPressedThisFrame) DoPlace(Preset_ArcherVsCavalry);
         if (kb.digit3Key.wasPressedThisFrame) DoPlace(Preset_SpearmanVsArcher);
-        if (kb.digit4Key.wasPressedThisFrame) DoPlace(Preset_MilitiaVsCavalry);
-        if (kb.digit5Key.wasPressedThisFrame) DoPlace(Preset_TrapMix);
-        if (kb.digit6Key.wasPressedThisFrame) DoPlace(Preset_FullMirror);
+        if (kb.digit4Key.wasPressedThisFrame) DoPlace(Preset_CavalryRushVsArcher3);
+        if (kb.digit5Key.wasPressedThisFrame) DoPlace(Preset_MilitiaShieldVsArcher3);
+        if (kb.digit6Key.wasPressedThisFrame) DoPlace(Preset_TrapCavalryVsArcher3);
 
         // B: 전투 시작
         if (kb.bKey.wasPressedThisFrame && placed && !fighting)
@@ -109,9 +109,10 @@ public class BalanceTestManager : MonoBehaviour
 
     // === 배치 ===
 
-    // 프리셋 타입: (아군 병종 배열, 적 병종 배열) 반환
+    // 프리셋 타입: (아군 병종 배열, 적 병종 배열) 반환. 적이 null이면 customEnemyPlace 사용
     private delegate (UnitData[] player, UnitData[] enemy) PresetFunc();
     private string lastPresetName;
+    private System.Action<Dictionary<Vector2Int, CardData>> customEnemyPlace;
 
     private void DoPlace(PresetFunc preset)
     {
@@ -132,9 +133,13 @@ public class BalanceTestManager : MonoBehaviour
         if (preset != null)
         {
             // 프리셋 배치
+            customEnemyPlace = null;
             var (playerUnits, enemyUnits) = preset();
-            PresetPlace(playerUnits, playerPlacements);
-            PresetPlace(enemyUnits, enemyPlacements);
+            if (playerUnits != null) PresetPlace(playerUnits, playerPlacements);
+            if (enemyUnits != null)
+                PresetPlace(enemyUnits, enemyPlacements);
+            else if (customEnemyPlace != null)
+                customEnemyPlace(enemyPlacements);
         }
         else
         {
@@ -150,6 +155,7 @@ public class BalanceTestManager : MonoBehaviour
 
         // 타일에 표시
         var bf = BattleField.Instance;
+        if (bf == null) { Debug.LogError("BattleField.Instance is null!"); return; }
         foreach (var kvp in playerPlacements)
         {
             var tile = bf.GetBattleTile(kvp.Key.y, kvp.Key.x);
@@ -207,34 +213,58 @@ public class BalanceTestManager : MonoBehaviour
         return (new[] { archerData }, new[] { cavalryData });
     }
 
-    // 3: 창병 vs 궁병
+    // 3: 창병 5부대 vs 궁병 ㄴ자
     private (UnitData[], UnitData[]) Preset_SpearmanVsArcher()
     {
-        lastPresetName = "창병 vs 궁병";
-        return (new[] { spearmanData }, new[] { archerData });
-    }
-
-    // 4: 민병대 vs 기병
-    private (UnitData[], UnitData[]) Preset_MilitiaVsCavalry()
-    {
-        lastPresetName = "민병대 vs 기병";
-        return (new[] { militiaData }, new[] { cavalryData });
-    }
-
-    // 5: 함정 + 궁병 vs 기병
-    private (UnitData[], UnitData[]) Preset_TrapMix()
-    {
-        lastPresetName = "함정+궁병 vs 기병";
-        return (new[] { trapData, archerData }, new[] { cavalryData, cavalryData });
-    }
-
-    // 6: 풀 미러
-    private (UnitData[], UnitData[]) Preset_FullMirror()
-    {
-        lastPresetName = "풀 미러";
+        lastPresetName = "창병5 vs 궁병ㄴ자";
+        customEnemyPlace = PlaceArcherL;
         return (
-            new[] { cavalryData, spearmanData, archerData, militiaData, trapData },
-            new[] { cavalryData, spearmanData, archerData, militiaData, trapData }
+            new[] { spearmanData, spearmanData, spearmanData, spearmanData, spearmanData },
+            null
+        );
+    }
+
+    // 궁병 ㄴ자 배치 헬퍼 (적 측)
+    // ㄴ자 (화면 기준):
+    //   궁 궁   (row2,row3 같은 col — 세로)
+    //   궁      (row3 다른 col — 꺾임)
+    private void PlaceArcherL(Dictionary<Vector2Int, CardData> placements)
+    {
+        placements[new Vector2Int(1, 2)] = new CardData(archerData, 100); // 위
+        placements[new Vector2Int(2, 2)] = new CardData(archerData, 101); // 중간
+        placements[new Vector2Int(2, 1)] = new CardData(archerData, 102); // 꺾임 (앞쪽)
+    }
+
+    // 4: A — 기병 집중 vs 궁병 ㄴ자
+    private (UnitData[], UnitData[]) Preset_CavalryRushVsArcher3()
+    {
+        lastPresetName = "A: 기병5 vs 궁병ㄴ자";
+        customEnemyPlace = PlaceArcherL;
+        return (
+            new[] { cavalryData, cavalryData, cavalryData, cavalryData, cavalryData },
+            null // 적은 customEnemyPlace로 배치
+        );
+    }
+
+    // 5: B — 민병 방패 + 기병 vs 궁병 ㄴ자
+    private (UnitData[], UnitData[]) Preset_MilitiaShieldVsArcher3()
+    {
+        lastPresetName = "B: 민병2+기병3 vs 궁병ㄴ자";
+        customEnemyPlace = PlaceArcherL;
+        return (
+            new[] { militiaData, cavalryData, cavalryData, cavalryData, militiaData },
+            null
+        );
+    }
+
+    // 6: C — 함정 + 기병 vs 궁병 ㄴ자
+    private (UnitData[], UnitData[]) Preset_TrapCavalryVsArcher3()
+    {
+        lastPresetName = "C: 함정2+기병3 vs 궁병ㄴ자";
+        customEnemyPlace = PlaceArcherL;
+        return (
+            new[] { trapData, cavalryData, cavalryData, cavalryData, trapData },
+            null
         );
     }
 
@@ -252,7 +282,7 @@ public class BalanceTestManager : MonoBehaviour
         ShowInfo("");
         Debug.Log($"=== 전투 #{testCount} 시작 ===");
 
-        BattleSimulator.Instance.StopAllCoroutines();
+        BattleSimulator.Instance.ResetState();
         BattleSimulator.Instance.StartBattle();
     }
 
@@ -335,28 +365,30 @@ public class BalanceTestManager : MonoBehaviour
     private void CleanupBattle()
     {
         if (BattleSimulator.Instance != null)
-            BattleSimulator.Instance.StopAllCoroutines();
+        {
+            BattleSimulator.Instance.ResetState();
+            BattleSimulator.Instance.ClearResultScreen();
+        }
 
-        // 병사 — 사거리/방향 기즈모를 먼저 정리한 후 제거
+        // 병사 + 기즈모
         foreach (var s in FindObjectsByType<Soldier>(FindObjectsSortMode.None))
         {
             s.CleanupGizmos();
             Destroy(s.gameObject);
         }
+        // 화살
         foreach (var a in FindObjectsByType<Arrow>(FindObjectsSortMode.None)) Destroy(a.gameObject);
-        // 경계선 + 라인 제거
-        var bounds = GameObject.Find("FieldBounds");
-        if (bounds != null) Destroy(bounds);
-        var line1 = GameObject.Find("LaneLine_Player");
-        if (line1 != null) Destroy(line1);
-        var line2 = GameObject.Find("LaneLine_Enemy");
-        if (line2 != null) Destroy(line2);
-        // 폭발 이펙트 제거
+        // 플로팅 텍스트
+        foreach (var ft in FindObjectsByType<FloatingTextAnim>(FindObjectsSortMode.None)) Destroy(ft.gameObject);
+        // 경계선 + 레인 라인
+        foreach (var name in new[] { "FieldBounds", "LaneLine_Player", "LaneLine_Enemy" })
+        {
+            var obj = GameObject.Find(name);
+            if (obj != null) Destroy(obj);
+        }
+        // 폭발 이펙트
         foreach (var fx in FindObjectsByType<Renderer>(FindObjectsSortMode.None))
             if (fx.gameObject.name == "ExplosionEffect") Destroy(fx.gameObject);
-        // 결과 화면
-        if (BattleSimulator.Instance != null)
-            BattleSimulator.Instance.ClearResultScreen();
     }
 
     private void ResetAllTiles()
@@ -373,25 +405,57 @@ public class BalanceTestManager : MonoBehaviour
 
     private void RandomPlace(Deck deck, Dictionary<Vector2Int, CardData> placements)
     {
+        // 일반 유닛용 전체 칸
         List<Vector2Int> available = new();
         for (int r = 0; r < 5; r++)
             for (int c = 0; c < 5; c++)
                 available.Add(new Vector2Int(r, c));
 
-        for (int i = available.Count - 1; i > 0; i--)
-        {
-            int j = Random.Range(0, i + 1);
-            (available[i], available[j]) = (available[j], available[i]);
-        }
+        // 함정 전용 칸 (col 3~4 = 4,5열)
+        List<Vector2Int> trapSlots = new();
+        for (int r = 0; r < 5; r++)
+            for (int c = 3; c <= 4; c++)
+                trapSlots.Add(new Vector2Int(r, c));
+
+        // 셔플
+        Shuffle(available);
+        Shuffle(trapSlots);
 
         int placed = 0;
         var handCopy = new List<CardData>(deck.Hand);
+        int trapIdx = 0;
+        int normalIdx = 0;
         foreach (var card in handCopy)
         {
             if (placed >= 5) break;
-            placements[available[placed]] = card;
+
+            if (card.unitData.trapDamage > 0)
+            {
+                // 함정: col 3~4에만 배치
+                if (trapIdx >= trapSlots.Count) continue;
+                var pos = trapSlots[trapIdx++];
+                if (placements.ContainsKey(pos)) continue;
+                placements[pos] = card;
+            }
+            else
+            {
+                // 일반 유닛: 아무 칸
+                while (normalIdx < available.Count && placements.ContainsKey(available[normalIdx]))
+                    normalIdx++;
+                if (normalIdx >= available.Count) continue;
+                placements[available[normalIdx++]] = card;
+            }
             deck.PlayCard(card);
             placed++;
+        }
+    }
+
+    private void Shuffle(List<Vector2Int> list)
+    {
+        for (int i = list.Count - 1; i > 0; i--)
+        {
+            int j = Random.Range(0, i + 1);
+            (list[i], list[j]) = (list[j], list[i]);
         }
     }
 
