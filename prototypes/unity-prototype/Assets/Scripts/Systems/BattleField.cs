@@ -125,20 +125,25 @@ public class BattleField : MonoBehaviour
                 mat.renderQueue = 3000;
                 renderer.material = mat;
 
-                // 플레이어 구역: BattleTile 컴포넌트 + 콜라이더 유지
-                if (isPlayer)
+                // 플레이어 구역: BattleTile + 콜라이더 (드래그 앤 드롭용)
+                // 적 구역: BattleTile (유닛 표시용, 콜라이더 없음)
+                bool isEnemyZone = col >= 9;
+                if (isPlayer || isEnemyZone)
                 {
                     Destroy(tile.GetComponent<Collider>());
-                    var boxCol = tile.AddComponent<BoxCollider>();
-                    boxCol.size = new Vector3(1, 1, 0.1f);
+
+                    if (isPlayer)
+                    {
+                        var boxCol = tile.AddComponent<BoxCollider>();
+                        boxCol.size = new Vector3(1, 1, 0.1f);
+                    }
 
                     var battleTile = tile.AddComponent<BattleTile>();
-                    // PlacementUI에서 한글 폰트 가져오기
                     if (Hand3D.Instance != null)
                         battleTile.koreanFont = Hand3D.Instance.koreanFont;
                     else if (PlacementUI.Instance != null)
                         battleTile.koreanFont = PlacementUI.Instance.koreanFont;
-                    battleTile.Setup(col, row, true, color, renderer);
+                    battleTile.Setup(col, row, isPlayer, color, renderer);
                     battleTiles[col, row] = battleTile;
                 }
                 else
@@ -202,6 +207,32 @@ public class BattleField : MonoBehaviour
         MoveCameraTo(battleCamPos, battleCamRot, battleFOV);
     }
 
+    /// <summary>
+    /// 적 배치 데이터를 적 구역 타일에 시각적으로 표시
+    /// EnemyPlacements의 (row, col) 0~4를 적 구역 col 9~13으로 매핑
+    /// </summary>
+    public void ShowEnemyPlacements()
+    {
+        var placements = GameManager.Instance.EnemyPlacements;
+        foreach (var kvp in placements)
+        {
+            int placementRow = kvp.Key.x;
+            int placementCol = kvp.Key.y;
+            CardData card = kvp.Value;
+
+            // 적 배치 (0~4) → 전장 적 구역 (col 9~13), 행은 반전 (적 시점)
+            int gridCol = 9 + (4 - placementCol);
+            int gridRow = placementRow;
+
+            var tile = GetBattleTile(gridCol, gridRow);
+            if (tile != null)
+            {
+                tile.PlaceUnitFromData(card);
+                Debug.Log($"[적 배치 표시] {card.unitData.unitName} → {(char)('A' + gridCol)}{gridRow + 1}");
+            }
+        }
+    }
+
     private void OnPhaseChanged(GameManager.GamePhase phase)
     {
         switch (phase)
@@ -212,6 +243,7 @@ public class BattleField : MonoBehaviour
                 break;
             case GameManager.GamePhase.Battle:
                 ZoomToFullField();
+                ShowEnemyPlacements();
                 break;
         }
     }

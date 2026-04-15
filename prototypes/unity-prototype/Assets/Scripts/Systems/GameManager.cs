@@ -160,8 +160,8 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-        // AI 상대는 랜덤 배치 (임시)
-        AutoPlaceEnemy();
+        // 상대 랜덤 배치 (AI 대전 / PVP 연결 끊김 대비)
+        AutoPlaceRandom(enemyDeck, EnemyPlacements);
 
         CurrentPhase = GamePhase.Battle;
         OnPhaseChanged?.Invoke(CurrentPhase);
@@ -176,14 +176,21 @@ public class GameManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 상대 AI 랜덤 배치 (임시)
+    /// 랜덤 배치 — 양쪽 모두 사용 가능 (AI 대전, PVP 연결 끊김 대비)
     /// </summary>
-    private void AutoPlaceEnemy()
+    public void AutoPlaceRandom(Deck deck, Dictionary<Vector2Int, CardData> placements)
     {
+        // 이미 배치된 수 계산
+        int alreadyPlaced = placements.Count;
+        int remaining = CARDS_TO_PLACE - alreadyPlaced;
+        if (remaining <= 0) return;
+
+        // 빈 칸 수집
         List<Vector2Int> available = new();
         for (int r = 0; r < 5; r++)
             for (int c = 0; c < 5; c++)
-                available.Add(new Vector2Int(r, c));
+                if (!placements.ContainsKey(new Vector2Int(r, c)))
+                    available.Add(new Vector2Int(r, c));
 
         // 셔플
         for (int i = available.Count - 1; i > 0; i--)
@@ -193,16 +200,18 @@ public class GameManager : MonoBehaviour
         }
 
         int placed = 0;
-        var handCopy = new List<CardData>(enemyDeck.Hand);
+        var handCopy = new List<CardData>(deck.Hand);
         foreach (var card in handCopy)
         {
-            if (placed >= CARDS_TO_PLACE) break;
+            if (placed >= remaining) break;
             if (placed >= available.Count) break;
 
-            EnemyPlacements[available[placed]] = card;
-            enemyDeck.PlayCard(card);
+            placements[available[placed]] = card;
+            deck.PlayCard(card);
             placed++;
         }
+
+        Debug.Log($"[랜덤 배치] {placed}장 배치 완료 (기존 {alreadyPlaced}장 + 신규 {placed}장)");
     }
 
     /// <summary>

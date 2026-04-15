@@ -89,12 +89,12 @@ public class BattleTile : MonoBehaviour
 
     private void OnMouseDown()
     {
-        // UI 위를 클릭한 경우 무시
         if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
 
-        if (IsOccupied && Hand3D.Instance != null)
+        if (IsOccupied && placedCard3D != null && Hand3D.Instance != null)
         {
-            Hand3D.Instance.RemoveAndReturnToHand(this);
+            // 배치된 카드를 픽업하여 드래그 시작 (타일→타일 이동 가능)
+            Hand3D.Instance.PickUpFromTile(this);
         }
     }
 
@@ -136,6 +136,24 @@ public class BattleTile : MonoBehaviour
         tileRenderer.material.color = zoneColor;
 
         return card;
+    }
+
+    /// <summary>
+    /// CardData만으로 유닛 표시 (Card3D 없이, 적 배치용)
+    /// </summary>
+    public void PlaceUnitFromData(CardData data)
+    {
+        var unit = data.unitData;
+        string suffix = unit.category == UnitCategory.Special ? "개" : "명";
+        unitLabel.text = unit.unitName + "\n" + unit.soldierCount + suffix;
+        unitLabel.gameObject.SetActive(true);
+
+        Color unitColor = GetUnitColor(unit);
+        baseColor = unitColor;
+        hoverColor = unitColor + new Color(0.15f, 0.15f, 0.15f, 0);
+        tileRenderer.material.color = unitColor;
+
+        SpawnSoldiers(unit);
     }
 
     public void SetHover(bool hover)

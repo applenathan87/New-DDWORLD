@@ -144,6 +144,17 @@ public class Card3D : MonoBehaviour
         gameObject.SetActive(true);
     }
 
+    // 픽업 원본 타일 (타일→타일 이동 시 드롭 실패하면 복귀용)
+    private BattleTile sourceTile;
+
+    /// <summary>
+    /// 타일에서 픽업하여 드래그 시작 (Hand3D.PickUpFromTile에서 호출)
+    /// </summary>
+    public void StartDragFromTile(BattleTile fromTile)
+    {
+        BeginDrag(fromTile);
+    }
+
     // === 마우스 상호작용 ===
 
     private void OnMouseEnter()
@@ -163,17 +174,20 @@ public class Card3D : MonoBehaviour
     private void OnMouseDown()
     {
         if (!interactable) return;
+        BeginDrag(null);
+    }
+
+    private void BeginDrag(BattleTile fromTile)
+    {
+        sourceTile = fromTile;
         isDragging = true;
         hoverTween?.Kill();
         transform.localScale = baseScale;
 
-        // 드래그 중 콜라이더 비활성화 (타일 레이캐스트가 통과하도록)
         if (boxCollider != null) boxCollider.enabled = false;
 
-        // 드래그 평면 설정 (카드가 있는 Y 높이)
         dragPlane = new Plane(Vector3.up, new Vector3(0, transform.position.y, 0));
 
-        // 마우스와 카드 위치 차이 저장
         Ray ray = mainCamera.ScreenPointToRay(Mouse.current.position.ReadValue());
         if (dragPlane.Raycast(ray, out float enter))
         {
@@ -181,17 +195,18 @@ public class Card3D : MonoBehaviour
         }
     }
 
-    private void OnMouseDrag()
+    private void Update()
     {
         if (!isDragging) return;
 
+        // 드래그 중 위치 갱신
         Ray ray = mainCamera.ScreenPointToRay(Mouse.current.position.ReadValue());
         if (dragPlane.Raycast(ray, out float enter))
         {
             transform.position = ray.GetPoint(enter) + dragOffset;
         }
 
-        // 3D 타일 호버 감지
+        // 타일 호버 감지
         if (BattleField.Instance != null)
         {
             var tile = BattleField.Instance.GetTileUnderMouse();
@@ -203,33 +218,53 @@ public class Card3D : MonoBehaviour
                     hoveredTile.SetHover(true);
             }
         }
+
+        // 마우스 버튼 놓으면 드롭
+        if (Mouse.current.leftButton.wasReleasedThisFrame)
+        {
+            EndDrag();
+        }
     }
 
-    private void OnMouseUp()
+    private void EndDrag()
     {
-        if (!isDragging) return;
         isDragging = false;
 
-        // 콜라이더 복원
         if (boxCollider != null) boxCollider.enabled = true;
 
-        // 호버 해제
         if (hoveredTile != null)
         {
             hoveredTile.SetHover(false);
 
             if (hoveredTile.isPlayerZone && Hand3D.Instance != null)
             {
-                Hand3D.Instance.PlaceCardOnTile(hoveredTile, this);
-                hoveredTile = null;
-                if (!gameObject.activeSelf) return;
+                if (sourceTile != null && hoveredTile != sourceTile)
+                {
+                    Hand3D.Instance.MoveCardBetweenTiles(sourceTile, hoveredTile, this);
+                    hoveredTile = null;
+                    sourceTile = null;
+                    if (!gameObject.activeSelf) return;
+                }
+                else if (sourceTile == null)
+                {
+                    Hand3D.Instance.PlaceCardOnTile(hoveredTile, this);
+                    hoveredTile = null;
+                    if (!gameObject.activeSelf) return;
+                }
             }
             hoveredTile = null;
         }
 
-        // 배치 안 됐으면 핸드로 복귀
-        transform.DOMove(handPosition, 0.3f).SetEase(Ease.OutCubic);
-        transform.DORotateQuaternion(handRotation, 0.3f).SetEase(Ease.OutCubic);
+        if (sourceTile != null)
+        {
+            Hand3D.Instance?.ReturnCardToTile(sourceTile, this);
+            sourceTile = null;
+        }
+        else
+        {
+            transform.DOMove(handPosition, 0.3f).SetEase(Ease.OutCubic);
+            transform.DORotateQuaternion(handRotation, 0.3f).SetEase(Ease.OutCubic);
+        }
     }
 
     private Color GetUnitColor(UnitData data)

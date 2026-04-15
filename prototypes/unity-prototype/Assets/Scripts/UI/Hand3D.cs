@@ -339,8 +339,94 @@ public class Hand3D : MonoBehaviour
         card.SetReturned();
         card.transform.SetParent(cardAnchor);
 
-        // 핸드 레이아웃 재계산 (로컬 좌표, 애니메이션)
         LayoutPlayerHand(animated: true);
+
+        PlacementUI.Instance?.UpdateInfoText();
+    }
+
+    /// <summary>
+    /// 타일에서 카드를 픽업하여 드래그 시작 (타일→타일 이동용)
+    /// </summary>
+    public void PickUpFromTile(BattleTile tile)
+    {
+        if (!tile.IsOccupied) return;
+
+        Card3D card = tile.RemoveUnit3D();
+        if (card == null) return;
+
+        GameManager.Instance.RemovePlacement(tile.row, tile.col);
+
+        // 카드를 타일 위치 위에 활성화
+        card.gameObject.SetActive(true);
+        card.transform.SetParent(null);
+        card.transform.position = tile.transform.position + Vector3.up * 0.5f;
+
+        // 타일과 같은 방향(바닥에 누운 상태)으로 배치, 그리드에서 보이는 크기로
+        float tileSize = BattleField.Instance != null ? BattleField.Instance.tileSize : 1f;
+        Vector3 gridScale = new Vector3(tileSize * 0.8f, tileSize * 0.8f, 1f);
+        card.transform.rotation = Quaternion.Euler(90, 0, 0);
+        card.transform.localScale = gridScale;
+        card.SetBaseScale(gridScale);
+        card.interactable = true;
+
+        card.StartDragFromTile(tile);
+
+        PlacementUI.Instance?.UpdateInfoText();
+    }
+
+    /// <summary>
+    /// 타일→타일 이동: 원본 타일에서 제거 후 새 타일에 배치
+    /// </summary>
+    public void MoveCardBetweenTiles(BattleTile fromTile, BattleTile toTile, Card3D card)
+    {
+        if (card == null || toTile == null) return;
+
+        // 핸드 스케일로 복원
+        Vector3 handScale = new Vector3(cardWidth * playerScaleFactor, cardHeight * playerScaleFactor, 1f);
+        card.SetBaseScale(handScale);
+
+        // 대상 타일에 이미 유닛이 있으면 스왑
+        if (toTile.IsOccupied)
+        {
+            Card3D otherCard = ReturnCardFromTile(toTile);
+            if (otherCard != null)
+            {
+                otherCard.SetBaseScale(handScale);
+                GameManager.Instance.PlaceCard(otherCard.cardData, fromTile.row, fromTile.col);
+                fromTile.PlaceUnit3D(otherCard);
+                otherCard.SetPlaced();
+            }
+        }
+
+        // 새 타일에 배치
+        bool success = GameManager.Instance.PlaceCard(card.cardData, toTile.row, toTile.col);
+        if (success)
+        {
+            toTile.PlaceUnit3D(card);
+            card.SetPlaced();
+        }
+        else
+        {
+            ReturnCardToTile(fromTile, card);
+        }
+
+        PlacementUI.Instance?.UpdateInfoText();
+    }
+
+    /// <summary>
+    /// 드래그 실패 시 카드를 원래 타일로 되돌리기
+    /// </summary>
+    public void ReturnCardToTile(BattleTile tile, Card3D card)
+    {
+        if (card == null || tile == null) return;
+
+        // 핸드 스케일로 복원 (다음 핸드 복귀 시를 대비)
+        Vector3 handScale = new Vector3(cardWidth * playerScaleFactor, cardHeight * playerScaleFactor, 1f);
+        card.SetBaseScale(handScale);
+
+        GameManager.Instance.PlaceCard(card.cardData, tile.row, tile.col);
+        tile.PlaceUnit3D(card);
+        card.SetPlaced();
 
         PlacementUI.Instance?.UpdateInfoText();
     }
