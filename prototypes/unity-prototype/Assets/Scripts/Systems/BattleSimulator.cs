@@ -132,7 +132,7 @@ public class BattleSimulator : MonoBehaviour
     {
         int count = 0;
         foreach (var s in soldiers)
-            if (!s.isDead) count++;
+            if (!s.isDead && !s.isTrap) count++;
         return count;
     }
 

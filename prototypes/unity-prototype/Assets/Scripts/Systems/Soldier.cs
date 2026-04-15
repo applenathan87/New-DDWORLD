@@ -36,6 +36,7 @@ public class Soldier : MonoBehaviour
     private float laneBoundaryX;      // 적 3열째 X 좌표 (여기 도달하면 자유 추적)
     private float laneDirection;      // +1(플레이어→적) or -1(적→플레이어)
     private bool hasCharged;          // 기병 돌격 사용 여부
+    private bool hasEngaged;          // 전투 경험 여부 (교전 후 자유 추적 전환)
     [HideInInspector] public bool isTrap; // 함정 여부 (타겟팅에서 제외)
 
     // 넉백
@@ -223,49 +224,75 @@ public class Soldier : MonoBehaviour
         if (target != null && (target.isDead || target.isTrap))
             target = null;
 
-        // 레인 경계 도달 체크
+        // 레인 → 자유 전환 체크 (경계 도달 OR 전투 경험 후 타겟 사망)
         if (inLanePhase)
         {
             bool reached = isPlayerSide
                 ? transform.position.x >= laneBoundaryX
                 : transform.position.x <= laneBoundaryX;
-            if (reached) inLanePhase = false;
+            if (reached || (hasEngaged && (target == null || target.isDead)))
+                inLanePhase = false;
         }
 
         if (inLanePhase)
         {
-            // === 레인 페이즈: 행을 따라 직진 ===
-            // 진행 경로에서 적 탐색 (같은 행, 정면의 적)
-            if (target == null)
-                target = FindEnemyInLane(enemies);
+            // === 레인 페이즈 ===
+            bool isRanged = unitData.attackRange > 0;
 
-            if (target != null)
+            if (isRanged)
             {
-                float dist = Vector3.Distance(transform.position, target.transform.position);
-                if (dist <= attackRange)
+                // 궁병: 사거리 내 아무 적이든 찾으면 멈춰서 사격
+                if (target == null)
+                    target = FindEnemyInRange(enemies);
+
+                if (target != null)
                 {
                     currentSpeed = 0f;
                     Attack();
                 }
                 else if (moveSpeed > 0)
                 {
-                    // 적을 향해 이동 (레인 방향 유지)
+                    // 사거리에 아무도 없으면 전진
                     currentSpeed = Mathf.MoveTowards(currentSpeed, moveSpeed, acceleration * dt);
-                    Vector3 moveDir = (target.transform.position - transform.position).normalized;
-                    Vector3 pos = transform.position + moveDir * currentSpeed * dt;
+                    Vector3 pos = transform.position;
+                    pos.x += laneDirection * currentSpeed * dt;
                     pos.x = Mathf.Clamp(pos.x, fieldMinX, fieldMaxX);
-                    pos.z = Mathf.Clamp(pos.z, fieldMinZ, fieldMaxZ);
                     transform.position = pos;
                 }
             }
-            else if (moveSpeed > 0)
+            else
             {
-                // 적 없으면 행 끝을 향해 직진
-                currentSpeed = Mathf.MoveTowards(currentSpeed, moveSpeed, acceleration * dt);
-                Vector3 pos = transform.position;
-                pos.x += laneDirection * currentSpeed * dt;
-                pos.x = Mathf.Clamp(pos.x, fieldMinX, fieldMaxX);
-                transform.position = pos;
+                // 근접: 같은 행 정면 적 탐색
+                if (target == null)
+                    target = FindEnemyInLane(enemies);
+
+                if (target != null)
+                {
+                    float dist = Vector3.Distance(transform.position, target.transform.position);
+                    if (dist <= attackRange)
+                    {
+                        currentSpeed = 0f;
+                        Attack();
+                    }
+                    else if (moveSpeed > 0)
+                    {
+                        currentSpeed = Mathf.MoveTowards(currentSpeed, moveSpeed, acceleration * dt);
+                        Vector3 moveDir = (target.transform.position - transform.position).normalized;
+                        Vector3 pos = transform.position + moveDir * currentSpeed * dt;
+                        pos.x = Mathf.Clamp(pos.x, fieldMinX, fieldMaxX);
+                        pos.z = Mathf.Clamp(pos.z, fieldMinZ, fieldMaxZ);
+                        transform.position = pos;
+                    }
+                }
+                else if (moveSpeed > 0)
+                {
+                    // 적 없으면 행 끝을 향해 직진
+                    currentSpeed = Mathf.MoveTowards(currentSpeed, moveSpeed, acceleration * dt);
+                    Vector3 pos = transform.position;
+                    pos.x += laneDirection * currentSpeed * dt;
+                    pos.x = Mathf.Clamp(pos.x, fieldMinX, fieldMaxX);
+                    transform.position = pos;
+                }
             }
         }
         else
@@ -309,6 +336,27 @@ public class Soldier : MonoBehaviour
         }
 
         ApplySeparation(allies, fieldMinX, fieldMaxX, fieldMinZ, fieldMaxZ, dt);
+    }
+
+    /// <summary>
+    /// 사거리 내 가장 가까운 적 탐색 (궁병 레인 페이즈용, 행 무관)
+    /// </summary>
+    private Soldier FindEnemyInRange(List<Soldier> enemies)
+    {
+        Soldier nearest = null;
+        float nearestDist = float.MaxValue;
+
+        foreach (var e in enemies)
+        {
+            if (e.isDead || e.isTrap) continue;
+            float dist = Vector3.Distance(transform.position, e.transform.position);
+            if (dist <= attackRange && dist < nearestDist)
+            {
+                nearestDist = dist;
+                nearest = e;
+            }
+        }
+        return nearest;
     }
 
     /// <summary>
@@ -482,12 +530,13 @@ public class Soldier : MonoBehaviour
         if (isCavalry && !hasCharged)
         {
             hasCharged = true;
+            hasEngaged = true;
 
             if (targetIsSpearman)
             {
                 // 창병 돌격 방어: 기병은 6만 주고, 16 반사 받음
                 int chargeDealtToSpearman = 6;
-                int reflectDamage = 16;
+                int reflectDamage = 12;
 
                 totalDamageDealt += chargeDealtToSpearman;
                 target.TakeDamage(chargeDealtToSpearman, this);
@@ -511,6 +560,8 @@ public class Soldier : MonoBehaviour
             }
         }
 
+        hasEngaged = true;
+
         // === 일반 공격 ===
         if (unitData.attackRange > 0)
         {
@@ -530,21 +581,21 @@ public class Soldier : MonoBehaviour
     public void ShowFloatingText(string text, Color color)
     {
         var obj = new GameObject("FloatText");
-        obj.transform.position = transform.position + Vector3.up * 0.35f;
+        obj.transform.position = transform.position + Vector3.up * 0.6f;
 
         var tmp = obj.AddComponent<TMPro.TextMeshPro>();
+        // 한글 폰트 연결
+        if (BattleSimulator.Instance != null && BattleSimulator.Instance.koreanFont != null)
+            tmp.font = BattleSimulator.Instance.koreanFont;
         tmp.text = text;
-        tmp.fontSize = 2f;
+        tmp.fontSize = 5f;
         tmp.alignment = TMPro.TextAlignmentOptions.Center;
         tmp.color = color;
-        tmp.rectTransform.sizeDelta = new Vector2(2f, 0.5f);
+        tmp.rectTransform.sizeDelta = new Vector2(3f, 1f);
         tmp.raycastTarget = false;
 
-        // 위로 떠오르면서 사라짐
-        var startPos = obj.transform.position;
-        float elapsed = 0f;
         var mono = obj.AddComponent<FloatingTextAnim>();
-        mono.Init(startPos, 1.2f);
+        mono.Init(obj.transform.position, 1.5f);
     }
 
     // === 방향 화살표 ===
