@@ -101,10 +101,8 @@ public class Hand3D : MonoBehaviour
         dimQuad = GameObject.CreatePrimitive(PrimitiveType.Quad);
         dimQuad.name = "DimOverlay3D";
         dimQuad.transform.SetParent(mainCamera.transform);
-        // drawAnchor보다 살짝 뒤에 배치, 쿼터뷰 카메라 각도에 맞춰 기울임
-        dimQuad.transform.localPosition = new Vector3(0, 0, 4.7f);
-        dimQuad.transform.localRotation = Quaternion.Euler(21.65f, 0f, 0f);
-        // 화면 전체를 확실히 덮도록 고정 크기
+        dimQuad.transform.localPosition = new Vector3(0, -0.58f, 5.28f);
+        dimQuad.transform.localRotation = Quaternion.Euler(47.5f, 0f, 0f);
         dimQuad.transform.localScale = new Vector3(50f, 50f, 1f);
 
         Destroy(dimQuad.GetComponent<Collider>());
@@ -149,6 +147,7 @@ public class Hand3D : MonoBehaviour
         foreach (var data in hand)
         {
             var card = CreateCard3D(data, isEnemy: false);
+            card.hoverEnabled = false; // 드로우 연출 중 호버 비활성화
             myCards.Add(card);
         }
         return myCards;
@@ -163,7 +162,9 @@ public class Hand3D : MonoBehaviour
         foreach (var data in hand)
         {
             var card = CreateCard3D(data, isEnemy: true);
-            card.interactable = false; // 상대 카드는 호버만 가능
+            card.interactable = false;
+            card.hoverEnabled = false; // 드로우 중 호버 비활성화
+            card.isEnemyCard = true;   // 상대 카드 호버 스타일
             enemyCards.Add(card);
         }
         return enemyCards;
@@ -414,6 +415,24 @@ public class Hand3D : MonoBehaviour
     }
 
     /// <summary>
+    /// 클릭 취소: 타일에서 픽업한 카드를 핸드로 복귀
+    /// </summary>
+    public void CancelPickUpToHand(BattleTile fromTile, Card3D card)
+    {
+        if (card == null) return;
+
+        // 핸드 스케일 복원
+        Vector3 handScale = new Vector3(cardWidth * playerScaleFactor, cardHeight * playerScaleFactor, 1f);
+        card.SetBaseScale(handScale);
+
+        card.SetReturned();
+        card.transform.SetParent(cardAnchor);
+
+        LayoutPlayerHand(animated: true);
+        PlacementUI.Instance?.UpdateInfoText();
+    }
+
+    /// <summary>
     /// 드래그 실패 시 카드를 원래 타일로 되돌리기
     /// </summary>
     public void ReturnCardToTile(BattleTile tile, Card3D card)
@@ -432,6 +451,21 @@ public class Hand3D : MonoBehaviour
     }
 
     // === 드로우 애니메이션 ===
+
+    /// <summary>
+    /// 카드 1장 드로우 연출: XY 탄성 이동 + Z 깊이 아치
+    /// </summary>
+    private void AnimateCardDraw(Transform card, Vector3 target, Vector3 scale)
+    {
+        card.DOLocalMoveX(target.x, 0.55f).SetEase(Ease.OutElastic, 0.8f, 0.4f);
+        card.DOLocalMoveY(target.y, 0.55f).SetEase(Ease.OutElastic, 0.8f, 0.4f);
+
+        DOTween.Sequence()
+            .Append(card.DOLocalMoveZ(0.15f, 0.2f).SetEase(Ease.OutSine))
+            .Append(card.DOLocalMoveZ(0f, 0.35f).SetEase(Ease.InOutSine));
+
+        card.DOScale(scale, 0.4f).SetEase(Ease.OutBack);
+    }
 
     /// <summary>
     /// 드로우 페이즈 전체 연출
@@ -496,18 +530,16 @@ public class Hand3D : MonoBehaviour
         {
             if (playerTurn && pi < totalPlayer)
             {
-                myCards[pi].transform.DOLocalMove(playerCenterLocal[pi], 0.3f).SetEase(Ease.OutCubic);
-                myCards[pi].transform.DOScale(drawCardScale, 0.3f).SetEase(Ease.OutBack);
+                AnimateCardDraw(myCards[pi].transform, playerCenterLocal[pi], drawCardScale);
                 pi++;
             }
             else if (!playerTurn && ei < totalEnemy)
             {
-                enemyCards[ei].transform.DOLocalMove(enemyCenterLocal[ei], 0.3f).SetEase(Ease.OutCubic);
-                enemyCards[ei].transform.DOScale(drawCardScale, 0.3f).SetEase(Ease.OutBack);
+                AnimateCardDraw(enemyCards[ei].transform, enemyCenterLocal[ei], drawCardScale);
                 ei++;
             }
             playerTurn = !playerTurn;
-            yield return new WaitForSeconds(0.2f);
+            yield return new WaitForSeconds(0.25f);
         }
 
         yield return new WaitForSeconds(0.8f);
@@ -575,6 +607,12 @@ public class Hand3D : MonoBehaviour
 
         // 3D 딤 오버레이 페이드아웃
         FadeDim(0f, 0.6f);
+
+        // 호버 활성화
+        foreach (var card in sortedPlayer)
+            card.hoverEnabled = true;
+        foreach (var card in sortedEnemy)
+            card.hoverEnabled = true;
 
         // 정렬된 순서로 리스트 갱신
         myCards = sortedPlayer;

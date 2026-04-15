@@ -139,6 +139,9 @@ public class Card3D : MonoBehaviour
     {
         isDragging = false;
         hoverTween?.Kill();
+        hoverZTween?.Kill();
+        hoverYTween?.Kill();
+        hoverPosSaved = false;
         transform.localScale = baseScale;
         if (boxCollider != null) boxCollider.enabled = true;
         gameObject.SetActive(true);
@@ -157,18 +160,59 @@ public class Card3D : MonoBehaviour
 
     // === 마우스 상호작용 ===
 
+    // 호버
+    private Tween hoverZTween;
+    private Tween hoverYTween;
+    private float hoverBaseZ;
+    private float hoverBaseY;
+    private bool hoverPosSaved;
+    public bool hoverEnabled = true;  // 드로우 중 false
+    public bool isEnemyCard = false;  // 상대 카드 호버 스타일
+
+    private const float HOVER_SCALE_PLAYER = 1.3f;
+    private const float HOVER_SCALE_ENEMY = 1.1f;
+
     private void OnMouseEnter()
     {
-        if (isDragging) return;
+        if (isDragging || !hoverEnabled) return;
         hoverTween?.Kill();
-        hoverTween = transform.DOScale(baseScale * 1.1f, 0.15f).SetEase(Ease.OutCubic);
+        hoverZTween?.Kill();
+        hoverYTween?.Kill();
+
+        if (!hoverPosSaved)
+        {
+            hoverBaseZ = transform.localPosition.z;
+            hoverBaseY = transform.localPosition.y;
+            hoverPosSaved = true;
+        }
+
+        float scale = isEnemyCard ? HOVER_SCALE_ENEMY : HOVER_SCALE_PLAYER;
+        float yOffset = baseScale.y * (scale - 1f) * 0.5f;
+
+        // 내 카드: 아래쪽 앵커 (위로 커짐) / 상대 카드: 위쪽 앵커 (아래로 커짐)
+        float yDir = isEnemyCard ? -1f : 1f;
+
+        hoverTween = transform.DOScale(baseScale * scale, 0.15f).SetEase(Ease.OutCubic);
+        hoverYTween = transform.DOLocalMoveY(hoverBaseY + yOffset * yDir, 0.15f).SetEase(Ease.OutCubic);
+
+        if (!isEnemyCard)
+            hoverZTween = transform.DOLocalMoveZ(hoverBaseZ - 0.15f, 0.15f).SetEase(Ease.OutCubic);
     }
 
     private void OnMouseExit()
     {
-        if (isDragging) return;
+        if (isDragging || !hoverEnabled) return;
         hoverTween?.Kill();
+        hoverZTween?.Kill();
+        hoverYTween?.Kill();
+
         hoverTween = transform.DOScale(baseScale, 0.15f).SetEase(Ease.OutCubic);
+        if (hoverPosSaved)
+        {
+            hoverYTween = transform.DOLocalMoveY(hoverBaseY, 0.15f).SetEase(Ease.OutCubic);
+            if (!isEnemyCard)
+                hoverZTween = transform.DOLocalMoveZ(hoverBaseZ, 0.15f).SetEase(Ease.OutCubic);
+        }
     }
 
     private void OnMouseDown()
@@ -177,10 +221,18 @@ public class Card3D : MonoBehaviour
         BeginDrag(null);
     }
 
+    // 클릭 vs 드래그 판별
+    private float mouseDownTime;
+    private Vector2 mouseDownPos;
+    private const float CLICK_TIME_THRESHOLD = 0.2f;   // 이 시간 이내면 클릭
+    private const float CLICK_DIST_THRESHOLD = 10f;     // 이 픽셀 이내면 클릭
+
     private void BeginDrag(BattleTile fromTile)
     {
         sourceTile = fromTile;
         isDragging = true;
+        mouseDownTime = Time.time;
+        mouseDownPos = Mouse.current.position.ReadValue();
         hoverTween?.Kill();
         transform.localScale = baseScale;
 
@@ -188,7 +240,7 @@ public class Card3D : MonoBehaviour
 
         dragPlane = new Plane(Vector3.up, new Vector3(0, transform.position.y, 0));
 
-        Ray ray = mainCamera.ScreenPointToRay(Mouse.current.position.ReadValue());
+        Ray ray = mainCamera.ScreenPointToRay(mouseDownPos);
         if (dragPlane.Raycast(ray, out float enter))
         {
             dragOffset = transform.position - ray.GetPoint(enter);
@@ -199,14 +251,12 @@ public class Card3D : MonoBehaviour
     {
         if (!isDragging) return;
 
-        // 드래그 중 위치 갱신
         Ray ray = mainCamera.ScreenPointToRay(Mouse.current.position.ReadValue());
         if (dragPlane.Raycast(ray, out float enter))
         {
             transform.position = ray.GetPoint(enter) + dragOffset;
         }
 
-        // 타일 호버 감지
         if (BattleField.Instance != null)
         {
             var tile = BattleField.Instance.GetTileUnderMouse();
@@ -219,11 +269,31 @@ public class Card3D : MonoBehaviour
             }
         }
 
-        // 마우스 버튼 놓으면 드롭
         if (Mouse.current.leftButton.wasReleasedThisFrame)
         {
-            EndDrag();
+            float elapsed = Time.time - mouseDownTime;
+            float dist = Vector2.Distance(Mouse.current.position.ReadValue(), mouseDownPos);
+            bool isClick = elapsed < CLICK_TIME_THRESHOLD && dist < CLICK_DIST_THRESHOLD;
+
+            if (isClick && sourceTile != null)
+                ClickCancel();  // 짧은 클릭 + 타일에서 픽업 → 핸드 복귀
+            else
+                EndDrag();      // 드래그 → 타일 이동
         }
+    }
+
+    /// <summary>
+    /// 클릭 취소: 타일에서 카드를 핸드로 복귀
+    /// </summary>
+    private void ClickCancel()
+    {
+        isDragging = false;
+        if (boxCollider != null) boxCollider.enabled = true;
+        if (hoveredTile != null) { hoveredTile.SetHover(false); hoveredTile = null; }
+
+        // 핸드 스케일 복원 + 핸드로 복귀
+        Hand3D.Instance?.CancelPickUpToHand(sourceTile, this);
+        sourceTile = null;
     }
 
     private void EndDrag()
