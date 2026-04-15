@@ -57,6 +57,7 @@ public class GameManager : MonoBehaviour
     public System.Action<List<CardData>> OnCardsDrawn;
     public System.Action<int> OnPlacementNotReady; // 남은 배치 수
 
+
     private void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
