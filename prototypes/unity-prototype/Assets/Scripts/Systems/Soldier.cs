@@ -296,7 +296,7 @@ public class Soldier : MonoBehaviour
             ? BattleSimulator.Instance.GetTypeMultiplier(unitData.rpsType, target.unitData.rpsType)
             : 1f;
 
-        int damage = Mathf.Max(1, Mathf.RoundToInt(unitData.attack * multiplier) - target.unitData.defense);
+        int damage = Mathf.RoundToInt(unitData.attack * multiplier);
 
         if (unitData.attackRange > 0)
         {
