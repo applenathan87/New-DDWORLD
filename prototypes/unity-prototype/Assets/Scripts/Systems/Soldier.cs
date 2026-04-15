@@ -31,9 +31,16 @@ public class Soldier : MonoBehaviour
     private float attackRange;
     private float attackInterval;
 
+    // 레인 기반 이동
+    private bool inLanePhase = true;  // true: 행 직진, false: 자유 추적
+    private float laneBoundaryX;      // 적 3열째 X 좌표 (여기 도달하면 자유 추적)
+    private float laneDirection;      // +1(플레이어→적) or -1(적→플레이어)
+    private bool hasCharged;          // 기병 돌격 사용 여부
+    [HideInInspector] public bool isTrap; // 함정 여부 (타겟팅에서 제외)
+
     // 넉백
     private Vector3 knockbackVelocity;
-    private const float KNOCKBACK_DECAY = 8f; // 넉백 감쇠 속도 (높을수록 빨리 멈춤)
+    private const float KNOCKBACK_DECAY = 8f;
 
     // HP바
     private GameObject hpBarBg;
@@ -94,6 +101,23 @@ public class Soldier : MonoBehaviour
         attackInterval = data.shootEveryTick > 0
             ? data.shootEveryTick * 0.5f
             : 0.5f;
+
+        // 레인 설정
+        inLanePhase = true;
+        hasCharged = false;
+        laneDirection = isPlayerSide ? 1f : -1f;
+        isTrap = data.trapDamage > 0;
+
+        // 적 진영 3열째 X 좌표 계산
+        var bf = BattleField.Instance;
+        if (bf != null)
+        {
+            float tileUnit = bf.tileSize + bf.tileGap;
+            // 플레이어: 적 3열째 = col 11 (9+2)
+            // 적: 플레이어 3열째 = col 2 (4-2)
+            int targetCol = isPlayerSide ? 11 : 2;
+            laneBoundaryX = bf.GetTileWorldPosition(targetCol, 0).x;
+        }
 
         // 아웃라인 색 변경 (아군: 파랑, 적: 빨강)
         var outline = transform.Find("Outline_" + name.Replace("Soldier_", ""));
@@ -191,37 +215,89 @@ public class Soldier : MonoBehaviour
     /// </summary>
     public void UpdateBattle(List<Soldier> allies, List<Soldier> enemies, float fieldMinX, float fieldMaxX, float fieldMinZ, float fieldMaxZ)
     {
-        if (isDead || !battleStarted) return;
-
-        if (target != null && target.isDead)
-            target = null;
-
-        if (target == null)
-            target = FindNearestEnemy(enemies);
-
-        if (target == null) return;
+        if (isDead || !battleStarted || isTrap) return;
 
         float dt = Time.deltaTime;
-        float dist = Vector3.Distance(transform.position, target.transform.position);
 
-        if (dist <= attackRange)
-        {
-            currentSpeed = 0f; // 공격 중엔 속도 리셋
-            Attack();
-        }
-        else if (moveSpeed > 0)
-        {
-            // 가속: 0 → 최대 속도까지 점진적으로
-            currentSpeed = Mathf.MoveTowards(currentSpeed, moveSpeed, acceleration * dt);
+        // 타겟 정리
+        if (target != null && (target.isDead || target.isTrap))
+            target = null;
 
-            Vector3 moveDir = (target.transform.position - transform.position).normalized;
-            Vector3 pos = transform.position + moveDir * currentSpeed * dt;
-            pos.x = Mathf.Clamp(pos.x, fieldMinX, fieldMaxX);
-            pos.z = Mathf.Clamp(pos.z, fieldMinZ, fieldMaxZ);
-            transform.position = pos;
+        // 레인 경계 도달 체크
+        if (inLanePhase)
+        {
+            bool reached = isPlayerSide
+                ? transform.position.x >= laneBoundaryX
+                : transform.position.x <= laneBoundaryX;
+            if (reached) inLanePhase = false;
         }
 
-        // 넉백 속도 적용 + 감쇠
+        if (inLanePhase)
+        {
+            // === 레인 페이즈: 행을 따라 직진 ===
+            // 진행 경로에서 적 탐색 (같은 행, 정면의 적)
+            if (target == null)
+                target = FindEnemyInLane(enemies);
+
+            if (target != null)
+            {
+                float dist = Vector3.Distance(transform.position, target.transform.position);
+                if (dist <= attackRange)
+                {
+                    currentSpeed = 0f;
+                    Attack();
+                }
+                else if (moveSpeed > 0)
+                {
+                    // 적을 향해 이동 (레인 방향 유지)
+                    currentSpeed = Mathf.MoveTowards(currentSpeed, moveSpeed, acceleration * dt);
+                    Vector3 moveDir = (target.transform.position - transform.position).normalized;
+                    Vector3 pos = transform.position + moveDir * currentSpeed * dt;
+                    pos.x = Mathf.Clamp(pos.x, fieldMinX, fieldMaxX);
+                    pos.z = Mathf.Clamp(pos.z, fieldMinZ, fieldMaxZ);
+                    transform.position = pos;
+                }
+            }
+            else if (moveSpeed > 0)
+            {
+                // 적 없으면 행 끝을 향해 직진
+                currentSpeed = Mathf.MoveTowards(currentSpeed, moveSpeed, acceleration * dt);
+                Vector3 pos = transform.position;
+                pos.x += laneDirection * currentSpeed * dt;
+                pos.x = Mathf.Clamp(pos.x, fieldMinX, fieldMaxX);
+                transform.position = pos;
+            }
+        }
+        else
+        {
+            // === 자유 페이즈: 가장 가까운 적 추적 ===
+            if (target == null)
+                target = FindNearestEnemy(enemies);
+
+            if (target != null)
+            {
+                float dist = Vector3.Distance(transform.position, target.transform.position);
+                if (dist <= attackRange)
+                {
+                    currentSpeed = 0f;
+                    Attack();
+                }
+                else if (moveSpeed > 0)
+                {
+                    currentSpeed = Mathf.MoveTowards(currentSpeed, moveSpeed, acceleration * dt);
+                    Vector3 moveDir = (target.transform.position - transform.position).normalized;
+                    Vector3 pos = transform.position + moveDir * currentSpeed * dt;
+                    pos.x = Mathf.Clamp(pos.x, fieldMinX, fieldMaxX);
+                    pos.z = Mathf.Clamp(pos.z, fieldMinZ, fieldMaxZ);
+                    transform.position = pos;
+                }
+            }
+        }
+
+        // 함정 밟기 체크
+        CheckTrapCollision(enemies);
+
+        // 넉백 감쇠
         if (knockbackVelocity.sqrMagnitude > 0.001f)
         {
             Vector3 pos = transform.position + knockbackVelocity * dt;
@@ -229,11 +305,66 @@ public class Soldier : MonoBehaviour
             pos.z = Mathf.Clamp(pos.z, fieldMinZ, fieldMaxZ);
             pos.y = transform.position.y;
             transform.position = pos;
-
             knockbackVelocity = Vector3.Lerp(knockbackVelocity, Vector3.zero, KNOCKBACK_DECAY * dt);
         }
 
         ApplySeparation(allies, fieldMinX, fieldMaxX, fieldMinZ, fieldMaxZ, dt);
+    }
+
+    /// <summary>
+    /// 같은 행에서 정면의 가장 가까운 적 탐색 (레인 페이즈용)
+    /// </summary>
+    private Soldier FindEnemyInLane(List<Soldier> enemies)
+    {
+        Soldier nearest = null;
+        float nearestDist = float.MaxValue;
+        float myZ = transform.position.z;
+
+        foreach (var e in enemies)
+        {
+            if (e.isDead || e.isTrap) continue;
+
+            // 같은 행 판정: Z 좌표 차이가 작은 적 (±타일 1칸 이내)
+            float zDiff = Mathf.Abs(e.transform.position.z - myZ);
+            if (zDiff > 1.2f) continue;
+
+            // 정면에 있는 적만 (이미 지나친 적 제외)
+            float xDiff = (e.transform.position.x - transform.position.x) * laneDirection;
+            if (xDiff < 0) continue; // 뒤에 있는 적은 무시
+
+            float dist = Vector3.Distance(transform.position, e.transform.position);
+            if (dist < nearestDist)
+            {
+                nearestDist = dist;
+                nearest = e;
+            }
+        }
+        return nearest;
+    }
+
+    /// <summary>
+    /// 함정 밟기 체크 — 함정은 타겟팅 안 되고 밟아야 발동
+    /// </summary>
+    private void CheckTrapCollision(List<Soldier> enemies)
+    {
+        for (int i = enemies.Count - 1; i >= 0; i--)
+        {
+            var trap = enemies[i];
+            if (!trap.isTrap || trap.isDead) continue;
+
+            float dist = Vector3.Distance(transform.position, trap.transform.position);
+            if (dist < 0.4f)
+            {
+                // 함정 발동!
+                int trapDmg = trap.unitData.trapDamage > 0 ? trap.unitData.trapDamage : 10;
+                TakeDamage(trapDmg);
+                trap.isDead = true;
+                trap.battleStarted = false;
+                trap.gameObject.SetActive(false);
+                Debug.Log($"[함정 발동] {unitData.unitName}이 함정을 밟음! {trapDmg} 데미지");
+                ShowFloatingText("함정!", Color.red);
+            }
+        }
     }
 
     private void ApplySeparation(List<Soldier> allies, float fieldMinX, float fieldMaxX, float fieldMinZ, float fieldMaxZ, float dt)
@@ -273,7 +404,7 @@ public class Soldier : MonoBehaviour
 
         foreach (var e in enemies)
         {
-            if (e.isDead) continue;
+            if (e.isDead || e.isTrap) continue;
             float dist = Vector3.Distance(transform.position, e.transform.position);
             if (dist < nearestDist)
             {
@@ -292,24 +423,78 @@ public class Soldier : MonoBehaviour
 
         if (target == null || target.isDead) return;
 
-        float multiplier = BattleSimulator.Instance != null
-            ? BattleSimulator.Instance.GetTypeMultiplier(unitData.rpsType, target.unitData.rpsType)
-            : 1f;
+        int damage = unitData.attack;
 
-        int damage = Mathf.RoundToInt(unitData.attack * multiplier);
+        // === 기병 돌격 ===
+        bool isCavalry = unitData.category == UnitCategory.Cavalry;
+        bool targetIsSpearman = target.unitData.rpsType == RpsType.Scissors;
 
+        if (isCavalry && !hasCharged)
+        {
+            hasCharged = true;
+
+            if (targetIsSpearman)
+            {
+                // 창병 돌격 방어: 기병은 6만 주고, 16 반사 받음
+                int chargeDealtToSpearman = 6;
+                int reflectDamage = 16;
+
+                totalDamageDealt += chargeDealtToSpearman;
+                target.TakeDamage(chargeDealtToSpearman, this);
+                TakeDamage(reflectDamage, target);
+
+                ShowFloatingText("돌격 방어!", new Color(0.2f, 0.6f, 1f));
+                target.ShowFloatingText("반사! 16", new Color(1f, 0.3f, 0.2f));
+                Debug.Log($"[돌격 방어] 창병이 기병 돌격을 막음! 기병 -{reflectDamage}, 창병 -{chargeDealtToSpearman}");
+                return;
+            }
+            else
+            {
+                // 일반 돌격: 풀 데미지
+                totalDamageDealt += damage;
+                bool killed = target.TakeDamage(damage, this);
+                if (killed) killCount++;
+
+                ShowFloatingText("돌격 공격!", new Color(1f, 0.8f, 0.2f));
+                Debug.Log($"[돌격 공격] {unitData.unitName} → {target.unitData.unitName} {damage} 데미지");
+                return;
+            }
+        }
+
+        // === 일반 공격 ===
         if (unitData.attackRange > 0)
         {
-            // 원거리: 화살 투사체 발사 (명중률 75%)
             Arrow.Fire(this, target, damage, 0.75f);
         }
         else
         {
-            // 근접: 즉시 데미지 + 넉백
             totalDamageDealt += damage;
             bool killed = target.TakeDamage(damage, this);
             if (killed) killCount++;
         }
+    }
+
+    /// <summary>
+    /// 머리 위에 플로팅 텍스트 표시
+    /// </summary>
+    public void ShowFloatingText(string text, Color color)
+    {
+        var obj = new GameObject("FloatText");
+        obj.transform.position = transform.position + Vector3.up * 0.35f;
+
+        var tmp = obj.AddComponent<TMPro.TextMeshPro>();
+        tmp.text = text;
+        tmp.fontSize = 2f;
+        tmp.alignment = TMPro.TextAlignmentOptions.Center;
+        tmp.color = color;
+        tmp.rectTransform.sizeDelta = new Vector2(2f, 0.5f);
+        tmp.raycastTarget = false;
+
+        // 위로 떠오르면서 사라짐
+        var startPos = obj.transform.position;
+        float elapsed = 0f;
+        var mono = obj.AddComponent<FloatingTextAnim>();
+        mono.Init(startPos, 1.2f);
     }
 
     // === 방향 화살표 ===

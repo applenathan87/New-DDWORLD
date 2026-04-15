@@ -17,9 +17,9 @@ MonoBehaviour:
   category: 1
   rpsType: 1
   soldierCount: 5
-  soldierHP: 30
-  attack: 15
-  defense: 3
+  soldierHP: 28
+  attack: 12
+  defense: 0
   moveEveryTick: 1
   attackRange: 0
   shootEveryTick: 0

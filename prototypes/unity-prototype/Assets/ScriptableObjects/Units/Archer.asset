@@ -16,10 +16,10 @@ MonoBehaviour:
   icon: {fileID: 0}
   category: 2
   rpsType: 3
-  soldierCount: 10
+  soldierCount: 12
   soldierHP: 10
-  attack: 4
-  defense: 1
+  attack: 6
+  defense: 0
   moveEveryTick: 4
   attackRange: 3
   shootEveryTick: 3
