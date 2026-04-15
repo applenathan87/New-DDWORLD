@@ -167,12 +167,34 @@ public class GameManager : MonoBehaviour
         OnPhaseChanged?.Invoke(CurrentPhase);
 
         Debug.Log("=== 배치 확정! 전투 페이즈 시작 ===");
-        Debug.Log("--- 플레이어 배치 ---");
-        foreach (var kvp in PlayerPlacements)
-            Debug.Log($"  ({kvp.Key.x}, {kvp.Key.y}): {kvp.Value.unitData.unitName}");
-        Debug.Log("--- 상대 배치 ---");
-        foreach (var kvp in EnemyPlacements)
-            Debug.Log($"  ({kvp.Key.x}, {kvp.Key.y}): {kvp.Value.unitData.unitName}");
+
+        // 전투 시뮬레이션 시작
+        if (BattleSimulator.Instance != null)
+            BattleSimulator.Instance.StartBattle();
+    }
+
+    /// <summary>
+    /// 라운드 결과 보고 (BattleSimulator에서 호출)
+    /// </summary>
+    public void ReportRoundResult(bool playerWon)
+    {
+        if (playerWon) playerWins++;
+        else enemyWins++;
+
+        Debug.Log($"[스코어] 플레이어 {playerWins} - {enemyWins} 상대");
+
+        if (playerWins >= WINS_NEEDED || enemyWins >= WINS_NEEDED)
+        {
+            CurrentPhase = GamePhase.Result;
+            OnPhaseChanged?.Invoke(CurrentPhase);
+            string winner = playerWins >= WINS_NEEDED ? "플레이어" : "상대";
+            Debug.Log($"=== 매치 종료! {winner} 승리! ({playerWins}-{enemyWins}) ===");
+        }
+        else
+        {
+            // 다음 라운드 (2초 후)
+            Invoke(nameof(StartNewRound), 2f);
+        }
     }
 
     /// <summary>

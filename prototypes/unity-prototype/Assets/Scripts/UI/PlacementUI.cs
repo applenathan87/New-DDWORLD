@@ -50,6 +50,13 @@ public class PlacementUI : MonoBehaviour
         CreateUIAnchor();
         CreateUI();
 
+        // BattleSimulator 자동 생성
+        if (BattleSimulator.Instance == null)
+        {
+            var simObj = new GameObject("BattleSimulator");
+            simObj.AddComponent<BattleSimulator>();
+        }
+
         // GameManager 이벤트 구독
         GameManager.Instance.OnPhaseChanged += OnPhaseChanged;
         GameManager.Instance.OnCardsDrawn += OnCardsDrawn;

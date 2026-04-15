@@ -18,9 +18,9 @@ MonoBehaviour:
   rpsType: 3
   soldierCount: 10
   soldierHP: 10
-  attack: 7
+  attack: 4
   defense: 1
-  moveEveryTick: 0
-  attackRange: 6
-  shootEveryTick: 2
+  moveEveryTick: 4
+  attackRange: 3
+  shootEveryTick: 3
   trapDamage: 0

@@ -46,6 +46,23 @@ public class Hand3D : MonoBehaviour
     private void Start()
     {
         mainCamera = Camera.main;
+        GameManager.Instance.OnPhaseChanged += OnPhaseChanged;
+    }
+
+    private void OnPhaseChanged(GameManager.GamePhase phase)
+    {
+        if (phase == GameManager.GamePhase.Battle)
+        {
+            // 전투 중 핸드 숨기기
+            if (cardAnchor != null) cardAnchor.gameObject.SetActive(false);
+            if (enemyCardAnchor != null) enemyCardAnchor.gameObject.SetActive(false);
+        }
+        else if (phase == GameManager.GamePhase.Draw)
+        {
+            // 드로우 시 핸드 다시 표시
+            if (cardAnchor != null) cardAnchor.gameObject.SetActive(true);
+            if (enemyCardAnchor != null) enemyCardAnchor.gameObject.SetActive(true);
+        }
     }
 
     private void LateUpdate()

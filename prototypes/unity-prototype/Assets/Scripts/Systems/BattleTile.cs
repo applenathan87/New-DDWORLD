@@ -40,6 +40,19 @@ public class BattleTile : MonoBehaviour
     private float EnemyDir => isPlayerZone ? 1f : -1f;
 
     public TMP_FontAsset koreanFont;
+    private Color originalColor; // Setup 시 저장한 원래 색
+
+    /// <summary>
+    /// 전투 시작 시 타일을 원래 그리드 색으로 리셋 (병종 색/라벨 제거)
+    /// </summary>
+    public void ResetForBattle()
+    {
+        baseColor = originalColor;
+        hoverColor = originalColor + new Color(0.15f, 0.15f, 0.15f, 0);
+        tileRenderer.material.color = originalColor;
+        if (unitLabel != null)
+            unitLabel.gameObject.SetActive(false);
+    }
 
     public void Setup(int col, int row, bool isPlayerZone, Color color, Renderer renderer)
     {
@@ -48,6 +61,7 @@ public class BattleTile : MonoBehaviour
         this.isPlayerZone = isPlayerZone;
         this.tileRenderer = renderer;
         this.baseColor = color;
+        this.originalColor = color;
         this.hoverColor = color + new Color(0.15f, 0.15f, 0.15f, 0);
 
         // 유닛 라벨 (사용하지 않지만 참조 유지)
@@ -217,22 +231,7 @@ public class BattleTile : MonoBehaviour
             float xOff = positions[i].x;
             float zOff = positions[i].y;
 
-            // 아웃라인 (검은 캡슐, 살짝 크게)
-            var outline = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            outline.name = $"Outline_{i}";
-            outline.transform.SetParent(transform);
-            outline.transform.localPosition = new Vector3(xOff, zOff, heightOffset);
-            outline.transform.localScale = new Vector3(
-                SOLDIER_RADIUS * 2f * OUTLINE_THICKNESS,
-                SOLDIER_HEIGHT * 0.5f * OUTLINE_THICKNESS,
-                SOLDIER_RADIUS * 2f * OUTLINE_THICKNESS);
-            outline.transform.localRotation = Quaternion.Euler(-90, 0, 0);
-            outline.GetComponent<Renderer>().material = outlineMat;
-            outline.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            Destroy(outline.GetComponent<Collider>());
-            spawnedSoldiers.Add(outline);
-
-            // 캡슐 본체
+            // 캡슐 본체 (먼저 생성)
             var soldier = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             soldier.name = $"Soldier_{i}";
             soldier.transform.SetParent(transform);
@@ -246,6 +245,17 @@ public class BattleTile : MonoBehaviour
             soldier.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             Destroy(soldier.GetComponent<Collider>());
             spawnedSoldiers.Add(soldier);
+
+            // 아웃라인 (병사의 자식 → 전투 시 같이 이동)
+            var outline = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            outline.name = $"Outline_{i}";
+            outline.transform.SetParent(soldier.transform);
+            outline.transform.localPosition = Vector3.zero;
+            outline.transform.localScale = Vector3.one * OUTLINE_THICKNESS;
+            outline.transform.localRotation = Quaternion.identity;
+            outline.GetComponent<Renderer>().material = outlineMat;
+            outline.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            Destroy(outline.GetComponent<Collider>());
 
             var soldierComp = soldier.AddComponent<Soldier>();
             soldierComp.Setup(data.soldierHP, soldierColor);
