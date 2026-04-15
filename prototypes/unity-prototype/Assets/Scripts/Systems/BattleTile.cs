@@ -23,9 +23,21 @@ public class BattleTile : MonoBehaviour
 
     // 3D 유닛 (캡슐)
     private List<GameObject> spawnedSoldiers = new();
+    private List<Soldier> soldiers = new();
+
+    /// <summary>
+    /// 이 타일에 배치된 살아있는 병사 목록
+    /// </summary>
+    public List<Soldier> Soldiers => soldiers;
 
     public bool IsOccupied => placedCard != null || placedCard3D != null;
     public CardUI PlacedCard => placedCard;
+
+    /// <summary>
+    /// 적 방향 부호 (로컬 X 기준). 플레이어: +1(오른쪽), 적: -1(왼쪽)
+    /// 모든 진형 메서드에서 이것만 사용할 것.
+    /// </summary>
+    private float EnemyDir => isPlayerZone ? 1f : -1f;
 
     public TMP_FontAsset koreanFont;
 
@@ -178,19 +190,19 @@ public class BattleTile : MonoBehaviour
         float margin = tileSize * 0.1f;
         float usable = tileSize - margin * 2f;
 
-        // 그리드 배치: cols x rows 계산
-        int cols, rows;
-        if (count <= 1) { cols = 1; rows = 1; }
-        else if (count <= 4) { cols = 2; rows = 2; }
-        else if (count <= 6) { cols = 3; rows = 2; }
-        else if (count <= 9) { cols = 3; rows = 3; }
-        else if (count <= 12) { cols = 4; rows = 3; }
-        else if (count <= 16) { cols = 4; rows = 4; }
-        else { cols = 5; rows = 4; }
+        // 병종별 배치 좌표 생성
+        List<Vector2> positions;
+        if (data.category == UnitCategory.Cavalry)
+            positions = GetWedgePositions(count, usable);
+        else if (data.category == UnitCategory.Ranged)
+            positions = GetStaggeredPositions(count, usable);
+        else if (data.category == UnitCategory.Melee && data.rpsType == RpsType.Scissors)
+            positions = GetPhalanxPositions(count, usable);
+        else
+            positions = GetGridPositions(count, usable);
 
         Color soldierColor = GetSoldierColor(data);
 
-        // 머티리얼 생성
         var shader = Shader.Find("Universal Render Pipeline/Unlit");
         if (shader == null) shader = Shader.Find("Unlit/Color");
         var mat = new Material(shader);
@@ -198,56 +210,191 @@ public class BattleTile : MonoBehaviour
         var outlineMat = new Material(shader);
         outlineMat.color = Color.black;
 
+        float heightOffset = -SOLDIER_HEIGHT / 2f;
+
+        for (int i = 0; i < positions.Count; i++)
+        {
+            float xOff = positions[i].x;
+            float zOff = positions[i].y;
+
+            // 아웃라인 (검은 캡슐, 살짝 크게)
+            var outline = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            outline.name = $"Outline_{i}";
+            outline.transform.SetParent(transform);
+            outline.transform.localPosition = new Vector3(xOff, zOff, heightOffset);
+            outline.transform.localScale = new Vector3(
+                SOLDIER_RADIUS * 2f * OUTLINE_THICKNESS,
+                SOLDIER_HEIGHT * 0.5f * OUTLINE_THICKNESS,
+                SOLDIER_RADIUS * 2f * OUTLINE_THICKNESS);
+            outline.transform.localRotation = Quaternion.Euler(-90, 0, 0);
+            outline.GetComponent<Renderer>().material = outlineMat;
+            outline.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            Destroy(outline.GetComponent<Collider>());
+            spawnedSoldiers.Add(outline);
+
+            // 캡슐 본체
+            var soldier = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            soldier.name = $"Soldier_{i}";
+            soldier.transform.SetParent(transform);
+            soldier.transform.localPosition = new Vector3(xOff, zOff, heightOffset);
+            soldier.transform.localScale = new Vector3(
+                SOLDIER_RADIUS * 2f,
+                SOLDIER_HEIGHT * 0.5f,
+                SOLDIER_RADIUS * 2f);
+            soldier.transform.localRotation = Quaternion.Euler(-90, 0, 0);
+            soldier.GetComponent<Renderer>().material = mat;
+            soldier.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            Destroy(soldier.GetComponent<Collider>());
+            spawnedSoldiers.Add(soldier);
+
+            var soldierComp = soldier.AddComponent<Soldier>();
+            soldierComp.Setup(data.soldierHP, soldierColor);
+            soldiers.Add(soldierComp);
+        }
+    }
+
+    /// <summary>
+    /// 딱 맞는 직사각형 그리드 좌표 생성
+    /// </summary>
+    private List<Vector2> GetGridPositions(int count, float usable)
+    {
+        // 딱 떨어지는 그리드 선택 (세로 대형: rows > cols)
+        int cols, rows;
+        if (count <= 1)       { cols = 1; rows = 1; }
+        else if (count <= 4)  { cols = 2; rows = 2; }
+        else if (count <= 6)  { cols = 2; rows = 3; }
+        else if (count <= 9)  { cols = 3; rows = 3; }
+        else if (count == 10) { cols = 2; rows = 5; }
+        else if (count <= 12) { cols = 3; rows = 4; }
+        else if (count <= 16) { cols = 4; rows = 4; }
+        else                  { cols = 4; rows = 5; }
+
         float spacingX = count > 1 ? usable / cols : 0;
         float spacingZ = count > 1 ? usable / rows : 0;
 
-        int spawned = 0;
-        for (int r = 0; r < rows && spawned < count; r++)
-        {
-            for (int c = 0; c < cols && spawned < count; c++)
+        var positions = new List<Vector2>();
+        for (int r = 0; r < rows; r++)
+            for (int c = 0; c < cols; c++)
             {
-                float xOff = (c - (cols - 1) * 0.5f) * spacingX;
-                float zOff = (r - (rows - 1) * 0.5f) * spacingZ;
+                if (positions.Count >= count) break;
+                float x = (c - (cols - 1) * 0.5f) * spacingX;
+                float z = (r - (rows - 1) * 0.5f) * spacingZ;
+                positions.Add(new Vector2(x, z));
+            }
+        return positions;
+    }
 
-                // 타일은 Euler(90,0,0) 회전 → 로컬 좌표계:
-                //   local X = world X (좌우)
-                //   local Y = world Z (앞뒤)
-                //   local -Z = world Y (위)
-                float heightOffset = -SOLDIER_HEIGHT / 2f; // 바닥에 서있도록
+    /// <summary>
+    /// 팔랑크스(방패벽) 대형 — 창병용
+    /// 전열: 촘촘하게 밀집 (적 방향) / 후열: 살짝 넓은 간격 (내 진영쪽)
+    /// </summary>
+    private List<Vector2> GetPhalanxPositions(int count, float usable)
+    {
+        float dir = EnemyDir;
+        int frontCount = (count + 1) / 2; // 전열 (반올림)
+        int backCount = count - frontCount;
 
-                // 아웃라인 (검은 캡슐, 살짝 크게)
-                var outline = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-                outline.name = $"Outline_{spawned}";
-                outline.transform.SetParent(transform);
-                outline.transform.localPosition = new Vector3(xOff, zOff, heightOffset);
-                outline.transform.localScale = new Vector3(
-                    SOLDIER_RADIUS * 2f * OUTLINE_THICKNESS,
-                    SOLDIER_HEIGHT * 0.5f * OUTLINE_THICKNESS,
-                    SOLDIER_RADIUS * 2f * OUTLINE_THICKNESS);
-                outline.transform.localRotation = Quaternion.Euler(-90, 0, 0);
-                outline.GetComponent<Renderer>().material = outlineMat;
-                outline.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                Destroy(outline.GetComponent<Collider>());
-                spawnedSoldiers.Add(outline);
+        float rowSpacing = usable * 0.3f;
+        float frontSpacing = usable / (frontCount + 0.5f); // 전열: 넓게 (방패벽)
+        float backSpacing = usable / (backCount + 2f);     // 후열: 촘촘 (밀집 지원)
 
-                // 캡슐 본체
-                var soldier = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-                soldier.name = $"Soldier_{spawned}";
-                soldier.transform.SetParent(transform);
-                soldier.transform.localPosition = new Vector3(xOff, zOff, heightOffset);
-                soldier.transform.localScale = new Vector3(
-                    SOLDIER_RADIUS * 2f,
-                    SOLDIER_HEIGHT * 0.5f,
-                    SOLDIER_RADIUS * 2f);
-                soldier.transform.localRotation = Quaternion.Euler(-90, 0, 0);
-                soldier.GetComponent<Renderer>().material = mat;
-                soldier.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                Destroy(soldier.GetComponent<Collider>());
-                spawnedSoldiers.Add(soldier);
+        var positions = new List<Vector2>();
 
-                spawned++;
+        // 전열 (적 방향)
+        for (int i = 0; i < frontCount; i++)
+        {
+            float y = (i - (frontCount - 1) * 0.5f) * frontSpacing;
+            positions.Add(new Vector2(rowSpacing * dir, y));
+        }
+
+        // 후열 (내 진영쪽)
+        for (int i = 0; i < backCount; i++)
+        {
+            float y = (i - (backCount - 1) * 0.5f) * backSpacing;
+            positions.Add(new Vector2(-rowSpacing * dir, y));
+        }
+
+        return positions;
+    }
+
+    /// <summary>
+    /// 지그재그(staggered) 대형 — 궁병용 (4-3-3 등 줄마다 엇갈림)
+    /// 뒷줄이 넓고, 앞줄로 갈수록 좁아지는 역삼각형
+    /// </summary>
+    private List<Vector2> GetStaggeredPositions(int count, float usable)
+    {
+        // 줄별 인원 배분: 뒤(내 진영쪽, 넓음) → 앞(적쪽, 좁음)
+        // rowCounts[0] = 뒷줄, rowCounts[last] = 앞줄
+        var rowCounts = new List<int>();
+        int remaining = count;
+        int maxPerRow = 4;
+        while (remaining > 0)
+        {
+            int inRow = Mathf.Min(remaining, maxPerRow);
+            rowCounts.Add(inRow);
+            remaining -= inRow;
+            if (maxPerRow > 2) maxPerRow = 3;
+        }
+
+        float dir = EnemyDir;
+        float rowSpacing = usable / (rowCounts.Count + 1);
+        float colSpacing = usable / 5f;
+
+        var positions = new List<Vector2>();
+        for (int r = 0; r < rowCounts.Count; r++)
+        {
+            int n = rowCounts[r];
+            // r=0 뒷줄(내 진영쪽 = -dir), r=last 앞줄(적쪽 = +dir)
+            float xOff = (r - (rowCounts.Count - 1) * 0.5f) * rowSpacing * dir;
+
+            for (int i = 0; i < n; i++)
+            {
+                float y = (i - (n - 1) * 0.5f) * colSpacing;
+                positions.Add(new Vector2(xOff, y));
             }
         }
+        return positions;
+    }
+
+    /// <summary>
+    /// 쐐기(V자) 진형 좌표 생성 — 상대쪽(+X)에 뾰족한 형태
+    /// 타일 로컬 X = 열 방향 = 적 방향
+    /// 플레이어 구역: +X가 상대 방향 / 적 구역: -X가 상대 방향
+    /// </summary>
+    private List<Vector2> GetWedgePositions(int count, float usable)
+    {
+        var positions = new List<Vector2>();
+        float dir = EnemyDir;
+        float rowSpacing = usable / 3f;
+
+        int placed = 0;
+        int rowIdx = 0;
+        while (placed < count)
+        {
+            int inThisRow = (rowIdx == 0) ? 1 : 2;
+            if (placed + inThisRow > count) inThisRow = count - placed;
+
+            // 2열이 타일 가운데(0)에 오도록, 1열(선두)은 앞으로, 3열은 뒤로
+            float xOff = (1 - rowIdx) * rowSpacing * dir;
+
+            if (inThisRow == 1)
+            {
+                positions.Add(new Vector2(xOff, 0));
+            }
+            else
+            {
+                float spread = usable * 0.2f * rowIdx;
+                for (int i = 0; i < inThisRow; i++)
+                {
+                    float y = (i - (inThisRow - 1) * 0.5f) * spread * 2f;
+                    positions.Add(new Vector2(xOff, y));
+                }
+            }
+
+            placed += inThisRow;
+            rowIdx++;
+        }
+        return positions;
     }
 
     private void ClearSoldiers()
@@ -255,6 +402,7 @@ public class BattleTile : MonoBehaviour
         foreach (var s in spawnedSoldiers)
             if (s != null) Destroy(s);
         spawnedSoldiers.Clear();
+        soldiers.Clear();
     }
 
     private Color GetSoldierColor(UnitData data)

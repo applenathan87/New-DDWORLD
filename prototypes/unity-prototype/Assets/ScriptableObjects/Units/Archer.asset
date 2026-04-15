@@ -16,7 +16,7 @@ MonoBehaviour:
   icon: {fileID: 0}
   category: 2
   rpsType: 3
-  soldierCount: 8
+  soldierCount: 10
   soldierHP: 10
   attack: 7
   defense: 1

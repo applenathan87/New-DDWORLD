@@ -15,7 +15,7 @@ MonoBehaviour:
   unitName: "\uBBFC\uBCD1"
   icon: {fileID: 0}
   category: 0
-  rpsType: 2
+  rpsType: 0
   soldierCount: 20
   soldierHP: 8
   attack: 4

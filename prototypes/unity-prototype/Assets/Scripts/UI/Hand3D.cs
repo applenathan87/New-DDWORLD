@@ -359,7 +359,7 @@ public class Hand3D : MonoBehaviour
         // 카드를 타일 위치 위에 활성화
         card.gameObject.SetActive(true);
         card.transform.SetParent(null);
-        card.transform.position = tile.transform.position + Vector3.up * 0.5f;
+        card.transform.position = tile.transform.position + Vector3.up * 0.25f;
 
         // 타일과 같은 방향(바닥에 누운 상태)으로 배치, 그리드에서 보이는 크기로
         float tileSize = BattleField.Instance != null ? BattleField.Instance.tileSize : 1f;
