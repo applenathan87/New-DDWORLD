@@ -154,6 +154,7 @@ public class BattleSimulator : MonoBehaviour
         }
 
         Debug.Log($"=== 라운드 종료: {result} ===");
+        LogBattleStats();
         PlacementUI.Instance?.ShowPhaseTitle(result);
     }
 
@@ -191,6 +192,44 @@ public class BattleSimulator : MonoBehaviour
                 var tile = bf.GetBattleTile(col, row);
                 if (tile != null) tile.ResetForBattle();
             }
+    }
+
+    private void LogBattleStats()
+    {
+        Debug.Log("=== 전투 통계 ===");
+
+        Debug.Log("--- 아군 ---");
+        LogSideStats(playerSoldiers);
+
+        Debug.Log("--- 적군 ---");
+        LogSideStats(enemySoldiers);
+    }
+
+    private void LogSideStats(List<Soldier> soldiers)
+    {
+        // 병종별로 그룹핑
+        var stats = new Dictionary<string, (int total, int alive, int dmgDealt, int dmgTaken, int kills)>();
+
+        foreach (var s in soldiers)
+        {
+            string name = s.unitData.unitName;
+            if (!stats.ContainsKey(name))
+                stats[name] = (0, 0, 0, 0, 0);
+
+            var st = stats[name];
+            st.total++;
+            if (!s.isDead) st.alive++;
+            st.dmgDealt += s.totalDamageDealt;
+            st.dmgTaken += s.totalDamageTaken;
+            st.kills += s.killCount;
+            stats[name] = st;
+        }
+
+        foreach (var kvp in stats)
+        {
+            var s = kvp.Value;
+            Debug.Log($"  {kvp.Key}: {s.alive}/{s.total}생존 | 딜 {s.dmgDealt} | 피해 {s.dmgTaken} | 처치 {s.kills}");
+        }
     }
 
     /// <summary>

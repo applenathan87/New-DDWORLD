@@ -34,6 +34,18 @@ public class BattleField : MonoBehaviour
     private GameObject debugGrid;
     private BattleTile[,] battleTiles;
 
+    // 전투 중 카메라 자유 이동
+    private bool freeCamEnabled;
+    private Vector3 dragOrigin;
+    private bool isDragging;
+    private const float PAN_SPEED = 0.015f;
+
+    // 줌 단계 (0=전체, 1~3=줌인)
+    private int zoomLevel = 0;
+    private float scrollAccum = 0f;
+    private const float SCROLL_THRESHOLD = 1.5f;
+    private static readonly float[] ZOOM_FOVS = { 60f, 45f, 32f, 20f }; // 0~3단계
+
     private void Awake()
     {
         Instance = this;
@@ -239,12 +251,93 @@ public class BattleField : MonoBehaviour
         {
             case GameManager.GamePhase.Draw:
             case GameManager.GamePhase.Placement:
+                freeCamEnabled = false;
                 ZoomToPlayerField();
                 break;
             case GameManager.GamePhase.Battle:
                 ZoomToFullField();
                 ShowEnemyPlacements();
+                // 줌아웃 완료 후 자유 카메라 활성화
+                Invoke(nameof(EnableFreeCam), cameraMoveDuration + 0.1f);
                 break;
+        }
+    }
+
+    private void EnableFreeCam()
+    {
+        freeCamEnabled = true;
+        zoomLevel = 0;
+        scrollAccum = 0f;
+
+        // 전장 전체를 보여준 뒤 2단계로 줌인
+        Invoke(nameof(AutoZoomToBattle), 1.5f);
+    }
+
+    private void AutoZoomToBattle()
+    {
+        zoomLevel = 1;
+        Vector3 center = GetFieldCenter();
+        Vector3 targetPos = mainCamera.transform.position;
+        targetPos.x = center.x;
+        targetPos.z = -7.11f;
+        mainCamera.transform.DOMove(targetPos, 0.8f).SetEase(Ease.InOutCubic);
+        DOTween.To(() => mainCamera.fieldOfView,
+            x => mainCamera.fieldOfView = x,
+            ZOOM_FOVS[1], 0.8f).SetEase(Ease.InOutCubic);
+    }
+
+    private void Update()
+    {
+        if (!freeCamEnabled || mainCamera == null) return;
+
+        var mouse = Mouse.current;
+        if (mouse == null) return;
+
+        // 마우스 우클릭 드래그 → 패닝
+        if (mouse.rightButton.wasPressedThisFrame)
+        {
+            isDragging = true;
+            dragOrigin = mouse.position.ReadValue();
+        }
+        if (mouse.rightButton.wasReleasedThisFrame)
+        {
+            isDragging = false;
+        }
+        if (isDragging)
+        {
+            Vector2 delta = (Vector2)mouse.position.ReadValue() - (Vector2)dragOrigin;
+            dragOrigin = mouse.position.ReadValue();
+
+            Vector3 right = mainCamera.transform.right;
+            Vector3 forward = Vector3.Cross(right, Vector3.up).normalized;
+
+            float panScale = PAN_SPEED * (ZOOM_FOVS[zoomLevel] / 60f);
+            mainCamera.transform.position -= right * delta.x * panScale;
+            mainCamera.transform.position -= forward * delta.y * panScale;
+        }
+
+        // 스크롤 → 줌 단계 전환
+        float scroll = mouse.scroll.ReadValue().y;
+        if (Mathf.Abs(scroll) > 0.01f)
+        {
+            scrollAccum += scroll;
+
+            if (scrollAccum >= SCROLL_THRESHOLD && zoomLevel < ZOOM_FOVS.Length - 1)
+            {
+                zoomLevel++;
+                scrollAccum = 0f;
+                DOTween.To(() => mainCamera.fieldOfView,
+                    x => mainCamera.fieldOfView = x,
+                    ZOOM_FOVS[zoomLevel], 0.3f).SetEase(Ease.OutCubic);
+            }
+            else if (scrollAccum <= -SCROLL_THRESHOLD && zoomLevel > 0)
+            {
+                zoomLevel--;
+                scrollAccum = 0f;
+                DOTween.To(() => mainCamera.fieldOfView,
+                    x => mainCamera.fieldOfView = x,
+                    ZOOM_FOVS[zoomLevel], 0.3f).SetEase(Ease.OutCubic);
+            }
         }
     }
 

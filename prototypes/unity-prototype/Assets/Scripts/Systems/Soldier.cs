@@ -17,6 +17,11 @@ public class Soldier : MonoBehaviour
     [HideInInspector] public bool isPlayerSide;
     [HideInInspector] public bool battleStarted;
 
+    // 전투 통계
+    [HideInInspector] public int totalDamageDealt;
+    [HideInInspector] public int totalDamageTaken;
+    [HideInInspector] public int killCount;
+
     // 타겟팅
     [HideInInspector] public Soldier target;
     private float attackTimer;
@@ -256,7 +261,19 @@ public class Soldier : MonoBehaviour
             : 1f;
 
         int damage = Mathf.Max(1, Mathf.RoundToInt(unitData.attack * multiplier) - target.unitData.defense);
-        target.TakeDamage(damage);
+
+        if (unitData.attackRange > 0)
+        {
+            // 원거리: 화살 투사체 발사 (명중률 75%)
+            Arrow.Fire(this, target, damage, 0.75f);
+        }
+        else
+        {
+            // 근접: 즉시 데미지
+            totalDamageDealt += damage;
+            bool killed = target.TakeDamage(damage);
+            if (killed) killCount++;
+        }
     }
 
     // === HP ===
@@ -266,6 +283,7 @@ public class Soldier : MonoBehaviour
         if (isDead) return true;
 
         currentHP -= damage;
+        totalDamageTaken += damage;
 
         if (!hpBarVisible)
         {
