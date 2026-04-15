@@ -44,7 +44,7 @@ public class Soldier : MonoBehaviour
 
     private const float BAR_WIDTH = 0.18f;
     private const float BAR_HEIGHT = 0.025f;
-    private const float MELEE_RANGE = 0.15f;
+    private const float MELEE_RANGE = 0.35f;
 
     public void Setup(int hp, Color soldierColor)
     {
@@ -75,7 +75,7 @@ public class Soldier : MonoBehaviour
         else
             moveSpeed = 0f;
         currentSpeed = 0f;
-        acceleration = moveSpeed * 3f; // 최대 속도의 3배 가속 → 약 0.33초에 풀스피드
+        acceleration = 1.5f; // 모든 병종 동일 가속도 — 기병은 빨리 도달, 궁병은 느리게
 
         // 공격 사거리
         if (data.attackRange > 0)
@@ -115,6 +115,15 @@ public class Soldier : MonoBehaviour
         // 사거리 시각화 + 방향 화살표
         CreateRangeIndicator();
         CreateDirectionArrow();
+    }
+
+    /// <summary>
+    /// 외부에서 호출: 사거리 원, 방향 화살표 등 기즈모 제거
+    /// </summary>
+    public void CleanupGizmos()
+    {
+        if (rangeIndicator != null) Destroy(rangeIndicator);
+        if (dirArrow != null) Destroy(dirArrow.gameObject);
     }
 
     // === 사거리 시각화 ===

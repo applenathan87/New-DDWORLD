@@ -68,7 +68,7 @@ public class Arrow : MonoBehaviour
         renderer.material = mat;
         renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 
-        transform.localScale = new Vector3(0.06f, 0.02f, 1f);
+        transform.localScale = new Vector3(0.15f, 0.04f, 1f);
     }
 
     private void Update()
@@ -117,7 +117,6 @@ public class Arrow : MonoBehaviour
 
     private void OnArrive()
     {
-        // 명중 판정
         bool hit = Random.value <= accuracy;
 
         if (hit && target != null && !target.isDead)
@@ -125,9 +124,43 @@ public class Arrow : MonoBehaviour
             if (shooter != null) shooter.totalDamageDealt += damage;
             bool killed = target.TakeDamage(damage, shooter);
             if (killed && shooter != null) shooter.killCount++;
+
+            // 명중 → 즉시 제거
+            Destroy(gameObject, 0.1f);
+        }
+        else
+        {
+            // 빗나감 → 바닥에 꽂힘
+            StickToGround();
+        }
+    }
+
+    private void StickToGround()
+    {
+        // 이동 멈춤
+        arrived = true;
+        enabled = false;
+
+        // 바닥 위치에 기울여서 꽂기
+        Vector3 pos = transform.position;
+        pos.y = 0.01f;
+        transform.position = pos;
+
+        // 비행 방향으로 기울임 (바닥에 비스듬히 꽂힌 느낌)
+        Vector3 dir = (targetPos - startPos).normalized;
+        dir.y = -0.5f;
+        if (dir.sqrMagnitude > 0.001f)
+            transform.rotation = Quaternion.LookRotation(dir.normalized, Vector3.up);
+
+        // 색상을 어둡게
+        var renderer = GetComponent<MeshRenderer>();
+        if (renderer != null)
+        {
+            Color c = renderer.material.color;
+            renderer.material.color = new Color(c.r * 0.5f, c.g * 0.5f, c.b * 0.5f, 0.6f);
         }
 
-        // 화살 제거 (살짝 딜레이)
-        Destroy(gameObject, 0.1f);
+        // 10초 후 서서히 제거
+        Destroy(gameObject, 10f);
     }
 }

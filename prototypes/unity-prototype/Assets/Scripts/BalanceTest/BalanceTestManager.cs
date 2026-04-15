@@ -337,10 +337,19 @@ public class BalanceTestManager : MonoBehaviour
         if (BattleSimulator.Instance != null)
             BattleSimulator.Instance.StopAllCoroutines();
 
-        foreach (var s in FindObjectsByType<Soldier>(FindObjectsSortMode.None)) Destroy(s.gameObject);
+        // 병사 — 사거리/방향 기즈모를 먼저 정리한 후 제거
+        foreach (var s in FindObjectsByType<Soldier>(FindObjectsSortMode.None))
+        {
+            s.CleanupGizmos();
+            Destroy(s.gameObject);
+        }
         foreach (var a in FindObjectsByType<Arrow>(FindObjectsSortMode.None)) Destroy(a.gameObject);
+        // 경계선
         var bounds = GameObject.Find("FieldBounds");
         if (bounds != null) Destroy(bounds);
+        // 결과 화면
+        if (BattleSimulator.Instance != null)
+            BattleSimulator.Instance.ClearResultScreen();
     }
 
     private void ResetAllTiles()
