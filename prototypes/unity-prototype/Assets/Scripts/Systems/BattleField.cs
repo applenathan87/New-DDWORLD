@@ -80,20 +80,21 @@ public class BattleField : MonoBehaviour
     }
 
     /// <summary>
-    /// 그리드 바깥을 채우는 바닥면
+    /// 그리드 바깥을 채우는 바닥면 (EnvironmentSetup이 잔디 바닥을 깔아줌)
+    /// 하늘색이 보이지 않도록 넓은 바닥만 유지
     /// </summary>
     private void CreateGroundPlane()
     {
         var ground = GameObject.CreatePrimitive(PrimitiveType.Quad);
         ground.name = "Ground";
         ground.transform.SetParent(transform);
-        ground.transform.position = new Vector3(GetFieldCenter().x, -0.01f, GetFieldCenter().z);
+        ground.transform.position = new Vector3(GetFieldCenter().x, -0.05f, GetFieldCenter().z);
         ground.transform.rotation = Quaternion.Euler(90, 0, 0);
-        ground.transform.localScale = new Vector3(50f, 50f, 1); // 충분히 크게
+        ground.transform.localScale = new Vector3(50f, 50f, 1);
 
         var renderer = ground.GetComponent<Renderer>();
         var mat = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
-        mat.color = new Color(0.12f, 0.12f, 0.15f);
+        mat.color = new Color(0.25f, 0.35f, 0.2f); // 진한 초록 (잔디 바깥 배경)
         renderer.material = mat;
 
         Destroy(ground.GetComponent<Collider>());
@@ -108,9 +109,10 @@ public class BattleField : MonoBehaviour
         debugGrid.transform.SetParent(transform);
         battleTiles = new BattleTile[columns, rows];
 
-        Color playerColor = new Color(0.3f, 0.5f, 0.8f, 0.6f);
-        Color neutralColor = new Color(0.5f, 0.5f, 0.5f, 0.4f);
-        Color enemyColor = new Color(0.8f, 0.3f, 0.3f, 0.6f);
+        // 반투명으로 잔디가 비치도록
+        Color playerColor = new Color(0.3f, 0.5f, 0.8f, 0.25f);
+        Color neutralColor = new Color(0.5f, 0.5f, 0.5f, 0.15f);
+        Color enemyColor = new Color(0.8f, 0.3f, 0.3f, 0.25f);
 
         for (int col = 0; col < columns; col++)
         {
