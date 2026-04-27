@@ -23,6 +23,12 @@ public class Hand3D : MonoBehaviour
 
     [Header("핸드 위치 (뷰포트 기준)")]
     public float handDepth = 6f;               // 카메라로부터의 거리
+    [Tooltip("내 핸드 Y 위치 비율 (0=화면 중앙, 1=화면 하단 끝). 작을수록 카드가 위로 올라감")]
+    [Range(0f, 1f)]
+    public float playerHandYRatio = 0.55f;
+    [Tooltip("상대 핸드 Y 위치 비율 (0=화면 중앙, 1=화면 상단 끝)")]
+    [Range(0f, 1f)]
+    public float enemyHandYRatio = 0.75f;
 
     [Header("폰트")]
     public TMP_FontAsset koreanFont;
@@ -96,14 +102,14 @@ public class Hand3D : MonoBehaviour
 
         var anchorObj = new GameObject("PlayerHandAnchor");
         anchorObj.transform.SetParent(mainCamera.transform);
-        anchorObj.transform.localPosition = new Vector3(0, -playerHalfH * 0.7f, playerDepth);
+        anchorObj.transform.localPosition = new Vector3(0, -playerHalfH * playerHandYRatio, playerDepth);
         anchorObj.transform.localRotation = Quaternion.identity;
         cardAnchor = anchorObj.transform;
 
         // --- 상대 핸드 앵커 (카메라 상단, 멀리) ---
         var enemyObj = new GameObject("EnemyHandAnchor");
         enemyObj.transform.SetParent(mainCamera.transform);
-        enemyObj.transform.localPosition = new Vector3(0, halfH * 0.75f, handDepth);
+        enemyObj.transform.localPosition = new Vector3(0, halfH * enemyHandYRatio, handDepth);
         enemyObj.transform.localRotation = Quaternion.identity;
         enemyCardAnchor = enemyObj.transform;
 
@@ -485,13 +491,17 @@ public class Hand3D : MonoBehaviour
     }
 
     /// <summary>
-    /// 드로우 페이즈 전체 연출
+    /// 드로우 페이즈 전체 연출.
+    /// playerCarryover/enemyCarryover: 이월 카드 수 (myCards/enemyCards 앞쪽에 위치).
+    /// 이월 카드는 손패 위치에 즉시 표시, 신규 카드만 덱에서 드로우 애니메이션.
     /// </summary>
-    public IEnumerator AnimateDrawSequence()
+    public IEnumerator AnimateDrawSequence(int playerCarryover = 0, int enemyCarryover = 0)
     {
         int totalPlayer = myCards.Count;
         int totalEnemy = enemyCards.Count;
         float ps = playerScaleFactor;
+        playerCarryover = Mathf.Clamp(playerCarryover, 0, totalPlayer);
+        enemyCarryover = Mathf.Clamp(enemyCarryover, 0, totalEnemy);
 
         // 모든 카드 동일 크기
         Vector3 drawCardScale = new Vector3(cardWidth, cardHeight, 1f);
@@ -523,15 +533,39 @@ public class Hand3D : MonoBehaviour
         // 3D 딤 오버레이 페이드인
         FadeDim(0.8f, 0.4f);
 
-        // 모든 카드를 drawAnchor에서 덱 위치에 숨김
-        for (int i = 0; i < totalPlayer; i++)
+        // 이월 카드: 손패 영역 중앙에 작게 모여서 시작 → 손패 위치로 펼쳐지는 애니메이션
+        // (가지고 있던 카드가 직접 이동하는 느낌)
+        Vector3 playerCarryoverStart = new Vector3(0, -rowGap * 0.5f - cardHeight * 0.3f, 0);
+        Vector3 enemyCarryoverStart = new Vector3(0, rowGap * 0.5f + cardHeight * 0.3f, 0);
+        Vector3 carryoverStartScale = drawCardScale * 0.7f;
+        float carryoverFanSpacing = drawSpacing * 0.3f; // 시작 시 살짝 펼친 폭
+
+        for (int i = 0; i < playerCarryover; i++)
+        {
+            float fanX = (i - (playerCarryover - 1) * 0.5f) * carryoverFanSpacing;
+            myCards[i].transform.SetParent(drawAnchor);
+            myCards[i].transform.localPosition = playerCarryoverStart + new Vector3(fanX, 0, 0);
+            myCards[i].transform.localRotation = Quaternion.identity;
+            myCards[i].transform.localScale = carryoverStartScale;
+        }
+        for (int i = 0; i < enemyCarryover; i++)
+        {
+            float fanX = (i - (enemyCarryover - 1) * 0.5f) * carryoverFanSpacing;
+            enemyCards[i].transform.SetParent(drawAnchor);
+            enemyCards[i].transform.localPosition = enemyCarryoverStart + new Vector3(fanX, 0, 0);
+            enemyCards[i].transform.localRotation = Quaternion.identity;
+            enemyCards[i].transform.localScale = carryoverStartScale;
+        }
+
+        // 신규 카드: 덱 위치에 숨김 (드로우 애니메이션으로 손패에 합류)
+        for (int i = playerCarryover; i < totalPlayer; i++)
         {
             myCards[i].transform.SetParent(drawAnchor);
             myCards[i].transform.localPosition = playerDeckPos;
             myCards[i].transform.localRotation = Quaternion.identity;
             myCards[i].transform.localScale = Vector3.zero;
         }
-        for (int i = 0; i < totalEnemy; i++)
+        for (int i = enemyCarryover; i < totalEnemy; i++)
         {
             enemyCards[i].transform.SetParent(drawAnchor);
             enemyCards[i].transform.localPosition = enemyDeckPos;
@@ -539,8 +573,26 @@ public class Hand3D : MonoBehaviour
             enemyCards[i].transform.localScale = Vector3.zero;
         }
 
-        // === 1단계: 교대로 각자의 줄로 드로우 ===
-        int pi = 0, ei = 0;
+        // === 0단계: 이월 카드가 손패 위치로 직접 이동 (가지고 있던 3장이 손패에 정렬) ===
+        if (playerCarryover > 0 || enemyCarryover > 0)
+        {
+            for (int i = 0; i < playerCarryover; i++)
+            {
+                Transform t = myCards[i].transform;
+                t.DOLocalMove(playerCenterLocal[i], 0.6f).SetEase(Ease.OutCubic);
+                t.DOScale(drawCardScale, 0.6f).SetEase(Ease.OutBack);
+            }
+            for (int i = 0; i < enemyCarryover; i++)
+            {
+                Transform t = enemyCards[i].transform;
+                t.DOLocalMove(enemyCenterLocal[i], 0.6f).SetEase(Ease.OutCubic);
+                t.DOScale(drawCardScale, 0.6f).SetEase(Ease.OutBack);
+            }
+            yield return new WaitForSeconds(0.7f);
+        }
+
+        // === 1단계: 교대로 각자의 줄로 드로우 (이월 카드 다음 인덱스부터) ===
+        int pi = playerCarryover, ei = enemyCarryover;
         bool playerTurn = true;
 
         while (pi < totalPlayer || ei < totalEnemy)

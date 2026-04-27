@@ -66,7 +66,14 @@ public class PlacementUI : MonoBehaviour
         if (GameManager.Instance.PlayerDeck != null && GameManager.Instance.PlayerDeck.HandCount > 0)
         {
             roundText.text = $"라운드 {GameManager.Instance.CurrentRound} | 승: {GameManager.Instance.PlayerWins} - {GameManager.Instance.EnemyWins}";
-            StartCoroutine(DrawPhaseSequence3D());
+            // 늦게 진입한 경우(이미 손패 보유) 폴백 경로
+            // - 1라운드: 모두 신규 드로우 (carryover = 0)
+            // - 2라운드+: 손패에 있는 만큼이 이월 카드로 간주 (정확하지 않을 수 있으나 보수적 처리)
+            bool isFirstRound = GameManager.Instance.CurrentRound <= 1;
+            int playerCarryover = isFirstRound ? 0 : GameManager.Instance.PlayerDeck.HandCount;
+            int enemyCarryover = isFirstRound ? 0
+                : (GameManager.Instance.EnemyDeck != null ? GameManager.Instance.EnemyDeck.HandCount : 0);
+            StartCoroutine(DrawPhaseSequence3D(playerCarryover, enemyCarryover));
         }
     }
 
@@ -170,7 +177,7 @@ public class PlacementUI : MonoBehaviour
         switch (phase)
         {
             case GameManager.GamePhase.Draw:
-                ShowPhaseTitle("드로우 페이즈");
+                // "드로우 페이즈" 타이틀은 DrawPhaseSequence3D 안에서 라운드 안내 후에 표시됨 (중복 제거)
                 SetConfirmInteractable(false);
                 roundText.text = $"라운드 {GameManager.Instance.CurrentRound} | 승: {GameManager.Instance.PlayerWins} - {GameManager.Instance.EnemyWins}";
                 break;
@@ -205,12 +212,17 @@ public class PlacementUI : MonoBehaviour
 
     private void OnCardsDrawn(List<CardData> drawn)
     {
-        StartCoroutine(DrawPhaseSequence3D());
+        // 이월 카드 수 = 현재 손패 - 이번 라운드에 새로 뽑은 장수
+        // hand 리스트는 [이월..., 신규...] 순서이므로 앞 carryover개가 이월
+        var gm = GameManager.Instance;
+        int playerCarryover = Mathf.Max(0, gm.PlayerDeck.Hand.Count - drawn.Count);
+        int enemyCarryover = Mathf.Max(0, gm.EnemyDeck.Hand.Count - drawn.Count);
+        StartCoroutine(DrawPhaseSequence3D(playerCarryover, enemyCarryover));
     }
 
     // === 3D 드로우 페이즈 ===
 
-    private IEnumerator DrawPhaseSequence3D()
+    private IEnumerator DrawPhaseSequence3D(int playerCarryover, int enemyCarryover)
     {
         if (Hand3D.Instance == null) yield break;
 
@@ -226,7 +238,7 @@ public class PlacementUI : MonoBehaviour
         Hand3D.Instance.CreatePlayerCards(gm.PlayerDeck.Hand);
         Hand3D.Instance.CreateEnemyCards(gm.EnemyDeck.Hand);
 
-        yield return StartCoroutine(Hand3D.Instance.AnimateDrawSequence());
+        yield return StartCoroutine(Hand3D.Instance.AnimateDrawSequence(playerCarryover, enemyCarryover));
 
         yield return new WaitForSeconds(0.5f);
 

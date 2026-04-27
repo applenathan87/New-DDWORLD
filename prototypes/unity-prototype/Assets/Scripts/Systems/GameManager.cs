@@ -200,8 +200,8 @@ public class GameManager : MonoBehaviour
         }
         else
         {
-            // 다음 라운드 (2초 후)
-            Invoke(nameof(StartNewRound), 2f);
+            // 다음 라운드 (4초 후 — 결과창 충분히 확인할 시간)
+            Invoke(nameof(StartNewRound), 4f);
         }
     }
 

@@ -515,7 +515,8 @@ MonoBehaviour:
   columns: 14
   rows: 5
   tileSize: 1
-  tileGap: 0.08
+  tileGap: 0
+  koreanFont: {fileID: 0}
   cameraMoveDuration: 1
   battleCamPos: {x: 7.2, y: 5.4, z: -5.48}
   battleCamRot: {x: 29.2, y: 0, z: 0}
@@ -577,6 +578,7 @@ MonoBehaviour:
   archerCount: 10
   trapData: {fileID: 11400000, guid: 74bef047e33a5c44da6c80a435251a0a, type: 2}
   trapCount: 5
+  skipAutoStart: 0
 --- !u!4 &1188267900
 Transform:
   m_ObjectHideFlags: 0
@@ -592,6 +594,67 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1205047950
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1205047952}
+  - component: {fileID: 1205047953}
+  m_Layer: 0
+  m_Name: Environment
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1205047952
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1205047950}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.0667, y: -1.22097, z: -2.32371}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1205047953
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1205047950}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1d83e3236452e492c898fa61578f9056, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnvironmentSetup
+  tileSize: 1
+  tileGap: 0
+  gridColumns: 14
+  gridRows: 5
+  borderSize: 1
+  treeScale: 3
+  treesPerSide: 12
+  treeRandomOffset: 0.3
+  bottomClearMargin: -2
+  bottomEdgeTreeCount: 30
+  bottomTreeRows: 5
+  bottomTreeRowSpacing: 1.5
+  topTreeRows: 8
+  topTreeRowSpacing: 1.5
+  topCornerExtension: 4
+  sideTreeRows: 6
+  sideTreeRowSpacing: 1.5
 --- !u!1 &1891614279
 GameObject:
   m_ObjectHideFlags: 0
@@ -648,3 +711,4 @@ SceneRoots:
   - {fileID: 1891614281}
   - {fileID: 1100172084}
   - {fileID: 421974475}
+  - {fileID: 1205047952}

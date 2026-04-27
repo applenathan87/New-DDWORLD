@@ -8,15 +8,39 @@ public class EnvironmentSetup : MonoBehaviour
 {
     [Header("타일 설정")]
     public float tileSize = 1f;
-    public float tileGap = 0.08f;
+    public float tileGap = 0f;
     public int gridColumns = 14;
     public int gridRows = 5;
     public int borderSize = 1; // 전투 그리드 바깥 여백 (칸)
 
     [Header("나무 설정")]
-    public float treeScale = 1.5f;
+    public float treeScale = 3f;
     public int treesPerSide = 12; // 한 변당 나무 수
     public float treeRandomOffset = 0.3f; // 위치 랜덤 오프셋
+
+    [Header("나무 가림 방지 (하단)")]
+    [Tooltip("카메라 가까운 쪽(하단) 가운데 비울 영역 너비. 필드 가림 방지용")]
+    public float bottomClearMargin = -4f;
+    [Tooltip("하단 좌/우 가장자리에 배치할 나무 수 (각 변, 각 줄)")]
+    public int bottomEdgeTreeCount = 30;
+    [Tooltip("하단 나무 줄 수 (카메라 시야 내에 보이는 줄)")]
+    public int bottomTreeRows = 5;
+    [Tooltip("하단 줄 간격")]
+    public float bottomTreeRowSpacing = 1.5f;
+
+    [Header("배치 밀도 (상단)")]
+    [Tooltip("카메라 먼쪽(상단) 나무 줄 수. 클수록 깊이감 + 가득 차는 느낌")]
+    public int topTreeRows = 8;
+    [Tooltip("상단 줄 간격 (Z축)")]
+    public float topTreeRowSpacing = 1.5f;
+    [Tooltip("상단 좌/우 코너 추가 확장 폭 (코너가 비어 보일 때 늘림)")]
+    public float topCornerExtension = 4f;
+
+    [Header("배치 밀도 (좌우)")]
+    [Tooltip("좌/우 측면 나무 줄 수. 클수록 측면이 빽빽한 숲처럼 보임")]
+    public int sideTreeRows = 10;
+    [Tooltip("좌/우 줄 간격 (X축)")]
+    public float sideTreeRowSpacing = 1f;
 
     private float tileStep;
     private Texture2D tilemapTex;
@@ -26,10 +50,13 @@ public class EnvironmentSetup : MonoBehaviour
     {
         tileStep = tileSize + tileGap;
 
-        // Resources에서 텍스처 로드
-        tilemapTex = Resources.Load<Texture2D>("Sprites/grass");
-        if (tilemapTex == null)
-            tilemapTex = Resources.Load<Texture2D>("Sprites/Tilemap_color1"); // 폴백
+        // 바닥 텍스처: basic_tile_v2를 기본으로 사용. 누락 시 폴백 순차 시도.
+        string[] groundTextureCandidates = { "Sprites/basic_tile_v2", "Sprites/basic_tile", "Sprites/Tilemap_color1" };
+        foreach (var path in groundTextureCandidates)
+        {
+            tilemapTex = Resources.Load<Texture2D>(path);
+            if (tilemapTex != null) break;
+        }
         treeTex = new Texture2D[4];
         for (int i = 0; i < 4; i++)
             treeTex[i] = Resources.Load<Texture2D>($"Sprites/Tree{i + 1}");
@@ -47,6 +74,7 @@ public class EnvironmentSetup : MonoBehaviour
     /// <summary>
     /// 잔디 바닥 생성: 경계 없는 하나의 넓은 잔디밭
     /// 타일맵 텍스처를 타일링하여 자연스러운 잔디 표면
+    /// 나무 영역까지 모두 덮도록 충분히 크게 (BattleField의 단색 ground 50x50을 완전히 덮음)
     /// </summary>
     private void CreateGrassGround()
     {
@@ -58,9 +86,10 @@ public class EnvironmentSetup : MonoBehaviour
         float centerX = (gridColumns - 1) * tileStep / 2f;
         float centerZ = (gridRows - 1) * tileStep / 2f;
 
-        // 잔디밭 크기: 전투 그리드 + 여백 + 약간의 여유
-        float groundWidth = (gridColumns + borderSize * 2 + 2) * tileStep;
-        float groundHeight = (gridRows + borderSize * 2 + 2) * tileStep;
+        // 잔디밭 크기: BattleField의 단색 Ground(50x50)와 동일하게 덮어서
+        // 나무 사이/뒤편 영역에도 잔디 텍스처가 보이도록 함
+        float groundWidth = 50f;
+        float groundHeight = 50f;
 
         ground.transform.position = new Vector3(centerX, -0.02f, centerZ);
         ground.transform.rotation = Quaternion.Euler(90, 0, 0);
@@ -105,21 +134,85 @@ public class EnvironmentSetup : MonoBehaviour
 
         int treeId = 0;
 
-        // 상단 (적 진영 뒤)
-        PlaceTreeRow(treeParent, fieldLeft, fieldRight, fieldTop + 0.5f, 1, treesPerSide, ref treeId);
-        PlaceTreeRow(treeParent, fieldLeft, fieldRight, fieldTop + 2.0f, 1, treesPerSide + 3, ref treeId);
+        // 상단 (적 진영 뒤) — 카메라 먼쪽, 깊이감 있게 가득
+        // 줄이 멀어질수록 더 많이 + 더 넓게 배치하여 자연스러운 숲 느낌
+        // 코너 비주얼: 모든 상단 줄이 좌/우 코너까지 확장되어 좌상단/우상단 빈 공간 채움
+        for (int i = 0; i < topTreeRows; i++)
+        {
+            float zOffset = 0.5f + i * topTreeRowSpacing;
+            // 줄이 멀어질수록 좌우로도 점진적 확장 + 기본 코너 확장
+            float widen = topCornerExtension + i * 0.6f;
+            // 줄이 멀수록 더 많이 (원근감)
+            int count = treesPerSide + 4 + i * 2;
+            PlaceTreeRow(treeParent, fieldLeft - widen, fieldRight + widen, fieldTop + zOffset, 1, count, ref treeId);
+        }
 
-        // 하단 (플레이어 진영 뒤)
-        PlaceTreeRow(treeParent, fieldLeft, fieldRight, fieldBottom - 0.5f, -1, treesPerSide, ref treeId);
-        PlaceTreeRow(treeParent, fieldLeft, fieldRight, fieldBottom - 2.0f, -1, treesPerSide + 3, ref treeId);
+        // 하단 (플레이어 진영 뒤) — bottomClearMargin으로 가운데 비움 폭 조절
+        // - 양수: 필드 좌우 경계보다 더 넓게 비움 (필드 잘 보임)
+        // - 0: 필드 좌우 경계까지 비움
+        // - 음수: 가운데까지 채움 (음수가 커질수록 더 빽빽)
+        float clearLeft = fieldLeft - bottomClearMargin;
+        float clearRight = fieldRight + bottomClearMargin;
+        for (int i = 0; i < bottomTreeRows; i++)
+        {
+            float zOffset = 1.5f + i * bottomTreeRowSpacing;
+            float widen = i * 0.6f;
+            // 줄이 멀어질수록 가운데 비우는 영역도 약간 좁힘 (멀리 있는 나무는 시야 가림 적음)
+            float clearShrink = i * 0.3f;
+            PlaceTreeRowEdgesOnly(
+                treeParent,
+                fieldLeft - 2f - widen,
+                fieldRight + 2f + widen,
+                clearLeft + clearShrink,
+                clearRight - clearShrink,
+                fieldBottom - zOffset,
+                bottomEdgeTreeCount + i,
+                ref treeId);
+        }
 
-        // 좌측
-        PlaceTreeColumn(treeParent, fieldLeft - 0.5f, fieldBottom - 1f, fieldTop + 1f, -1, 8, ref treeId);
-        PlaceTreeColumn(treeParent, fieldLeft - 2.0f, fieldBottom - 2f, fieldTop + 2f, -1, 10, ref treeId);
+        // 좌/우 컬럼은 상단 끝까지 충분히 올려서 코너가 끊겨 보이지 않게 함
+        float topReach = fieldTop + 0.5f + (topTreeRows - 1) * topTreeRowSpacing;
+        float bottomReach = fieldBottom - 1.5f - (bottomTreeRows - 1) * bottomTreeRowSpacing;
 
-        // 우측
-        PlaceTreeColumn(treeParent, fieldRight + 0.5f, fieldBottom - 1f, fieldTop + 1f, 1, 8, ref treeId);
-        PlaceTreeColumn(treeParent, fieldRight + 2.0f, fieldBottom - 2f, fieldTop + 2f, 1, 10, ref treeId);
+        // 좌측 — 여러 줄로 빽빽하게
+        for (int i = 0; i < sideTreeRows; i++)
+        {
+            float xOffset = 0.5f + i * sideTreeRowSpacing;
+            int count = 8 + topTreeRows + i * 2;
+            PlaceTreeColumn(treeParent, fieldLeft - xOffset, bottomReach, topReach + i * 0.5f, -1, count, ref treeId);
+        }
+
+        // 우측 — 여러 줄로 빽빽하게
+        for (int i = 0; i < sideTreeRows; i++)
+        {
+            float xOffset = 0.5f + i * sideTreeRowSpacing;
+            int count = 8 + topTreeRows + i * 2;
+            PlaceTreeColumn(treeParent, fieldRight + xOffset, bottomReach, topReach + i * 0.5f, 1, count, ref treeId);
+        }
+    }
+
+    /// <summary>
+    /// 가로줄 배치 — 가운데 영역(clearMin~clearMax)은 비우고 좌/우 가장자리에만 배치.
+    /// 카메라 가까운 쪽에서 필드 시야를 가리지 않도록 사용.
+    /// </summary>
+    private void PlaceTreeRowEdgesOnly(GameObject parent, float xMin, float xMax, float clearMin, float clearMax, float z, int countPerSide, ref int id)
+    {
+        // 좌측 영역 (xMin → clearMin)
+        for (int i = 0; i < countPerSide; i++)
+        {
+            float t = (float)i / Mathf.Max(countPerSide - 1, 1);
+            float x = Mathf.Lerp(xMin, clearMin, t) + Random.Range(-treeRandomOffset, treeRandomOffset);
+            float zPos = z + Random.Range(-treeRandomOffset, treeRandomOffset);
+            CreateTreeBillboard(parent, new Vector3(x, 0, zPos), ref id);
+        }
+        // 우측 영역 (clearMax → xMax)
+        for (int i = 0; i < countPerSide; i++)
+        {
+            float t = (float)i / Mathf.Max(countPerSide - 1, 1);
+            float x = Mathf.Lerp(clearMax, xMax, t) + Random.Range(-treeRandomOffset, treeRandomOffset);
+            float zPos = z + Random.Range(-treeRandomOffset, treeRandomOffset);
+            CreateTreeBillboard(parent, new Vector3(x, 0, zPos), ref id);
+        }
     }
 
     private void PlaceTreeRow(GameObject parent, float xMin, float xMax, float z, int facing, int count, ref int id)
@@ -169,8 +262,8 @@ public class EnvironmentSetup : MonoBehaviour
         treeObj.transform.position = position + Vector3.up * (height * 0.5f);
         treeObj.transform.localScale = new Vector3(width, height, 1);
 
-        // 카메라를 향하도록 빌보드 (쿼터뷰에 맞게 X축만 회전)
-        // 쿼터뷰 카메라 각도에 맞춰 약간 기울임
+        // HD-2D 스타일: 나무는 항상 수직으로 서있고, 쿼터뷰 카메라가 알아서 비스듬히 보여줌
+        // (옥토패스 트래블러, Stardew Valley 등 정통 픽셀 아트 스프라이트 처리 방식)
         treeObj.transform.rotation = Quaternion.Euler(0, 0, 0);
 
         // 투명 머티리얼 + 스프라이트 시트 첫 프레임 UV

@@ -407,7 +407,11 @@ public class BattleTile : MonoBehaviour
         return positions;
     }
 
-    private void ClearSoldiers()
+    /// <summary>
+    /// 이 타일에 스폰된 모든 병사(시체 포함) GameObject 제거.
+    /// 라운드 간 잔재 정리 시 외부(BattleSimulator)에서도 호출됨.
+    /// </summary>
+    public void ClearSoldiers()
     {
         foreach (var s in spawnedSoldiers)
             if (s != null) Destroy(s);

@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
+using DG.Tweening;
 
 /// <summary>
 /// 전투 시뮬레이션. 개별 병사가 독립적으로 이동/타겟팅/공격한다.
@@ -18,6 +19,8 @@ public class BattleSimulator : MonoBehaviour
     public float moveSpeedBase = 2f;
     public float typeAdvantage = 1.5f;
     public float typeDisadvantage = 0.5f;
+    [Tooltip("함정 폭발 반경 (단위: 타일). 1.0=인접 4방향만, 1.5=대각선 일부 포함, √2≈1.42=대각선 4방향 전부")]
+    public float trapExplosionRadius = 1.5f;
 
     private List<Soldier> playerSoldiers = new();
     private List<Soldier> enemySoldiers = new();
@@ -32,6 +35,68 @@ public class BattleSimulator : MonoBehaviour
     private void Awake()
     {
         Instance = this;
+    }
+
+    private void Start()
+    {
+        // 페이즈 변경 구독: Draw 진입 시 이전 라운드의 시각 잔재(라인 + 결과 화면) 자동 정리
+        if (GameManager.Instance != null)
+            GameManager.Instance.OnPhaseChanged += OnPhaseChanged;
+    }
+
+    private void OnDestroy()
+    {
+        if (GameManager.Instance != null)
+            GameManager.Instance.OnPhaseChanged -= OnPhaseChanged;
+    }
+
+    private void OnPhaseChanged(GameManager.GamePhase phase)
+    {
+        // 다음 라운드의 Draw 페이즈 진입 시 이전 라운드 잔재 정리
+        if (phase == GameManager.GamePhase.Draw)
+        {
+            ClearVisualOverlays();
+        }
+    }
+
+    /// <summary>
+    /// 전투 시각 잔재 일괄 제거: 필드 경계선, 자유 추적 라인, 결과 화면,
+    /// 모든 타일의 병사(시체 + 생존자), 비행 중인 화살.
+    /// 다음 라운드 진입 시 자동 호출됨.
+    /// </summary>
+    public void ClearVisualOverlays()
+    {
+        DestroyByName("FieldBounds");
+        DestroyByName("LaneLine_Player");
+        DestroyByName("LaneLine_Enemy");
+        if (resultScreen != null) Destroy(resultScreen);
+
+        // 모든 타일의 병사 정리 (시체 + 생존자). Soldier.OnDestroy가 부속물(DirArrow/RangeIndicator) 함께 정리.
+        var bf = BattleField.Instance;
+        if (bf != null)
+        {
+            for (int col = 0; col < bf.columns; col++)
+                for (int row = 0; row < bf.rows; row++)
+                {
+                    var tile = bf.GetBattleTile(col, row);
+                    if (tile != null) tile.ClearSoldiers();
+                }
+        }
+
+        // 비행 중인 화살 정리
+        var arrows = FindObjectsByType<Arrow>(FindObjectsSortMode.None);
+        foreach (var a in arrows)
+            if (a != null) Destroy(a.gameObject);
+
+        // 병사 리스트도 클리어 (이미 GameObject는 destroy됐지만 참조 정리)
+        playerSoldiers.Clear();
+        enemySoldiers.Clear();
+    }
+
+    private void DestroyByName(string objName)
+    {
+        var obj = GameObject.Find(objName);
+        if (obj != null) Destroy(obj);
     }
 
     public void ResetState()
@@ -166,7 +231,7 @@ public class BattleSimulator : MonoBehaviour
 
         Debug.Log($"=== 라운드 종료: {result} ===");
         LogBattleStats();
-        PlacementUI.Instance?.ShowPhaseTitle(result);
+        // ResultScreen이 result 텍스트를 큰 사이즈로 포함하므로 PhaseTitle 중복 제거
         ShowResultScreen(result);
     }
 
@@ -177,34 +242,92 @@ public class BattleSimulator : MonoBehaviour
         // 이전 결과 화면 제거
         if (resultScreen != null) Destroy(resultScreen);
 
-        resultScreen = new GameObject("ResultScreen");
-
         var cam = Camera.main;
         if (cam == null) return;
 
+        resultScreen = new GameObject("ResultScreen");
         resultScreen.transform.SetParent(cam.transform);
         resultScreen.transform.localPosition = new Vector3(0, 0, 5f);
         resultScreen.transform.localRotation = Quaternion.identity;
 
-        // 통계 텍스트 조립
-        string stats = $"<size=150%>{result}</size>\n\n";
-        stats += BuildSideStats("아군", playerSoldiers);
-        stats += "\n";
-        stats += BuildSideStats("적군", enemySoldiers);
-        stats += "\n<size=80%><color=#888>R: 재배치  B: 전투 시작</color></size>";
+        // === 1. 검은 배경 Quad === (가장 뒤, z=0.2)
+        var bg = GameObject.CreatePrimitive(PrimitiveType.Quad);
+        bg.name = "Background";
+        bg.transform.SetParent(resultScreen.transform);
+        bg.transform.localPosition = new Vector3(0, 0, 0.2f);
+        bg.transform.localRotation = Quaternion.identity;
+        bg.transform.localScale = new Vector3(2.8f, 1.5f, 1f);
+        Destroy(bg.GetComponent<Collider>());
 
-        var textObj = new GameObject("ResultText");
-        textObj.transform.SetParent(resultScreen.transform);
-        textObj.transform.localPosition = new Vector3(0, 0, -0.01f);
-        textObj.transform.localRotation = Quaternion.identity;
+        var bgMat = new Material(Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color"));
+        bgMat.color = new Color(0f, 0f, 0f, 0.85f);
+        bgMat.SetFloat("_Surface", 1);
+        bgMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+        bgMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+        bgMat.SetInt("_ZWrite", 0);
+        bgMat.renderQueue = 3000;
+        bg.GetComponent<Renderer>().material = bgMat;
 
-        var tmp = textObj.AddComponent<TextMeshPro>();
+        // 모든 텍스트는 z=-0.1 (배경보다 0.3 unit 가까이 — Z-fighting 방지)
+        const float textZ = -0.1f;
+
+        // === 2. 헤더 (상단 중앙): 결과 메시지 ===
+        CreateResultText(
+            parent: resultScreen.transform,
+            name: "Header",
+            text: $"<size=180%><b>{result}</b></size>",
+            localPos: new Vector3(0, 0.55f, textZ),
+            sizeDelta: new Vector2(2.6f, 0.3f),
+            fontSize: 1.4f,
+            alignment: TextAlignmentOptions.Center
+        );
+
+        // === 3. 좌측 (아군) === X=-0.7로 분리, Y=-0.2로 헤더와 충분한 마진
+        CreateResultText(
+            parent: resultScreen.transform,
+            name: "LeftStats",
+            text: BuildSideStats("아군", playerSoldiers),
+            localPos: new Vector3(-0.7f, -0.2f, textZ),
+            sizeDelta: new Vector2(1.2f, 0.9f),
+            fontSize: 0.9f,
+            alignment: TextAlignmentOptions.TopLeft
+        );
+
+        // === 4. 우측 (적군) === X=0.7로 분리, Y=-0.2로 헤더와 충분한 마진
+        CreateResultText(
+            parent: resultScreen.transform,
+            name: "RightStats",
+            text: BuildSideStats("적군", enemySoldiers),
+            localPos: new Vector3(0.7f, -0.2f, textZ),
+            sizeDelta: new Vector2(1.2f, 0.9f),
+            fontSize: 0.9f,
+            alignment: TextAlignmentOptions.TopLeft
+        );
+
+
+        // 등장 애니메이션: 작게 시작 → 부드럽게 풀스케일 (0.4초)
+        resultScreen.transform.localScale = Vector3.zero;
+        resultScreen.transform.DOScale(Vector3.one, 0.4f).SetEase(Ease.OutBack);
+    }
+
+    /// <summary>
+    /// ResultScreen용 텍스트 자식 GameObject 생성 헬퍼
+    /// </summary>
+    private void CreateResultText(Transform parent, string name, string text,
+        Vector3 localPos, Vector2 sizeDelta, float fontSize, TextAlignmentOptions alignment)
+    {
+        var obj = new GameObject(name);
+        obj.transform.SetParent(parent);
+        obj.transform.localPosition = localPos;
+        obj.transform.localRotation = Quaternion.identity;
+
+        var tmp = obj.AddComponent<TextMeshPro>();
         if (koreanFont != null) tmp.font = koreanFont;
-        tmp.text = stats;
-        tmp.fontSize = 1.5f;
-        tmp.alignment = TextAlignmentOptions.Center;
+        tmp.text = text;
+        tmp.fontSize = fontSize;
+        tmp.alignment = alignment;
         tmp.color = Color.white;
-        tmp.rectTransform.sizeDelta = new Vector2(1.4f, 0.95f);
+        tmp.rectTransform.sizeDelta = sizeDelta;
         tmp.raycastTarget = false;
         tmp.richText = true;
     }
@@ -241,7 +364,7 @@ public class BattleSimulator : MonoBehaviour
         {
             var s = kvp.Value;
             string aliveColor = s.alive > 0 ? "#4CAF50" : "#F44336";
-            text += $"  {kvp.Key}: <color={aliveColor}>{s.alive}/{s.total}</color> | 딜 {s.dmgDealt} | 피해 {s.dmgTaken} | 처치 {s.kills}\n";
+            text += $"  {kvp.Key}: <color={aliveColor}>{s.alive}/{s.total}</color> | 딜 {s.dmgDealt} | 처치 {s.kills}\n";
         }
         return text;
     }

@@ -16,7 +16,7 @@ public class BattleField : MonoBehaviour
     public int columns = 14;  // A~N
     public int rows = 5;      // 1~5
     public float tileSize = 1f;
-    public float tileGap = 0.08f;
+    public float tileGap = 0f;
 
     [Header("폰트 (밸런스 테스트 씬용)")]
     public TMP_FontAsset koreanFont;
@@ -33,6 +33,10 @@ public class BattleField : MonoBehaviour
     public Vector3 placementCamPos = new Vector3(2.32f, 3.8f, -4.11f);
     public Vector3 placementCamRot = new Vector3(35f, 0f, 0f);
     public float placementFOV = 50f;
+
+    [Header("휠 줌 설정 (Battle 페이즈)")]
+    [Tooltip("줌 단계당 카메라가 forward 방향으로 이동하는 거리. 클수록 더 가까이 다가가는 느낌")]
+    public float zoomDollyPerStep = 1.5f;
 
     private Camera mainCamera;
     private GameObject debugGrid;
@@ -62,8 +66,24 @@ public class BattleField : MonoBehaviour
         CreateGroundPlane();
         CreateDebugGrid();
 
+        // 환경 비주얼(잔디 + 나무)이 씬에 없으면 자동 생성
+        // BalanceTest 씬에는 이미 있어서 중복 생성 안 됨, SampleScene 등에는 자동 적용
+        EnsureEnvironmentSetup();
+
         // 페이즈 변경 이벤트 구독
         GameManager.Instance.OnPhaseChanged += OnPhaseChanged;
+    }
+
+    /// <summary>
+    /// EnvironmentSetup이 씬에 없으면 자동 생성. 페이즈 시스템(Draw/Placement/Battle)이 도는 모든 씬에서
+    /// 동일한 환경 비주얼을 보장.
+    /// </summary>
+    private void EnsureEnvironmentSetup()
+    {
+        if (FindObjectOfType<EnvironmentSetup>() != null) return;
+
+        var envObj = new GameObject("Environment");
+        envObj.AddComponent<EnvironmentSetup>();
     }
 
     private void SetupCamera()
@@ -123,7 +143,7 @@ public class BattleField : MonoBehaviour
                 tile.transform.SetParent(debugGrid.transform);
                 tile.transform.position = GetTileWorldPosition(col, row);
                 tile.transform.rotation = Quaternion.Euler(90, 0, 0);
-                tile.transform.localScale = new Vector3(tileSize * 0.95f, tileSize * 0.95f, 1);
+                tile.transform.localScale = new Vector3(tileSize, tileSize, 1);
 
                 // 구역별 색상
                 bool isPlayer = col < 5;
@@ -263,35 +283,33 @@ public class BattleField : MonoBehaviour
                 ZoomToPlayerField();
                 break;
             case GameManager.GamePhase.Battle:
-                ZoomToFullField();
                 ShowEnemyPlacements();
-                // 줌아웃 완료 후 자유 카메라 활성화
+                // 배치 뷰 → 줌인된 전투 뷰로 직접 이동 (전체뷰 단계 생략)
+                ZoomToBattleView();
+                // 카메라 이동 완료 후 자유 카메라 활성화
                 Invoke(nameof(EnableFreeCam), cameraMoveDuration + 0.1f);
                 break;
         }
     }
 
+    /// <summary>
+    /// 전투 페이즈 카메라: 줌인 단계 1로 바로 이동 (전체뷰 거치지 않음).
+    /// 카메라 흐름: Draw/Placement(1) → Battle 줌인(3) → 다음 라운드 Draw(1)
+    /// </summary>
+    private void ZoomToBattleView()
+    {
+        Vector3 center = GetFieldCenter();
+        Vector3 targetPos = battleCamPos;
+        targetPos.x = center.x;
+        targetPos.z = -7.11f;
+        MoveCameraTo(targetPos, battleCamRot, ZOOM_FOVS[1]);
+        zoomLevel = 1;
+    }
+
     private void EnableFreeCam()
     {
         freeCamEnabled = true;
-        zoomLevel = 0;
         scrollAccum = 0f;
-
-        // 전장 전체를 보여준 뒤 2단계로 줌인
-        Invoke(nameof(AutoZoomToBattle), 1.5f);
-    }
-
-    private void AutoZoomToBattle()
-    {
-        zoomLevel = 1;
-        Vector3 center = GetFieldCenter();
-        Vector3 targetPos = mainCamera.transform.position;
-        targetPos.x = center.x;
-        targetPos.z = -7.11f;
-        mainCamera.transform.DOMove(targetPos, 0.8f).SetEase(Ease.InOutCubic);
-        DOTween.To(() => mainCamera.fieldOfView,
-            x => mainCamera.fieldOfView = x,
-            ZOOM_FOVS[1], 0.8f).SetEase(Ease.InOutCubic);
     }
 
     private void Update()
@@ -324,7 +342,7 @@ public class BattleField : MonoBehaviour
             mainCamera.transform.position -= forward * delta.y * panScale;
         }
 
-        // 스크롤 → 줌 단계 전환
+        // 스크롤 → 줌 단계 전환 (FOV + 위치 동시 트윈으로 진짜 다가가는 줌인)
         float scroll = mouse.scroll.ReadValue().y;
         if (Mathf.Abs(scroll) > 0.01f)
         {
@@ -332,21 +350,35 @@ public class BattleField : MonoBehaviour
 
             if (scrollAccum >= SCROLL_THRESHOLD && zoomLevel < ZOOM_FOVS.Length - 1)
             {
+                int oldLevel = zoomLevel;
                 zoomLevel++;
                 scrollAccum = 0f;
-                DOTween.To(() => mainCamera.fieldOfView,
-                    x => mainCamera.fieldOfView = x,
-                    ZOOM_FOVS[zoomLevel], 0.3f).SetEase(Ease.OutCubic);
+                AnimateZoomStep(oldLevel, zoomLevel);
             }
             else if (scrollAccum <= -SCROLL_THRESHOLD && zoomLevel > 0)
             {
+                int oldLevel = zoomLevel;
                 zoomLevel--;
                 scrollAccum = 0f;
-                DOTween.To(() => mainCamera.fieldOfView,
-                    x => mainCamera.fieldOfView = x,
-                    ZOOM_FOVS[zoomLevel], 0.3f).SetEase(Ease.OutCubic);
+                AnimateZoomStep(oldLevel, zoomLevel);
             }
         }
+    }
+
+    /// <summary>
+    /// 줌 단계 변경 시 카메라 위치 + FOV 동시 트윈.
+    /// 카메라가 forward 방향으로 dolly 이동하여 진짜 다가가는 줌인 느낌을 만듦.
+    /// </summary>
+    private void AnimateZoomStep(int oldLevel, int newLevel)
+    {
+        float dollyDelta = (newLevel - oldLevel) * zoomDollyPerStep;
+        Vector3 forward = mainCamera.transform.forward;
+        Vector3 targetPos = mainCamera.transform.position + forward * dollyDelta;
+
+        mainCamera.transform.DOMove(targetPos, 0.3f).SetEase(Ease.OutCubic);
+        DOTween.To(() => mainCamera.fieldOfView,
+            x => mainCamera.fieldOfView = x,
+            ZOOM_FOVS[newLevel], 0.3f).SetEase(Ease.OutCubic);
     }
 
     // === 좌표 계산 ===

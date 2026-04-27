@@ -428,7 +428,10 @@ public class Soldier : MonoBehaviour
     private void TriggerTrapExplosion(Soldier trap)
     {
         int trapDmg = trap.unitData.trapDamage > 0 ? trap.unitData.trapDamage : 10;
-        float explosionRadius = BattleField.Instance != null ? BattleField.Instance.tileSize : 1f;
+        // 폭발 반경: BattleSimulator 인스펙터 값 사용 (기본 1.5, 인접 4방향 + 대각선 일부)
+        float explosionRadius = BattleSimulator.Instance != null
+            ? BattleSimulator.Instance.trapExplosionRadius
+            : 1.5f;
         Vector3 trapPos = trap.transform.position;
 
         // 범위 내 모든 적(= 함정과 반대편 병사)에게 데미지 + 넉백
@@ -441,7 +444,10 @@ public class Soldier : MonoBehaviour
             float d = Vector3.Distance(s.transform.position, trapPos);
             if (d <= explosionRadius)
             {
-                s.TakeDamage(trapDmg, trap);
+                // 함정의 통계에 데미지 + 처치 카운트
+                trap.totalDamageDealt += trapDmg;
+                bool killed = s.TakeDamage(trapDmg, trap);
+                if (killed) trap.killCount++;
             }
         }
 
@@ -617,6 +623,18 @@ public class Soldier : MonoBehaviour
     // === 방향 화살표 ===
 
     private LineRenderer dirArrow;
+
+    /// <summary>
+    /// 병사 GameObject 파괴 시 자기가 만든 부속 GameObject도 함께 정리.
+    /// (DirArrow와 RangeIndicator는 root에 생성되어 부모-자식 관계가 없음)
+    /// </summary>
+    private void OnDestroy()
+    {
+        if (dirArrow != null && dirArrow.gameObject != null)
+            Destroy(dirArrow.gameObject);
+        if (rangeIndicator != null)
+            Destroy(rangeIndicator);
+    }
     private const float ARROW_LENGTH = 0.2f;
     private const float ARROW_HEAD = 0.06f;
 

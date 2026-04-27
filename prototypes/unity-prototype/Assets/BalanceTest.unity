@@ -149,13 +149,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnvironmentSetup
   tileSize: 1
-  tileGap: 0.08
+  tileGap: 0
   gridColumns: 14
   gridRows: 5
   borderSize: 1
-  treeScale: 1.5
-  treesPerSide: 12
-  treeRandomOffset: 0.3
+  treeScale: 3
+  treesPerSide: 10
+  treeRandomOffset: 0.5
+  groundTextureVariant: 1
+  bottomClearMargin: 1
+  bottomEdgeTreeCount: 3
+  topTreeRows: 8
+  topTreeRowSpacing: 1.5
+  topCornerExtension: 4
 --- !u!4 &943938148
 Transform:
   m_ObjectHideFlags: 0
@@ -214,7 +220,7 @@ MonoBehaviour:
   columns: 14
   rows: 5
   tileSize: 1
-  tileGap: 0.08
+  tileGap: 0
   camPos: {x: 7.2, y: 5.4, z: -7.11}
   camRot: {x: 29.2, y: 0, z: 0}
   camFOV: 45
