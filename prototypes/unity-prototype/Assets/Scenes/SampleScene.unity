@@ -418,6 +418,8 @@ MonoBehaviour:
   arcHeight: 0.15
   arcMaxRotation: 2.5
   handDepth: 6
+  playerHandYRatio: 0.55
+  enemyHandYRatio: 0.75
   koreanFont: {fileID: 11400000, guid: 21ae2682568f24d6aa99d43c2233a3dc, type: 2}
 --- !u!4 &421974475
 Transform:
@@ -524,6 +526,7 @@ MonoBehaviour:
   placementCamPos: {x: 2.32, y: 3.8, z: -4.11}
   placementCamRot: {x: 35, y: 0, z: 0}
   placementFOV: 50
+  zoomDollyPerStep: 1.5
 --- !u!4 &1100172084
 Transform:
   m_ObjectHideFlags: 0
@@ -653,8 +656,8 @@ MonoBehaviour:
   topTreeRows: 8
   topTreeRowSpacing: 1.5
   topCornerExtension: 4
-  sideTreeRows: 6
-  sideTreeRowSpacing: 1.5
+  sideTreeRows: 10
+  sideTreeRowSpacing: 1
 --- !u!1 &1891614279
 GameObject:
   m_ObjectHideFlags: 0

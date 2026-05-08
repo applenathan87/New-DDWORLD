@@ -48,3 +48,20 @@
 - D-01 해결: 판돈 = 점수 + 상자 구매 통화로 사용처 확정
 - Pending spec items: 상자 티어/가격, 확률 가중치 수치, 중복 처리, pity 시스템, 신규 온보딩
 - Anti-pattern 회피: 시간잠금/외부결제/카드레벨업/FOMO 한정판 모두 배제
+
+## Session Extract — Visual Polish Plan 2026-04-27 (Day 28 후속)
+- Created: design/art/visual-polish/ 폴더
+  - README.md (인덱스 + 작업 컨텍스트)
+  - hd2d-setup-plan.md (마스터 플랜, Phase 1~4)
+- Context: 게임 룩이 "단순한 픽셀 게임" 같음 → HD-2D 정체성 부재 진단
+- Diagnosis: 렌더링 파이프라인 셋업 부재 (코드 문제 아님)
+- Approach: 옵션 C (현재 씬 점진적 폴리시) 선택 — 옵션 A(새 프로젝트) / B(새 씬) 검토 후 배제
+- 4-Phase plan:
+  - Phase 1 (1~2일): URP Volume + Post-processing (Bloom/DOF/Color/Vignette/Tilt-shift)
+  - Phase 2 (1~2일): 조명 시스템 (Directional Light, 그림자, 시간대)
+  - Phase 3 (2~3일): 셰이더 폴리시 (잔디 흔들림, 거리 페이드)
+  - Phase 4 (2~3일): 환경 디테일 (파티클, 오브젝트, 카메라 셰이크)
+- Reference target: Sea of Stars 수준 (절제된 옥토패스)
+- Code refactoring: 거의 불필요 (셋업 + 셰이더 추가만)
+- Status: 계획 단계 — 실제 코드/Unity 변경 0
+- Next session: hd2d-setup-plan.md 검토 후 Phase 1 진입 결정 OR 다른 작업 우선순위 (함정 배치 룰)
