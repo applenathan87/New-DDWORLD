@@ -1,7 +1,6 @@
 # DDworld — Psychological Auto-Battler
 
 1인 인디 오토배틀러 게임 "DDworld" 개발 프로젝트.
-Claude Code 서브에이전트가 도메인별로 역할을 분담하여 개발을 지원합니다.
 
 ## Game Overview
 
@@ -22,24 +21,14 @@ Claude Code 서브에이전트가 도메인별로 역할을 분담하여 개발�
 4. **고정 시뮬레이션 스텝**: 전투 시뮬레이션은 `Time.deltaTime` 대신 고정 틱 사용
 5. **매치 데이터 구조**: 양측 배치를 하나의 MatchData로 묶어서 전달
 
-## Design Reference
-
-- **모든 작업은 이 프로젝트(`New_DDWORLD/`)에 집중한다**
-- `~/ProjectDDWORLD/`는 아카이브됨 — 참조하지 않는다
-- 아트 레퍼런스: `design/art/references/` (git 미추적)
-
 ## Technology Stack
 
 - **Engine**: Unity 6.3 LTS
 - **Language**: C#
 - **Rendering**: URP (Universal Render Pipeline) — 쿼터뷰 3D
 - **Version Control**: Git with trunk-based development
-- **Build System**: Unity Build Pipeline
 - **Asset Pipeline**: Addressables
-- **UI**: UI Toolkit (신규 프로젝트 권장)
-
-> **Note**: Unity 전용 에이전트를 사용합니다: `unity-specialist`,
-> `unity-ui-specialist`, `unity-shader-specialist`, `unity-addressables-specialist`.
+- **UI**: UI Toolkit
 
 ## Project Structure
 
@@ -53,28 +42,17 @@ Claude Code 서브에이전트가 도메인별로 역할을 분담하여 개발�
 
 @.claude/docs/technical-preferences.md
 
-## Coordination Rules
-
-@.claude/docs/coordination-rules.md
-
-## Collaboration Protocol
-
-**User-driven collaboration, not autonomous execution.**
-Every task follows: **Question -> Options -> Decision -> Draft -> Approval**
-
-- Agents MUST ask "May I write this to [filepath]?" before using Write/Edit tools
-- Agents MUST show drafts or summaries before requesting approval
-- Multi-file changes require explicit approval for the full changeset
-- No commits without user instruction
-
-See `docs/COLLABORATIVE-DESIGN-PRINCIPLE.md` for full protocol and examples.
-
-> **첫 세션?** `/help`로 사용 가능한 명령어를 확인하세요.
-
 ## Coding Standards
 
 @.claude/docs/coding-standards.md
 
-## Context Management
+## Collaboration Protocol
 
-@.claude/docs/context-management.md
+**User-driven collaboration, not autonomous execution.**
+Every task follows: **Question → Options → Decision → Draft → Approval**
+
+- Write/Edit 도구 사용 전 "May I write this to [filepath]?" 확인
+- 변경 전 드래프트 또는 요약 제시 후 승인 요청
+- 다중 파일 변경은 전체 changeset 명시적 승인 필요
+- 사용자 지시 없이 commit 금지
+- Session state는 `production/session-state/active.md`에 기록 (재시작 시 자동 복구)
