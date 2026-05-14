@@ -10,11 +10,11 @@
 
 ## 0. 요약
 
-DDworld의 비주얼 정체성은 **HD-2D**입니다 (art-bible.md). 그러나 현재 게임은 단순한 픽셀 게임처럼 보이며, 그 원인은 **렌더링 파이프라인 셋업의 부재**입니다 (코드 문제 아님).
+DDworld의 비주얼 정체성은 **HD-2D**입니다 (art-bible.md). 그러나 현재 게임은 단순한 픽셀 게임처럼 보이며, **가장 큰 원인은 "3D 환경 오브제의 부재"**입니다 — HD-2D = 3D 환경 + 2D 픽셀 스프라이트인데, DDworld는 평면 잔디 + 2D 빌보드 나무뿐입니다.
 
-이 문서는 **현재 씬을 점진적으로 폴리시하여 HD-2D 룩을 구현하는 4-Phase 마스터 플랜**을 제시합니다. 코드 리팩토링은 거의 필요 없습니다.
+이 문서는 **3D 환경 구축을 최우선으로 한 5-Phase 마스터 플랜**을 제시합니다. 코드 리팩토링은 거의 필요 없습니다.
 
-**예상 소요**: 총 5~10일 (Phase별 1~3일). 인디 1인 기준.
+**예상 소요**: 총 8~14일 (Phase별 1~5일). 인디 1인 기준.
 
 ---
 
@@ -22,28 +22,41 @@ DDworld의 비주얼 정체성은 **HD-2D**입니다 (art-bible.md). 그러나 �
 
 ### 1.1 art-bible 기반 핵심 비주얼 원칙
 
-(art-bible.md에서 정의된 내용 요약)
 - **HD-2D + Tilt-shift** 비주얼 디렉션
 - 픽셀 아트 스프라이트 (병종) + 3D 환경
 - 따뜻하고 부드러운 톤
 - 쿼터뷰 카메라 (X 29.2° 기울임)
-- 옥토패스 트래블러 / TABS / Into the Breach 레퍼런스
+- 옥토패스 트래블러 / Sea of Stars / Triangle Strategy 레퍼런스
 
-### 1.2 HD-2D 룩의 핵심 시각 요소 (분석)
+### 1.2 HD-2D의 진짜 정의
 
-#### 옥토패스 트래블러의 비주얼을 분해하면:
+```
+HD-2D = 3D 환경/오브제 (픽셀 텍스처 매핑) + 2D 픽셀 스프라이트 캐릭터
+              ↑                                    ↑
+        옥토패스의 마을, 건물, 다리                        주인공, NPC, 적
+```
 
-1. **Bloom** (빛 번짐) — 가장 큰 시각 정체성. 빛이 나는 영역이 부드럽게 번짐
-2. **Depth of Field / Tilt-shift** — 가까운/먼 영역 흐림 → 미니어처 느낌
-3. **Color Grading** — 따뜻한 색온도, 부드러운 채도
-4. **Vignette** — 화면 가장자리 어두움 → 시선 집중
-5. **Film Grain / LUT** — 영화적 질감
-6. **Dynamic Lighting** — 그림자 + 시간대 분위기
-7. **Particle Effects** — 빛입자, 꽃잎, 먼지 (분위기 연출)
-8. **Layered Depth** — 전경/중경/배경 레이어 (DDworld는 이미 일부 구현)
-9. **Shader Polish** — 잔디 흔들림, 거리 페이드 등
+옥토패스의 시그니처:
+- 마을 집들 = 3D 박스에 픽셀 텍스처
+- 다리, 계단, 폐허 = 3D 메쉬
+- 큰 나무, 바위 = 3D
+- 캐릭터, 풀(작은 것) = 2D 빌보드
 
-**핵심 인사이트**: 옥토패스의 코드 자체는 평범함. 차이의 90%는 **Volume + 셰이더 + 조명**에서 옴.
+**현재 DDworld 부족함**: 3D 환경 오브제 사실상 없음. 평면 잔디 + 2D 빌보드 나무뿐 → 픽셀 게임처럼 보임.
+
+### 1.3 HD-2D 룩의 핵심 시각 요소
+
+1. **3D 환경 메쉬** ⭐ 가장 중요 — 픽셀 텍스처 매핑된 3D 오브제
+2. Bloom — 빛 번짐
+3. Depth of Field / Tilt-shift — 미니어처 느낌
+4. Color Grading — 따뜻한 색온도
+5. Vignette — 시선 집중
+6. Dynamic Lighting — 그림자 + 시간대 분위기
+7. Layered Depth — 전경/중경/배경
+8. Shader Polish — 잔디 흔들림, 거리 페이드
+9. Particle Effects — 빛입자, 꽃잎
+
+**핵심 인사이트**: 1번이 없으면 나머지 다 적용해도 "예쁜 픽셀 게임"에 머무름. **3D 환경이 HD-2D의 정체성**.
 
 ---
 
@@ -51,214 +64,242 @@ DDworld의 비주얼 정체성은 **HD-2D**입니다 (art-bible.md). 그러나 �
 
 ### 2.1 잘 되어 있는 것 ✅
 
-- **쿼터뷰 카메라** (X 29.2°) — HD-2D 정통 각도
-- **잔디 + 나무 환경** — 기본 레이어 구성
-- **카메라 흐름** — 페이즈별 단순한 위치/FOV 전환 + 휠 줌
-- **픽셀 아트 스프라이트** — 병종, 카드, 나무 (basic_tile_v2 등)
-- **자동 환경 생성** — 모든 씬에서 동일 환경 보장
+- 쿼터뷰 카메라 (X 29.2°) — HD-2D 정통 각도
+- 잔디 텍스처 + 2D 나무 환경 (기본 레이어)
+- 카메라 흐름 (페이즈별 위치/FOV 전환 + 휠 줌)
+- 픽셀 아트 스프라이트 (병종, 카드, 나무)
 
 ### 2.2 부족한 것 ❌
 
 | 항목 | 현재 | 부족한 이유 |
 |------|------|------------|
-| **Post-processing** | 없음 | URP Volume 미적용 |
-| **조명** | 모두 `URP/Unlit` (조명 무시) | Lit 셰이더 + Directional Light 필요 |
-| **색감/톤** | 원본 텍스처 색 그대로 | Color Adjustments 없음 |
-| **거리감** | 평면 빌보드 | Depth of Field, 거리 페이드 없음 |
-| **환경 디테일** | 잔디 + 나무만 | 흔들림 셰이더, 파티클 부재 |
-| **그림자** | 없음 | Lit 머티리얼 + Shadow Caster 필요 |
-| **카메라 효과** | 단순 트윈 | 카메라 셰이크, 영화적 효과 없음 |
-
-### 2.3 진단 결론
-
-**원인은 코드가 아닌 "렌더링 셋업 부재"**. 따라서 점진적 셋업 추가만으로 큰 비주얼 변화 가능.
+| **3D 환경 오브제** ⭐ | **사실상 없음** | **HD-2D의 핵심 — 가장 시급** |
+| Post-processing | 없음 | URP Volume 미적용 |
+| 조명 | 모두 `URP/Unlit` | Lit 셰이더 + Directional Light 필요 |
+| 색감/톤 | 원본 텍스처 색 | Color Adjustments 없음 |
+| 환경 디테일 | 잔디 + 나무만 | 흔들림 셰이더, 파티클 부재 |
+| 그림자 | 없음 | Lit 머티리얼 + Shadow 필요 |
 
 ---
 
 ## 3. 참고 게임 분석
 
-### 3.1 옥토패스 트래블러 (Octopath Traveler) — Square Enix
-**HD-2D의 정의를 만든 게임.** 가장 가까운 레퍼런스.
+### 3.1 옥토패스 트래블러 (Square Enix) — HD-2D의 정의
 
-핵심 요소:
-- **강한 Bloom** — 빛 영역이 매우 부드럽게 번짐
-- **Tilt-shift Depth of Field** — 화면 상단/하단 흐림 → 미니어처
-- **따뜻한 색온도** — 모든 씬에 황금빛 톤
-- **유닛 픽셀 아트 + 3D 환경의 조합**
-- **시간대 변화** (낮/석양/밤) → 분위기
+- 마을 집들이 모두 **3D 박스 + 픽셀 텍스처**
+- 다리, 계단, 폐허, 신전 = 3D 메쉬
+- 강한 Bloom + Tilt-shift Depth of Field
+- 따뜻한 색온도
 
-DDworld와의 공통점: 픽셀 아트 캐릭터 + 3D 환경
-DDworld와의 차이점: RPG vs 오토배틀러 (UI/카드 시스템 다름)
+### 3.2 Sea of Stars (Sabotage Studio) — 인디 레퍼런스
 
-### 3.2 Sea of Stars — Sabotage Studio
-**옥토패스의 영향을 받은 인디 게임.** 인디 스코프 레퍼런스로 적합.
+- 옥토패스 대비 절제된 Bloom
+- **3D 환경 + 2D 캐릭터 일관됨**
+- 환경 파티클 (반딧불, 꽃잎)
+- 인디 스코프이라 가장 현실적 레퍼런스
 
-핵심 요소:
-- 옥토패스 대비 절제된 Bloom (눈 피로 적음)
-- 더 강한 색감 대비
-- 환경 파티클 (반딧불, 꽃잎) 활용
+### 3.3 Triangle Strategy (Square Enix) — DDworld와 가장 유사
 
-DDworld 적용 시: Sea of Stars 수준의 **절제된 Bloom**이 인디에게 현실적
-
-### 3.3 Triangle Strategy — Square Enix / Artdink
-**HD-2D 전략 게임.** DDworld와 가장 비슷한 장르감.
-
-핵심 요소:
 - 그리드 기반 전투 + HD-2D
-- 카메라 줌/회전이 적극적
-- 그리드 셀 시각화 + HD-2D 환경 융합
-
-DDworld와의 시각적 유사성: 그리드 + 환경. **카메라/UI 융합 방법** 참고할 가치 있음
-
-### 3.4 Into the Breach — Subset Games
-**HD-2D는 아니지만 그리드 전략 게임의 비주얼 명료성 레퍼런스.**
-
-핵심 요소:
-- 그리드 + 유닛이 매우 명료하게 보임
-- 시야 가림 없음 (DDworld의 나무 가림 방지 원칙과 일치)
+- **각 전투 맵마다 다른 3D 환경** (마을 광장, 다리, 성벽 등)
+- 카메라 줌/회전 적극적
 
 ---
 
-## 4. Phase 1 — URP Volume + Post-processing ⭐ 최우선
+## 4. Phase 1 — 3D 환경 구축 ⭐ 최우선
 
-**목표**: 가장 큰 시각 변화를 가장 적은 작업으로 달성. 80% 효과를 1~2일에.
+**목표**: 전장에 입체감 있는 3D 환경 오브제 배치 → HD-2D 정체성 핵심 확보
 
-### 4.1 적용할 효과 6가지
+**도구**: **Blender** (모델링) + Unity (배치/머티리얼)
 
-#### 1. Bloom (필수 — HD-2D의 정수)
-- **용도**: 빛이 나는 영역 부드럽게 번짐
-- **HD-2D 영향도**: ★★★★★
-- **권장 파라미터**:
-  - Threshold: 0.9~1.1 (밝은 부분만 영향)
-  - Intensity: 0.4~0.8 (절제된 정도)
-  - Scatter: 0.7
-- **참고**: 옥토패스는 강함, Sea of Stars는 절제. **Sea of Stars 수준 추천**
+### 4.1 DDworld 전장에 어울리는 3D 오브제
 
-#### 2. Color Adjustments (필수 — 따뜻한 톤)
-- **용도**: 전체 색감 조정
-- **HD-2D 영향도**: ★★★★☆
-- **권장 파라미터**:
-  - Post Exposure: 0
-  - Contrast: 5~10
-  - Color Filter: 살짝 따뜻한 색 (RGB 약 1.0, 0.97, 0.92)
-  - Saturation: 5~15 (살짝 올림)
+DDworld는 **마을이 아닌 전장(battlefield)** 게임. 어울리는 오브제:
 
-#### 3. Depth of Field / Tilt-shift (선택 — 미니어처 느낌)
-- **용도**: 가까운/먼 영역 흐림
-- **HD-2D 영향도**: ★★★★☆
-- **모드**: Bokeh (영화적) 또는 Gaussian (저비용)
-- **권장 파라미터**:
-  - Focus Distance: 6~8 (필드 중앙)
-  - Aperture: 5~8
-- **주의**: 너무 강하면 가독성 떨어짐. 절제
+| 우선순위 | 오브제 | 위치 | 효과 |
+|---------|------|------|------|
+| ⭐⭐⭐ | **성벽 / 요새 잔해** | 양 진영 끝 | 양 진영 입체감, 무대화 |
+| ⭐⭐⭐ | **깃발 / 기치** (3D 봉 + 천) | 양 진영 좌우 | 진영 정체성 |
+| ⭐⭐ | **무기 거치대 / 방패벽** | 진영 뒤 | 전장 분위기 |
+| ⭐⭐ | **돌무더기 / 폐허 기둥** | 측면 | 자연스러운 시야 차단 |
+| ⭐⭐ | **큰 바위** | 외곽 | 깊이감, 가까운 디테일 |
+| ⭐ | **다리 / 도랑** | 중앙선 | 양 진영 분리 |
+| ⭐ | **천막 / 캠프 텐트** | 진영 뒤 | 야영지 느낌 |
+| ⭐ | **지형 굴곡** (작은 언덕) | 외곽 | 평면 탈피 |
 
-#### 4. Vignette (선택 — 시선 집중)
-- **용도**: 화면 가장자리 어둡게
-- **HD-2D 영향도**: ★★★☆☆
-- **권장 파라미터**:
-  - Intensity: 0.25~0.4
-  - Smoothness: 0.4
-  - Color: 검정
+**Phase 1 MVP 목표**: ⭐⭐⭐ 우선순위 2개부터 시작 (성벽 + 깃발). 결과 보고 ⭐⭐ 추가.
 
-#### 5. Color LUT (고급 — 영화적 톤)
-- **용도**: 미리 정의된 색감 LUT 적용
-- **HD-2D 영향도**: ★★★☆☆ (효과적이지만 학습 필요)
-- **선택사항**: Phase 1 후반에 시도
+### 4.2 Blender 모델링 워크플로우
 
-#### 6. Film Grain (선택 — 영화적 질감)
-- **용도**: 미세한 그레인 노이즈
-- **HD-2D 영향도**: ★★☆☆☆
-- **권장**: Type Thin 1, Intensity 0.2~0.3
+#### Step 1: 단순 셰이프부터
 
-### 4.2 Unity URP에서 셋업 방법
+HD-2D는 **저폴리(low-poly) + 픽셀 텍스처**가 정답. 모델 자체는 단순:
+- 박스 → 성벽, 텐트 기둥, 무기 거치대
+- 실린더 → 깃발 봉, 폐허 기둥
+- 디포메이션된 박스 → 큰 바위, 돌무더기
 
-#### 단계 1: Volume GameObject 생성
+복잡한 메쉬는 오히려 픽셀 텍스처와 안 어울림.
+
+**모델당 폴리곤 수**: 100~500개면 충분.
+
+#### Step 2: UV 언랩핑
+
+- **수직 투영(Box Unwrap)** 사용 — 박스 면마다 픽셀 또렷
+- Smart UV는 픽셀 아트와 안 어울림
+- 면 크기에 비례한 UV 영역 (Pixel/Unit 비율 일관)
+
+#### Step 3: 픽셀 텍스처 제작
+
+- 해상도: **32x32 ~ 128x128** (모델 크기에 비례)
+- 도구: Aseprite, Photoshop, Krita
+- Filter 안 쓰기 (안티앨리어싱 X)
+- 색 팔레트 제한 (HD-2D 톤에 맞춰 따뜻한 색)
+
+#### Step 4: 익스포트
+
+- 포맷: `.fbx` (Unity 표준) 또는 `.blend` 직접 import
+- Scale: 1 unit = 1m (Unity와 일치)
+
+### 4.3 Unity Import 설정
+
+#### 텍스처 Import 설정 (HD-2D 핵심)
+```
+Filter Mode    : Point (no filter)        ← 픽셀 또렷
+Compression    : None or High Quality
+Wrap Mode      : Clamp 또는 Repeat
+Max Size       : 256 (작게 유지)
+sRGB           : on (color texture)
+```
+
+#### Material 설정
+```
+Shader: Universal Render Pipeline/Unlit (Phase 1 시작 - 단순)
+       → Phase 3에서 Lit으로 전환 (조명 받게)
+
+Surface Inputs:
+  Base Map    : 픽셀 텍스처
+  Smoothness  : 0 (반사 없음)
+```
+
+### 4.4 배치 가이드
+
+전장 좌표계 기준 (현재 BattleField 14x5 그리드):
+
+```
+       z (적 진영 뒤, 화면 위)
+       ↑
+  성벽/요새 잔해 (3D)              ← 적 진영 끝
+  ─────────────────
+  깃발 (3D 봉 + 천)
+  
+  [필드 14x5 그리드]              ← 전투 영역 (변경 없음)
+  
+  깃발 (3D 봉 + 천)
+  ─────────────────
+  성벽/요새 잔해 (3D)              ← 아군 진영 끝
+       ↓
+       (z = 카메라 가까운 쪽)
+```
+
+좌/우 외곽:
+- 가까운 측면: 큰 바위 / 폐허 기둥 (카메라에 크게)
+- 먼 측면: 작은 돌무더기 / 자연 디테일
+
+### 4.5 EnvironmentSetup.cs 확장
+
+기존 `CreateGrassGround()` + `CreateTrees()` 와 동일한 패턴:
+
+```csharp
+private void Start()
+{
+    CreateGrassGround();
+    CreateTrees();              // 2D 빌보드 (기존)
+    CreateBattleStructures();   // 3D 환경 오브제 (신규) ⭐
+}
+
+private void CreateBattleStructures()
+{
+    PlaceFortressWalls();       // 양 진영 끝 성벽
+    PlaceFlags();               // 양 진영 깃발
+    PlaceBoulders();            // 외곽 큰 바위
+    // ... 등
+}
+```
+
+각 메서드는 `Resources.Load<GameObject>()` + `Instantiate`로 Prefab 배치.
+
+### 4.6 예상 소요
+
+| 작업 | 시간 |
+|------|------|
+| Blender 모델링 (8~10 오브제) | 2~3일 |
+| 픽셀 텍스처 제작 | 1~2일 |
+| Unity Import + Prefab 만들기 | 0.5일 |
+| EnvironmentSetup.cs 확장 + 배치 | 1일 |
+| 배치 튜닝 | 0.5일 |
+
+**총 5~7일**
+
+### 4.7 Phase 1 후 예상 결과
+
+- 전장에 입체감 (양 진영 성벽 + 깃발이 무대 형성)
+- 외곽 큰 바위/폐허로 깊이감
+- "픽셀 게임" → "HD-2D 게임"으로 정체성 확보
+- 후속 Phase의 기반 마련
+
+### 4.8 Phase 1 체크리스트
+
+- [ ] DDworld 전장 오브제 우선순위 결정 (⭐⭐⭐ 2개부터)
+- [ ] Blender에서 첫 모델 (성벽 또는 깃발)
+- [ ] UV 언랩 (Box Unwrap)
+- [ ] 픽셀 텍스처 제작 (Aseprite, 32~128px)
+- [ ] FBX 익스포트 → Unity Import
+- [ ] Texture Filter Mode = Point 설정
+- [ ] Material 셋업 (Unlit으로 시작)
+- [ ] Prefab 만들기
+- [ ] EnvironmentSetup.cs에 CreateBattleStructures 추가
+- [ ] 양 진영 / 외곽 배치
+- [ ] 위치/스케일 튜닝
+- [ ] BalanceTest, SampleScene 둘 다 적용 확인
+- [ ] ⭐⭐⭐ 2개 완료 → ⭐⭐ 추가 결정
+- [ ] 결과 검토 → Phase 2 진입 결정
+
+---
+
+## 5. Phase 2 — URP Volume + Post-processing
+
+**목표**: 3D 환경에 영화적 색감 + 빛 번짐 + 미니어처 효과
+
+### 5.1 적용 효과 6가지
+
+#### 1. Bloom (필수)
+- Threshold: 0.9~1.1 / Intensity: 0.4~0.8 / Scatter: 0.7
+- Sea of Stars 수준 (절제)
+
+#### 2. Color Adjustments (필수)
+- Contrast: 5~10
+- Color Filter: 따뜻한 색 (RGB 1.0, 0.97, 0.92)
+- Saturation: 5~15
+
+#### 3. Depth of Field / Tilt-shift
+- Mode: Bokeh 또는 Gaussian
+- Focus Distance: 6~8
+
+#### 4. Vignette
+- Intensity: 0.25~0.4
+
+#### 5. Color LUT (선택)
+
+#### 6. Film Grain (선택)
+- Type Thin 1, Intensity 0.2~0.3
+
+### 5.2 Unity 셋업
+
 1. Hierarchy > Create > Volume > Global Volume
-2. 인스펙터: Profile → New 클릭하여 새 VolumeProfile 생성
-3. Profile 저장 위치: `prototypes/unity-prototype/Assets/Settings/HD2D_VolumeProfile.asset`
-
-#### 단계 2: 효과 추가
-Volume 컴포넌트의 Add Override 버튼 → Post-processing → 위 6개 효과 차례로 추가
-
-#### 단계 3: Camera 설정
-Main Camera의 Camera 컴포넌트 인스펙터:
-- Rendering > Post Processing: ✅ 체크
-- Rendering > Anti-aliasing: SMAA 또는 FXAA (TAA는 픽셀 아트와 안 맞음)
-
-#### 단계 4: URP Renderer 확인
-`Assets/Settings/URP_Renderer.asset` 또는 유사 파일에서:
-- Post Processing: Enabled
-
-### 4.3 예상 소요 시간
-
-- **셋업**: 30분 (Volume 추가 + 효과 활성화)
-- **파라미터 튜닝**: 2~4시간 (Sea of Stars 같은 절제된 룩 찾기)
-- **검토 + 다음 단계 결정**: 1~2시간
-
-**총 1일 미만**.
-
-### 4.4 Phase 1 후 예상 결과
-
-게임 화면이 다음과 같이 변화:
-- 빛이 나는 부분 (UI 텍스트, 카드 강조 등)이 부드럽게 번짐
-- 전체 색감이 따뜻해지고 픽셀 아트가 영화적으로 보임
-- 화면 가장자리 어두워져 필드 영역에 시선 집중
-- 멀리 있는 나무가 흐려져 미니어처 느낌
-
-**예상 효과**: HD-2D 룩의 70~80% 달성. Phase 2~4는 폴리시 단계.
-
-### 4.5 Phase 1 성능 영향
-
-| 효과 | GPU 비용 (1080p) |
-|------|----------------|
-| Bloom (Medium) | +1.0~1.5ms |
-| Color Adjustments | +0.1ms |
-| DOF (Bokeh) | +0.8~1.5ms |
-| DOF (Gaussian) | +0.3~0.5ms |
-| Vignette | +0.05ms |
-| Film Grain | +0.1ms |
-
-**총 +2~3ms** (60FPS 예산 16.6ms 대비 충분히 여유).
-
----
-
-## 5. Phase 2 — 조명 시스템
-
-**목표**: 그림자와 시간대 분위기로 입체감 + 드라마 추가
-
-### 5.1 적용할 변경
-
-#### 1. Directional Light 설정
-- 위치: 씬 내 `Directional Light` GameObject
-- 회전: 50°, -30°, 0° (석양 방향)
-- 색: 따뜻한 황금빛 (FF E0 B0 정도)
-- Intensity: 1.0~1.3
-
-#### 2. Ambient Lighting
-- Window > Rendering > Lighting Settings
-- Environment Lighting: Source = Color
-- Ambient Color: 약간 푸른 하늘 (B0 C0 D0) — 그림자 영역에 색감 부여
-
-#### 3. 머티리얼 전환 (선택적)
-현재 모두 `Universal Render Pipeline/Unlit`을 사용. 조명을 받게 하려면:
-- 잔디 바닥 → `Universal Render Pipeline/Lit`
-- 나무 빌보드 → `Universal Render Pipeline/Sprite-Lit-Default`
-- 병종 스프라이트 → `Sprite-Lit-Default`
-
-**주의**: 모두 전환 X. 잔디만 전환해도 큰 차이. 점진적.
-
-#### 4. Shadow 활성화
-- Light 컴포넌트의 Shadow Type: Soft Shadows
-- URP Renderer Asset의 Shadows 설정 확인
-
-### 5.2 시간대 분위기 옵션
-
-여러 Volume Profile 만들어 페이즈별 적용 가능:
-- HD2D_Day.asset (일반 전투)
-- HD2D_Sunset.asset (3:0 매치 종료 등 드라마틱한 순간)
-- HD2D_Night.asset (특수 시나리오)
-
-**MVP에서는 HD2D_Day 하나만**.
+2. Profile → New Profile: `Assets/Settings/HD2D_VolumeProfile.asset`
+3. 효과들 Add Override
+4. Camera Component → Post Processing: ✅
+5. Anti-aliasing: SMAA (TAA는 픽셀 아트와 안 맞음)
 
 ### 5.3 예상 소요
 
@@ -266,171 +307,145 @@ Main Camera의 Camera 컴포넌트 인스펙터:
 
 ---
 
-## 6. Phase 3 — 셰이더 폴리시
+## 6. Phase 3 — 조명 시스템
 
-**목표**: 환경에 생동감 추가 (정적 → 동적 느낌)
+**목표**: 그림자 + 시간대 분위기로 입체감 추가
 
-### 6.1 우선순위 셰이더
+### 6.1 적용 항목
 
-#### 1. 잔디 흔들림 셰이더 (필수)
-- Vertex 셰이더로 시간 기반 흔들림
-- art-bible에 명시된 "환경 디테일 애니메이션"
-- 셰이더 그래프 또는 HLSL
+- Directional Light: 50°, -30°, 0° (석양 방향), 황금빛
+- Ambient Lighting: Color, 푸른 그림자 톤
+- 머티리얼 Lit 전환 (잔디부터 점진적, 그 다음 3D 환경 오브제)
+- Shadow Type: Soft Shadows
 
-#### 2. 거리 페이드 (선택)
-- 멀리 있는 나무를 살짝 페이드아웃
-- DOF와 결합하면 시너지
+### 6.2 시간대 분위기 (선택, MVP 후)
 
-#### 3. Pixel-perfect Outline (선택)
-- 병종 외곽선 강조
-- 픽셀 아트의 선명함 유지
+여러 Volume Profile 만들어 페이즈별: HD2D_Day / Sunset / Night.
 
-### 6.2 예상 소요
+### 6.3 예상 소요
 
-2~3일 (셰이더 학습 곡선 포함).
+1~2일.
 
 ---
 
-## 7. Phase 4 — 환경 디테일
+## 7. Phase 4 — 셰이더 폴리시
+
+**목표**: 환경에 생동감 추가 (정적 → 동적)
+
+### 7.1 우선순위 셰이더
+
+- 잔디 흔들림 셰이더 (Vertex 시간 기반)
+- **깃발 흔들림** (3D 깃발 천 부분 — Phase 1에서 만든 모델)
+- 거리 페이드 (선택)
+- Pixel-perfect Outline (선택)
+
+### 7.2 예상 소요
+
+2~3일.
+
+---
+
+## 8. Phase 5 — 작은 환경 디테일
 
 **목표**: 분위기 + 디테일 추가
 
-### 7.1 추가 요소
+### 8.1 추가 요소
 
-#### 1. 파티클 시스템
-- 꽃잎 / 빗방울 / 먼지 / 빛입자
-- 분위기 연출
-- 성능 주의 (max particle count 제한)
-
-#### 2. 환경 오브젝트
-- 돌, 풀숲, 작은 디테일
-- 변형(variation)으로 단조로움 깨기
-
-#### 3. 동적 변화
+- 파티클: 꽃잎 / 빗방울 / 먼지 / 빛입자 / 반딧불
+- 작은 오브젝트 (풀숲 다발, 작은 돌)
 - 카메라 셰이크 (전투 임팩트)
-- 충격 시 화면 페이드/플래시
+- 동적 변화 (시간대 전환, 충격 플래시)
 
-### 7.2 예상 소요
+### 8.2 예상 소요
 
 2~3일 (선택사항 많음).
 
 ---
 
-## 8. 성능 예산 종합
+## 9. 성능 예산 종합
 
 기술 표준 ([CLAUDE.md](../../../CLAUDE.md)):
-- Target FPS: 60
-- Frame Budget: 16.6ms
-- Draw Calls: < 200
-- Memory: 2GB
+- Target FPS: 60 / Frame Budget: 16.6ms
+- Draw Calls: < 200 / Memory: 2GB
 
-| Phase | 추가 GPU 비용 | 누적 |
-|-------|------------|------|
+| Phase | 추가 비용 | 누적 |
+|-------|---------|------|
 | 현재 (Phase 0) | - | ~5ms |
-| Phase 1 (Post-processing) | +2~3ms | 7~8ms |
-| Phase 2 (조명 + 그림자) | +1~2ms | 8~10ms |
-| Phase 3 (셰이더) | +0.5~1ms | 9~11ms |
-| Phase 4 (파티클) | +1~2ms | 10~13ms |
+| **Phase 1 (3D 환경)** | +0.5~1ms (low-poly) | 5.5~6ms |
+| Phase 2 (Post-processing) | +2~3ms | 7.5~9ms |
+| Phase 3 (조명 + 그림자) | +1~2ms | 8.5~11ms |
+| Phase 4 (셰이더) | +0.5~1ms | 9~12ms |
+| Phase 5 (파티클) | +1~2ms | 10~14ms |
 
-**Phase 4까지 가도 16.6ms 예산 안에 안전**. 단, 저사양 PC에서는 Phase 4 시점에서 옵션 제공 필요.
+**Phase 5까지 가도 16.6ms 예산 안에 안전**.
+
+3D 환경의 Draw Call 영향: 모델당 1~2 draw call. 8~10 모델이면 +10~20 draw call. 200 한도 대비 충분히 여유.
 
 ---
 
-## 9. 의사결정 / Open Questions
+## 10. 의사결정 / Open Questions
 
 ### 결정된 것 ✅
 
 | 항목 | 결정 | 근거 |
 |------|------|------|
 | 접근 방식 | 옵션 C (현재 씬 점진적 폴리시) | 인디 1인 스코프 |
-| 우선순위 | Phase 1 → 2 → 3 → 4 | 효과 대비 비용 |
+| **우선순위** | **Phase 1 (3D 환경) → 2 (Post-processing) → 3 (조명) → 4 (셰이더) → 5 (디테일)** | **3D 환경이 HD-2D 정체성 핵심** |
 | 레퍼런스 | Sea of Stars 수준 (절제된 옥토패스) | 인디 현실성 |
 | 카메라 | 현재 쿼터뷰 X 29.2° 유지 | 검증된 값 |
-| 머티리얼 전환 | 점진적, 잔디부터 | 안전한 변경 |
+| **3D 모델 소스** | **Blender (직접 모델링)** | Nathan이 진행 가능 |
 
 ### 미결정 ❌
 
-| 질문 | Owner | 결정 시점 |
-|------|-------|---------|
-| Phase 1 파라미터 정확한 값은? (Bloom Intensity 등) | nathan | Phase 1 진입 시 실험 |
-| DOF는 Bokeh vs Gaussian? | nathan | Phase 1 셋업 시 |
-| Color LUT 사용? | nathan | Phase 1 후반 |
-| 모든 머티리얼을 Lit으로 전환? | nathan | Phase 2 진입 시 |
-| 시간대 변화 (Day/Sunset/Night) MVP에 포함? | nathan | Phase 2 진입 시 |
-| 잔디 흔들림 셰이더 그래프 vs HLSL? | nathan | Phase 3 진입 시 |
-| 파티클 종류와 밀도? | nathan | Phase 4 진입 시 |
+| 질문 | 결정 시점 |
+|------|---------|
+| 어떤 3D 오브제 우선 만들까? (8~10개 후보 중) | Phase 1 시작 시 |
+| 픽셀 텍스처 도구 (Aseprite vs Photoshop)? | Phase 1 시작 시 |
+| 텍스처 해상도 표준 (32 / 64 / 128px)? | Phase 1 시작 시 |
+| Material 시작 — Unlit vs Lit? | Phase 1: Unlit, Phase 3에서 Lit 전환 |
+| Phase 2 파라미터 정확한 값? | Phase 2 진입 시 실험 |
+| 시간대 변화 (Day/Sunset/Night) MVP 포함? | Phase 3 진입 시 |
+| 잔디 흔들림 셰이더 그래프 vs HLSL? | Phase 4 진입 시 |
+| 파티클 종류와 밀도? | Phase 5 진입 시 |
 
 ---
 
-## 10. 다음 단계 (실제 진행 시)
+## 11. 다음 단계 (Phase 1 진입 시)
 
-이 문서 검토 완료 → Phase 1 실제 구현 진입 시:
-
-1. **post-processing.md** 작성 (Phase 1 상세 — Volume Profile 셋업)
-2. Unity Editor에서 Global Volume + Profile 생성
-3. 6개 효과 추가 + 파라미터 튜닝
-4. BalanceTest 씬에서 결과 확인
-5. SampleScene에도 동일 적용
-6. 만족스러우면 → Phase 2 진입 결정
-7. 만족스럽지 않으면 → 파라미터 추가 조정 또는 방향 재검토
+1. **3d-environment.md** 작성 (Phase 1 상세 — 모델 목록 확정, Blender 가이드, Import 설정)
+2. Blender에서 첫 모델 (가장 우선순위 높은 — 성벽 또는 깃발) 시작
+3. Unity에 Import + Material 셋업 + Prefab 생성
+4. EnvironmentSetup.cs에 CreateBattleStructures 메서드 추가
+5. 첫 모델 배치 후 결과 확인
+6. 만족스러우면 → 나머지 모델 진행
+7. 모든 ⭐⭐⭐ 오브제 완료 후 → Phase 2 진입 결정
 
 ---
 
-## 11. 참고 자료
+## 12. 참고 자료
 
 ### Unity URP 공식 (6.3 LTS)
-- [URP Post-processing 공식 문서](https://docs.unity3d.com/Packages/com.unity.render-pipelines.universal@17.0/manual/integration-with-post-processing.html)
-- [Volume Framework 공식 문서](https://docs.unity3d.com/Packages/com.unity.render-pipelines.universal@17.0/manual/Volumes.html)
-- [URP Lit Shader 공식 문서](https://docs.unity3d.com/Packages/com.unity.render-pipelines.universal@17.0/manual/lit-shader.html)
+- [URP Post-processing](https://docs.unity3d.com/Packages/com.unity.render-pipelines.universal@17.0/manual/integration-with-post-processing.html)
+- [URP Lit Shader](https://docs.unity3d.com/Packages/com.unity.render-pipelines.universal@17.0/manual/lit-shader.html)
+- [Unity 픽셀 아트 권장 사항](https://docs.unity3d.com/6000.0/Documentation/Manual/2d-pixel-art.html)
 
-### HD-2D 분석/튜토리얼 (찾아볼 키워드)
-- "HD-2D Unity URP tutorial"
-- "Octopath Traveler HD-2D analysis"
-- "Tilt-shift effect Unity"
-- "Bloom intensity Sea of Stars"
+### Blender + 픽셀 아트 (검색 키워드)
+- "Blender low-poly tutorial"
+- "Pixel art texture mapping Blender"
+- "HD-2D 3D model tutorial"
+- "Blender FBX export Unity"
 
-### 참고 게임 (직접 플레이 / 영상 분석)
+### 픽셀 텍스처 도구
+- Aseprite ($19.99, 픽셀 아트 표준)
+- Photoshop, Krita (대안)
+- LibreSprite (Aseprite 무료 대안)
+
+### 참고 게임 (직접 분석)
 - 옥토패스 트래블러 1, 2 (Square Enix)
 - Sea of Stars (Sabotage Studio) — 인디 레퍼런스
-- Triangle Strategy (Square Enix)
+- Triangle Strategy (Square Enix) — 그리드 전략 + HD-2D
 - Live A Live (Square Enix HD-2D 리메이크)
 
 ---
 
-## 부록 — Phase 별 체크리스트 (실제 진행 시 사용)
-
-### Phase 1 체크리스트
-- [ ] Global Volume GameObject 생성
-- [ ] HD2D_VolumeProfile.asset 생성
-- [ ] Bloom 추가 + 파라미터 조정
-- [ ] Color Adjustments 추가 + 따뜻한 톤
-- [ ] Depth of Field 추가 (Gaussian or Bokeh)
-- [ ] Vignette 추가
-- [ ] Film Grain 추가 (선택)
-- [ ] Camera Post Processing 활성화
-- [ ] BalanceTest 씬에서 결과 확인
-- [ ] SampleScene에도 적용 확인
-- [ ] post-processing.md 작성 (사용한 파라미터 기록)
-- [ ] Phase 1 결과 검토 + Phase 2 진입 결정
-
-### Phase 2 체크리스트
-- [ ] Directional Light 설정 (석양 방향, 황금빛)
-- [ ] Ambient Lighting 설정 (푸른 그림자)
-- [ ] 잔디 머티리얼 → Lit 전환 (선택)
-- [ ] Shadow Type: Soft Shadows
-- [ ] lighting.md 작성
-
-### Phase 3 체크리스트
-- [ ] 잔디 흔들림 셰이더 (Wind Shader)
-- [ ] 거리 페이드 (선택)
-- [ ] Pixel Outline (선택)
-- [ ] shaders.md 작성
-
-### Phase 4 체크리스트
-- [ ] 파티클 시스템 (꽃잎/먼지)
-- [ ] 환경 오브젝트 (돌, 풀숲)
-- [ ] 카메라 셰이크 (전투 임팩트)
-
----
-
-> **이 문서는 Phase 진행에 따라 업데이트됩니다.** 실제 적용한 값, 발견한 문제, 미세 조정 사항은 각 Phase의 상세 문서(post-processing.md 등)에 기록.
+> **이 문서는 Phase 진행에 따라 업데이트됩니다.** 실제 적용한 값/모델/파라미터는 각 Phase의 상세 문서(`3d-environment.md`, `post-processing.md` 등)에 기록.

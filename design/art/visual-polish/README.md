@@ -51,10 +51,11 @@ Day 28 (2026-04-27) 작업 마무리 후, **게임의 룩이 "단순한 픽셀 �
 | 파일 | 내용 | 상태 |
 |------|------|------|
 | **README.md** | 이 파일. 인덱스 + 현재 작업 컨텍스트 | ✅ 작성됨 |
-| **hd2d-setup-plan.md** ⭐ | **마스터 플랜**. Phase 1~4 단계별 계획. 참고 게임 분석. 성능 예산 | ✅ 작성됨 |
-| post-processing.md | Phase 1 상세 (Volume Profile 파라미터) | 📋 Phase 1 진입 시 작성 |
-| lighting.md | Phase 2 상세 (조명 시스템) | 📋 Phase 2 진입 시 작성 |
-| shaders.md | Phase 3 상세 (커스텀 셰이더) | 📋 Phase 3 진입 시 작성 |
+| **hd2d-setup-plan.md** ⭐ | **마스터 플랜**. Phase 1~5 단계별 계획 (v2: 3D 환경 우선) | ✅ 작성됨 |
+| **3d-environment.md** ⭐ | **Phase 1 상세** (Blender 모델 목록, Import 설정, 배치) | 📋 Phase 1 진입 시 작성 |
+| post-processing.md | Phase 2 상세 (Volume Profile 파라미터) | 📋 Phase 2 진입 시 작성 |
+| lighting.md | Phase 3 상세 (조명 시스템) | 📋 Phase 3 진입 시 작성 |
+| shaders.md | Phase 4 상세 (커스텀 셰이더) | 📋 Phase 4 진입 시 작성 |
 | decisions/ | 의사결정 기록 (채택/배제 이유) | 📋 필요 시 작성 |
 
 **점진적 확장 원칙**: 사용 안 하는 파일을 미리 만들지 않습니다. Phase 진입할 때 해당 문서 작성.
@@ -76,8 +77,9 @@ Day 28 (2026-04-27) 작업 마무리 후, **게임의 룩이 "단순한 픽셀 �
 
 #### 시나리오 A: 마스터 플랜이 마음에 듬 → Phase 1 진입
 - "Phase 1 시작하자" 한 마디면 OK
-- post-processing.md 작성 + Unity Volume Profile 셋업 시작
-- 예상 소요: 1~2일
+- **3d-environment.md 작성** + Blender 모델링 가이드 + Unity Import 워크플로우
+- Phase 1 = **3D 환경 구축** (성벽, 깃발, 큰 바위 등)
+- 예상 소요: 5~7일 (Blender 작업 포함)
 
 #### 시나리오 B: 방향 수정 필요
 - hd2d-setup-plan.md 수정

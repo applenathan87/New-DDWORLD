@@ -65,3 +65,19 @@
 - Code refactoring: 거의 불필요 (셋업 + 셰이더 추가만)
 - Status: 계획 단계 — 실제 코드/Unity 변경 0
 - Next session: hd2d-setup-plan.md 검토 후 Phase 1 진입 결정 OR 다른 작업 우선순위 (함정 배치 룰)
+
+## Session Extract — HD-2D Plan v2 (3D 환경 우선) 2026-04-27 후속
+- Updated: design/art/visual-polish/hd2d-setup-plan.md (4-Phase → 5-Phase 재구성)
+- Updated: design/art/visual-polish/README.md (Phase 매핑 변경)
+- Key insight: HD-2D = 3D 환경 + 2D 스프라이트. DDworld는 3D 환경 오브제 부재가 가장 큰 원인
+- 새 Phase 순서:
+  - Phase 1 (5~7일) ⭐: **3D 환경 구축** (Blender 모델 + 픽셀 텍스처) — 성벽/깃발/큰 바위 등
+  - Phase 2 (1~2일): URP Volume + Post-processing
+  - Phase 3 (1~2일): 조명 시스템
+  - Phase 4 (2~3일): 셰이더 폴리시 (잔디/깃발 흔들림)
+  - Phase 5 (2~3일): 작은 환경 디테일 (파티클)
+- 3D 모델 소스: Blender (Nathan 직접 모델링)
+- 픽셀 텍스처 도구: Aseprite 등 (Phase 1 시작 시 결정)
+- Phase 1 MVP 목표: ⭐⭐⭐ 우선순위 2개 (성벽 + 깃발)부터, 결과 보고 ⭐⭐ 추가
+- 참고 게임: Sea of Stars (인디 레퍼런스), Triangle Strategy (그리드 + HD-2D)
+- Next session: Phase 1 진입 시 3d-environment.md 상세 문서 작성 + 모델 우선순위 확정
