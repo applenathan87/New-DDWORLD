@@ -1,12 +1,36 @@
-# Visual Polish — HD-2D 구현 가이드
+# Visual Polish — Low-poly Voxel 3D 구현 가이드
 
-> **Status**: 계획 단계 — 아직 코드/Unity 셋업 변경 없음
-> **Last Updated**: 2026-04-27
+> **Status**: HD-2D 방향성 폐기 → Low-poly Voxel 3D 전환 (2026-05-25, [ADR-002](../../../docs/architecture/ADR-002-visual-style-low-poly-3d.md))
+> **Last Updated**: 2026-05-25
 > **Owner**: nathan
+>
+> ⚠️ **방향 전환 안내**: 이 폴더는 원래 HD-2D 구현 가이드였으나, 2026-05-25 비주얼 스타일 결정으로 **Low-poly Voxel 3D 방향으로 재편**됩니다. [hd2d-setup-plan.md](hd2d-setup-plan.md)는 deprecated 참고용으로 보존됩니다.
 
-이 폴더는 DDworld의 **HD-2D 비주얼 정체성**을 실제 Unity 프로젝트에서 구현하기 위한 가이드 문서를 담습니다.
+이 폴더는 DDworld의 **Low-poly Voxel 3D 비주얼**을 실제 Unity 프로젝트에서 구현하기 위한 가이드 문서를 담습니다.
 
 `design/art/art-bible.md`가 **"무엇을(What)"** — 비주얼 방향성 — 을 다룬다면, 이 폴더는 **"어떻게(How)"** — Unity URP에서 어떤 설정/효과/셰이더로 구현할지 — 를 다룹니다.
+
+## 도구 체인
+
+```
+MagicaVoxel (캐릭터 부위별 모델링)
+    ↓ .fbx
+Blender (본 + 리깅 + 애니메이션)
+    ↓ .fbx
+Unity 6.3 LTS URP
+    + Bloom / DOF (Gaussian) / Tilt-Shift / Color Grading / Vignette
+```
+
+## 주요 효과 (Unity URP)
+
+| 효과 | URP 기본 | 비고 |
+|------|--------|------|
+| Bloom | ✅ | 따뜻한 빛 번짐 |
+| DOF (Gaussian) | ✅ | 가벼움, DDworld에 적합 |
+| Color Grading | ✅ | 따뜻한 톤 (R 1.0, G 0.97, B 0.92) |
+| Vignette | ✅ | 시선 집중 |
+| **Tilt-Shift** | ❌ Custom Renderer Feature | 미니어처 핵심. [Noveltech 튜토리얼](https://www.noveltech.dev/tilt-shift-unity) 또는 [iMemento GitHub](https://github.com/iMemento/Tilt-Shift-URP) 참조 |
+| Anti-aliasing | SMAA 권장 | Voxel 엣지 부드럽게 (TAA는 Low-poly와 안 맞음) |
 
 ---
 

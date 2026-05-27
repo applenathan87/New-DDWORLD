@@ -1,9 +1,26 @@
-# HD-2D Setup Plan — 마스터 플랜
+# HD-2D Setup Plan — 마스터 플랜 [DEPRECATED]
 
-> **Status**: 계획 단계 (코드 변경 0)
+> ⚠️ **DEPRECATED (2026-05-25)**: 비주얼 방향이 **Low-poly Voxel 3D**로 전환됨. 결정 근거: [ADR-002](../../../docs/architecture/ADR-002-visual-style-low-poly-3d.md).
+> 이 문서는 **참고용으로 보존**됩니다. 향후 가이드는 [README.md](README.md)와 새 문서들을 참조하세요.
+>
+> 폐기된 이유 요약:
+> - HD-2D는 사실상 스퀘어에닉스 독점 기법, 인디 사례 부재
+> - 1인 인디에 과한 작업 부담 (Blender + Aseprite + 8방향 픽셀 애니)
+> - 카메라 자유도 제약 (픽셀 스프라이트는 카메라 정면 고정)
+> - 검증된 대안 존재 (Tabletop Tavern, Bad North, A Short Hike 등이 Low-poly로 인디 성공)
+>
+> **유지되는 컨셉** (Low-poly 3D에도 적용 가능):
+> - 쿼터뷰 카메라 각도 (X 29.2°)
+> - 따뜻한 색온도
+> - Tilt-shift + DOF + Bloom 적용 의도
+> - 3D 환경 메쉬 우선 (단, 픽셀 텍스처 → 단색/Vertex color로 전환)
+
+---
+
+> **Status (원본)**: 계획 단계 (코드 변경 0)
 > **Author**: nathan
 > **Last Updated**: 2026-04-27
-> **Target**: 옥토패스 트래블러 / Sea of Stars 수준의 HD-2D 룩
+> **Target (원본)**: 옥토패스 트래블러 / Sea of Stars 수준의 HD-2D 룩
 > **Engine**: Unity 6.3 LTS, URP (Universal Render Pipeline)
 
 ---

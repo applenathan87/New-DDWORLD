@@ -22,11 +22,23 @@
 4. **고정 시뮬레이션 스텝**: 전투 시뮬레이션은 `Time.deltaTime` 대신 고정 틱 사용 (프레임레이트 무관)
 5. **매치 데이터 구조** ⭐ 필수: 양측 배치 + 시드 + 영웅 정보를 하나의 MatchData로 묶어서 저장/전달 (고스트 풀의 단위)
 
+## Visual Style
+
+**Low-poly Voxel 3D** ([ADR-002](docs/architecture/ADR-002-visual-style-low-poly-3d.md))
+
+- **캐릭터**: MagicaVoxel로 부위별 분리 모델링 (Head/Body/Arms/Legs/Weapon)
+- **애니메이션**: Blender에서 본 + 리깅 + 키프레임 (B 방식)
+- **환경**: Low-poly 메쉬 (Blender 또는 MagicaVoxel)
+- **카메라**: 쿼터뷰 (X 29.2°) + Zoom 시 캐릭터 디테일
+- **톤**: 따뜻한 색감 + Tilt-shift 미니어처 효과 + Bloom + DOF
+- **레퍼런스**: Bad North, Tabletop Tavern, A Short Hike, Crossy Road
+
 ## Technology Stack
 
 - **Engine**: Unity 6.3 LTS
 - **Language**: C#
-- **Rendering**: URP (Universal Render Pipeline) — 쿼터뷰 3D
+- **Rendering**: URP (Universal Render Pipeline) — 쿼터뷰 3D + Post-processing
+- **3D 모델링**: MagicaVoxel (캐릭터) + Blender (애니메이션, 환경)
 - **Version Control**: Git with trunk-based development
 - **Asset Pipeline**: Addressables
 - **UI**: UI Toolkit

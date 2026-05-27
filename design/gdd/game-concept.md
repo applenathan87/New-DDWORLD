@@ -126,10 +126,17 @@ HP 0 = 런 종료 (패배)
 
 ## Visual Direction
 
-- **스타일**: HD-2D (픽셀 아트 스프라이트 + 3D 환경 + URP 포스트 프로세싱)
-- **톤**: 가볍고 밝은 전장, 하지만 심리전의 긴장감이 느껴지는 연출
-- **레퍼런스**: 옥토패스 트래블러(HD-2D), TABS(가벼운 전투), Into the Breach(전략 명확성)
-- **에셋 제작**: 직접 제작 + AI 생성 (Midjourney 등) 병행
+- **스타일**: **Low-poly Voxel 3D** (전체 3D, 픽셀 아트 X). 결정 근거: [ADR-002](../../docs/architecture/ADR-002-visual-style-low-poly-3d.md)
+- **캐릭터**: MagicaVoxel로 부위별 분리 모델링 → Blender 본 리깅/애니메이션
+- **환경**: Low-poly 메쉬 (집/나무/돌/깃발)
+- **카메라**: 쿼터뷰 (X 29.2°) + Zoom 기능으로 캐릭터 디테일 표현
+- **톤**: 따뜻한 색감, 미니어처 느낌. Tilt-shift + Bloom + DOF + Color Grading
+- **레퍼런스**:
+  - **Bad North** — 자동 전투 + Low-poly + 미니어처 톤
+  - **Tabletop Tavern** — 인디 검증 사례 (92% 긍정)
+  - **A Short Hike** — Low-poly + 따뜻한 톤
+  - **Crossy Road / Cube World** — Voxel 캐릭터 검증
+- **에셋 제작**: MagicaVoxel + Blender (수작업) + Mixamo (자동 리깅 보조) + AI 도구
 
 ## Platform & Scope
 
