@@ -1,7 +1,7 @@
 # Work Queue — DDworld
 
 > **Purpose**: 세션 간 영구 추적 작업 큐. TodoWrite는 현재 세션 한정이라, 다음 세션에도 이어질 작업은 여기에 기록.
-> **Last Updated**: 2026-05-25
+> **Last Updated**: 2026-06-27
 
 ---
 
@@ -74,6 +74,17 @@
 10. **Warning 해소** (04-23 리뷰)
     - combat.md 배치 제한 시간 확정 (D3-W1)
     - combat.md Game Feel 섹션 보완 (D3-W2 — "보는 맛" Pillar)
+
+---
+
+## 🎨 아트 / Voxel 에셋 파이프라인
+
+13. **첫 Voxel 캐릭터 — MagicaVoxel→Blender 리지드 애니 작업 시 유의점 적용·검증**
+    - 기술 파이프라인: [blender-to-unity.md](../docs/pipeline/blender-to-unity.md) (Draft) 따라가며 §8에 발생 이슈 기록
+    - 모델링 원칙(greeble 최소화): [voxel-greebles.md](../design/art/voxel-greebles.md)
+      (45° 스테핑 자제 / 팔레트 1+1 / 부위 분리 / 평면화+애니로 디테일 / 그림자 hue·밝기 대비)
+    - 리지드 분절 런·어택 애니(12~24fps 스텝) 실제 제작
+    - 확인: 크기/개수 성능 한계, Vertex Color 색 표시, GPU Instancing draw call
 
 ---
 
