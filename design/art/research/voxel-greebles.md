@@ -1,12 +1,12 @@
 # Voxel Art — Greebles 줄이기 (갈무리)
 
 > **출처**: Zach Soares (Voxels), "Voxel Art: Reducing the Greebles" — https://medium.com/@Voxels/voxel-art-reducing-the-greebles-263cef16b12d
-> **갈무리**: 2026-06-27
-> **관련**: [ADR-002](../../docs/architecture/ADR-002-visual-style-low-poly-3d.md) (Low-poly Voxel 채택) · [blender-to-unity.md](../../docs/pipeline/blender-to-unity.md) · art-bible §1 (Rigid Voxel Animation)
+> **갈무리**: 2026-06-27 · 요약 (전문 번역 TODO) · 살짝 outdated
+> **관련**: [voxel-styles.md](./voxel-styles.md) · [ADR-002](../../../docs/architecture/ADR-002-visual-style-low-poly-3d.md) · [blender-to-unity.md](../../../docs/pipeline/blender-to-unity.md)
 
 ## Greeble이란
 
-voxel 표면의 불필요한 "돌기/요철". 작은 기하 변화가 누적돼 **멀리서 보면 지저분하게 울퉁불퉁**해 보이는 것.
+voxel 표면의 불필요한 "돌기/요철". 작은 기하 변화가 누적돼 **멀리서 보면 지저분하게 울퉁불퉁**해 보이는 것. (= [voxel-styles.md](./voxel-styles.md)의 "Greeble 스타일"이 과하면 생기는 문제)
 
 ## 왜 문제인가
 
@@ -35,4 +35,4 @@ voxel 표면의 불필요한 "돌기/요철". 작은 기하 변화가 누적돼 
 
 - "부위 분리"·"평면화"·"에디터≠최종"이 우리 Rigid Voxel 방향과 정확히 일치 → 검증 시 그대로 적용.
 - 성능(12폴리/voxel)은 첫 모델 작업의 **크기/개수 한계선** 확인과 직결.
-- 첫 모델 작업 시 [work-queue.md](../../production/work-queue.md) 아트 항목에서 이 원칙 적용.
+- 첫 모델 작업 시 [work-queue.md](../../../production/work-queue.md) 13번에서 이 원칙 적용.

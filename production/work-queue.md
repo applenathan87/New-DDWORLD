@@ -81,10 +81,19 @@
 
 13. **첫 Voxel 캐릭터 — MagicaVoxel→Blender 리지드 애니 작업 시 유의점 적용·검증**
     - 기술 파이프라인: [blender-to-unity.md](../docs/pipeline/blender-to-unity.md) (Draft) 따라가며 §8에 발생 이슈 기록
-    - 모델링 원칙(greeble 최소화): [voxel-greebles.md](../design/art/voxel-greebles.md)
+    - 모델링 원칙(greeble 최소화): [voxel-greebles.md](../design/art/research/voxel-greebles.md)
       (45° 스테핑 자제 / 팔레트 1+1 / 부위 분리 / 평면화+애니로 디테일 / 그림자 hue·밝기 대비)
     - 리지드 분절 런·어택 애니(12~24fps 스텝) 실제 제작
     - 확인: 크기/개수 성능 한계, Vertex Color 색 표시, GPU Instancing draw call
+
+14. **Voxel 학습 아티클 4편 전문 번역 + 정독** (개념 습득)
+    - @Voxels(Zach Soares) 시리즈: greebles / styles / blocky / marching-cube
+    - 요약은 [design/art/research/](../design/art/research/) 에 완료 → 전문 번역으로 깊이 정독
+    - 목적: 스타일 포지션(Vector vs Blocky) + 모델링 원칙 내재화
+
+15. **유사 아티클 검색·습득** (지속)
+    - 주제: voxel 디자인 방식, Blender↔Unity 워크플로우 정리
+    - 발견 시 design/art/research/ 에 갈무리 → 토론
 
 ---
 
