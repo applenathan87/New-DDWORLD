@@ -110,7 +110,7 @@
 
 ## C. 문서 정리 작업 (Q 아님 — 결정 확정 후 실행)
 
-- [ ] **game-concept.md** 전면 개정 (피치·기둥·코어루프·스코프 PvE/헥사로) + Concept Evolution 표에 피벗 행 추가
+- [x] **game-concept.md** 전면 개정 완료 (2026-06-29) — 결정분 서술 + 미정 placeholder + Core Tension(왜 정답찾기 방지) + Concept Evolution 피벗 행. 읽히는 합본 역할 겸함.
 - [ ] **ADR-001 (비동기 PvP)** → Status: Superseded + 새 ADR 작성("PvE 헥사 전환")
 - [ ] **combat.md** 개정 — 매치(o판 x승·동시공개) → PvE 헥사 인카운터
 - [ ] **deck.md / economy.md** 개정 — 매치 기반 → 하이브리드(영구 풀 + 출정 덱), 판돈 경제 재설계
