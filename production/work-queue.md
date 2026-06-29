@@ -1,11 +1,26 @@
 # Work Queue — DDworld
 
 > **Purpose**: 세션 간 영구 추적 작업 큐. TodoWrite는 현재 세션 한정이라, 다음 세션에도 이어질 작업은 여기에 기록.
-> **Last Updated**: 2026-06-27
+> **Last Updated**: 2026-06-29
 
 ---
 
-## 🔴 Phase 2 — 신규 GDD 작성 (다음 우선순위)
+## 🟥 최우선 (2026-06-29) — 코어 전환: PvE 헥사 영토 확장
+
+> ⚠️ **게임 근간이 바뀌었습니다.** PvP 심리전 폐기 → PvE 헥사 영토 확장 + 카운터배치 오토배틀.
+> 아래 "Phase 2"의 GDD 작성들은 **옛 PvP 구조 기반이라 보류** — 전환 Q 해결 후 재정의됨.
+
+0. **PvE 전환 Q 리스트 해결** ⭐⭐ — 시작점: **[design/research/pve-pivot.md](../design/research/pve-pivot.md)**
+   - 확정 결정 9개 + 미결 Q 24개가 Tier별로 정리됨
+   - 진행: Tier 0 → 1 순서로 Q 하나씩 결정 → 해당 문서 반영 → 커밋
+   - 최대 미결: **Q7(출정 형태 — 별도 던전 맵 vs 헥사 국경 밀기)**
+   - Q 충분히 닫히면 → game-concept.md 개정 → ADR-001 Superseded + 새 ADR → combat/deck/economy/deck-building 개정 → systems-index 갱신 (pve-pivot.md §C 참조)
+
+---
+
+## ⏸️ Phase 2 — 신규 GDD 작성 (보류 — PvE 전환 후 재정의)
+
+> 아래는 옛 PvP/트리맵 구조 기반. 전환 Q 해결 시 헥사/영토/건물/출정 구조로 재작성됨.
 
 ### Q1~Q6 결정 (2026-05-25) 으로 발생한 신규 시스템 GDD 작성 필요
 
