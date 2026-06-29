@@ -1,6 +1,11 @@
-# DDworld — Psychological Auto-Battler
+# DDworld
 
-1인 인디 오토배틀러 게임 "DDworld" 개발 프로젝트.
+> ⚠️ **2026-06-29 코어 전환: PvP 심리전 → PvE 헥사 영토 확장 오토배틀러.**
+> **현행 기준 = [game-concept.md](design/gdd/game-concept.md) + [pve-pivot.md](design/research/pve-pivot.md)(결정 로그).**
+> 아래 "Game Overview"·"Multiplayer-Ready 원칙"은 **옛 PvP 기준이라 폐기 대기** — game-concept.md가 우선한다.
+> 옛 시스템 GDD(combat/deck/economy/deck-building/systems-index)는 `design/gdd/_archive/`로 이동, [ADR-001](docs/architecture/ADR-001-async-pvp.md)(비동기 PvP)도 폐기 예정. **PvP·고스트·매칭·판돈·심리전 내용 참조 금지.**
+
+1인 인디 게임 "DDworld" 개발 프로젝트.
 
 ## Game Overview
 
