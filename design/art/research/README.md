@@ -36,6 +36,7 @@
 
 ## 주제 맵 (확장 예정)
 
+- **DDworld 결정/포지션**: [ddworld-voxel-style.md](./ddworld-voxel-style.md) — 스타일=정점색 voxel, 디테일=거리 기준 (논의 정리)
 - **스타일/모델링**: voxel-styles · blocky-voxelart · voxel-greebles
 - **툴 기법**: magicavoxel-marching-cubes (참고용)
 - **예정(검색)**: 유사 아티클 — 디자인 방식, Blender↔Unity 워크플로우 (work-queue 15)
