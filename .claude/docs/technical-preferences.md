@@ -55,7 +55,9 @@
 
 ## Architecture Decisions Log
 
-- [No ADRs yet — use /architecture-decision to create one]
+- [ADR-001](../../docs/architecture/ADR-001-async-pvp.md) — 비동기 PvP를 MVP 대전 모드로 채택 (2026-05-25, Accepted)
+- [ADR-002](../../docs/architecture/ADR-002-visual-style-low-poly-3d.md) — 비주얼 스타일 Low-poly Voxel 3D (2026-05-25, Accepted · 성능 가정은 ADR-003이 갱신)
+- [ADR-003](../../docs/architecture/ADR-003-rigid-instancing-crowd-rendering.md) — 대량 캐릭터 렌더링 & 전투 시뮬: 리지드 부위 인스턴싱 + 정점색 1머티리얼 + 데이터 결정론 시뮬 (목표 상한 400, VAT 배제) (2026-06-29, Accepted)
 
 ## Engine Specialists
 

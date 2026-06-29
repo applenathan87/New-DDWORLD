@@ -4,6 +4,7 @@
 > **Date**: 2026-05-25
 > **Decider**: nathan
 > **Tags**: visual, art-direction, scope, tooling
+> **Refined by**: [ADR-003](ADR-003-rigid-instancing-crowd-rendering.md) (2026-06-29) — 성능/렌더 경로를 "GPU Skinning + 200명" 가정에서 **리지드 부위 인스턴싱 + 정점색 1머티리얼 + 데이터 시뮬 + 400명**으로 갱신. 비주얼 스타일 결정 자체는 유효(superseded 아님). 아래 성능 관련 항목은 ADR-003 경로로 대체됨.
 
 ---
 
@@ -81,14 +82,14 @@ DDworld의 기존 비주얼 방향은 **HD-2D** (3D 환경 + 2D 픽셀 스프라
 4. **검증된 인디 트랙** — TT, Bad North, A Short Hike 등
 5. **도구 단순화** — MagicaVoxel + Blender + Unity (3개 명확)
 6. **AI 도구 활용 가능** — Voxel AI 생성기, Mixamo 등
-7. **GPU Instancing 효율** — 단색 머티리얼로 200명 무리 없음
+7. **GPU Instancing 효율** — 정점색 1머티리얼로 대량 렌더 유리 (구체 경로·상한은 [ADR-003](ADR-003-rigid-instancing-crowd-rendering.md): 리지드 부위 인스턴싱 + 400명)
 
 ### Negative (부정적)
 
 1. **"픽셀 아트" 정체성 손실** — 픽셀 미감 팬 일부 이탈 가능성 (단, 핵심 타겟은 비주얼보다 메카닉)
 2. **art-bible / visual-polish 일부 작업 폐기** — 단, 코드 변경 0이라 매몰비용 적음
 3. **본 리깅 학습 필요** — Blender 새 영역 (단, Mixamo로 우회 가능)
-4. **200명 + 본 애니메이션 성능 주의** — 풀배치 시 15ms 근접. 최적화 옵션 필수 (Animator Culling, GPU Skinning, LOD)
+4. ~~**200명 + 본 애니메이션 성능 주의** — 풀배치 시 15ms 근접. 최적화 옵션 필수 (Animator Culling, GPU Skinning, LOD)~~ → **[ADR-003] 갱신**: 스킨드/GPU Skinning 가정 폐기. 리지드 부위 인스턴싱 + 정점색 1머티리얼 + 데이터 시뮬로 400명 대응 (스키닝 비용 자체가 없음)
 
 ### Mitigations (완화책)
 
@@ -96,7 +97,7 @@ DDworld의 기존 비주얼 방향은 **HD-2D** (3D 환경 + 2D 픽셀 스프라
 |------|---------|
 | 픽셀 팬 이탈 | Voxel은 픽셀의 친척. 일부 호환 가능 |
 | 본 리깅 학습 부담 | Mixamo 자동 리깅 (캐릭터 업로드 → 자동) |
-| 성능 (200명 풀배치) | Animator CullingMode + GPU Skinning + LOD (필수) |
+| 성능 (대량 캐릭터) | **[ADR-003] 갱신**: 리지드 부위 인스턴싱 + 정점색 1머티리얼 + 데이터 시뮬 (스키닝 없음) → 400명 |
 | 분리 부위 정렬 | MagicaVoxel World Mode pivot 정확히 설정 |
 
 ---
@@ -142,15 +143,21 @@ DDworld의 기존 비주얼 방향은 **HD-2D** (3D 환경 + 2D 픽셀 스프라
   - 약 1주
 ```
 
-### 성능 최적화 체크리스트 (200명 대응)
+### 성능 최적화 체크리스트 (대량 캐릭터)
 
-- [ ] **Animator.cullingMode = CullCompletely** (안 보이는 유닛 비활성)
-- [ ] **GPU Skinning 활성화** (Project Settings → Player)
-- [ ] **Material에 Enable GPU Instancing 체크**
-- [ ] **본 수 최소화** (휴머노이드 30개 → 8~12개로)
-- [ ] **LOD 시스템** (먼 유닛은 단순 메쉬 또는 A2)
-- [ ] **Object Pool** (생성/파괴 대신 재사용)
-- [ ] **Profiler로 16.6ms 예산 검증**
+> ⚠️ **[ADR-003]로 대체됨.** 아래 GPU Skinning 기반 체크리스트는 스킨드 메쉬 가정용이었음.
+> 현재 경로(리지드 부위 인스턴싱 + 정점색 1머티리얼 + 데이터 시뮬)의 검증 항목은
+> [ADR-003 §Validation Criteria](ADR-003-rigid-instancing-crowd-rendering.md)를 따른다.
+
+(아래는 폐기된 스킨드 가정 — 참고용 보존)
+
+- [ ] ~~**Animator.cullingMode = CullCompletely**~~
+- [ ] ~~**GPU Skinning 활성화**~~
+- [x] **Material에 Enable GPU Instancing** (여전히 유효 — 정점색 1머티리얼)
+- [ ] ~~**본 수 최소화 (휴머노이드 30개 → 8~12개)**~~ (리지드는 부위당 단일 본)
+- [x] **LOD 시스템** (먼/작은 유닛 디테일·애니 갱신 빈도 ↓ — 여전히 유효)
+- [x] **Object Pool** (여전히 유효)
+- [x] **Profiler로 16.6ms 예산 검증** (여전히 유효)
 
 ### 도구 학습 자료
 
@@ -178,9 +185,10 @@ DDworld의 기존 비주얼 방향은 **HD-2D** (3D 환경 + 2D 픽셀 스프라
 - [design/research/comparisons/despots-game.md](../../design/research/comparisons/despots-game.md) — 인디 벤치마크
 - [design/research/comparisons/bazaar.md](../../design/research/comparisons/bazaar.md) — 빌드 서사 영감
 
-### 향후 ADR 후보
-- ADR-003: 매치 데이터 직렬화 포맷
-- ADR-004: BaaS 선택 (Firebase 등)
+### 관련 / 향후 ADR
+- [ADR-003: 리지드 인스턴싱 & 대량 캐릭터 렌더/시뮬](ADR-003-rigid-instancing-crowd-rendering.md) (Accepted, 본 ADR 성능 가정 갱신)
+- (향후) 매치 데이터 직렬화 포맷
+- (향후) BaaS 선택 (Firebase 등)
 
 ---
 

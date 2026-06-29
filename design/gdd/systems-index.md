@@ -77,7 +77,7 @@
 - [ ] Warning 해소: combat.md 배치 제한 시간 확정, Game Feel 섹션 보완
 
 **아키텍처**:
-- [ ] /create-architecture 시작 가능 (Blocking 없음, ADR-001 채택됨)
+- [ ] /create-architecture 시작 가능 (Blocking 없음, ADR-001·002·003 채택됨)
 - [ ] 향후 ADR 후보: 매치 데이터 직렬화 포맷, BaaS 선택, 신규 플레이어 보호 정책
 
 ## 아키텍처 결정 기록
@@ -85,6 +85,8 @@
 | ADR | 제목 | 일자 | Status |
 |-----|------|------|--------|
 | [ADR-001](../../docs/architecture/ADR-001-async-pvp.md) | 비동기 PvP를 MVP 대전 모드로 채택 | 2026-05-25 | Accepted |
+| [ADR-002](../../docs/architecture/ADR-002-visual-style-low-poly-3d.md) | 비주얼 스타일 — Low-poly Voxel 3D 채택 | 2026-05-25 | Accepted (ADR-003이 성능 가정 갱신) |
+| [ADR-003](../../docs/architecture/ADR-003-rigid-instancing-crowd-rendering.md) | 대량 캐릭터 렌더링 & 전투 시뮬 — 리지드 부위 인스턴싱 + 데이터 결정론 시뮬 | 2026-06-29 | Accepted |
 
 ## Status 용어
 

@@ -80,32 +80,42 @@
 ## 🎨 아트 / Voxel 에셋 파이프라인
 
 13. **첫 Voxel 캐릭터 — MagicaVoxel→Blender 리지드 애니 작업 시 유의점 적용·검증**
+    - ⭐ **[ADR-003](../docs/architecture/ADR-003-rigid-instancing-crowd-rendering.md) 규칙 위에서 진행**: 리지드 바인드(웨이트 페인팅 X) + 정점색 1머티리얼 + VAT 안 씀. 인스턴싱/정점색/팀틴트를 Frame Debugger·Profiler로 검증(ADR-003 §Validation)
     - 기술 파이프라인: [blender-to-unity.md](../docs/pipeline/blender-to-unity.md) (Draft) 따라가며 §8에 발생 이슈 기록
     - 모델링 원칙(greeble 최소화): [voxel-greebles.md](../design/art/research/voxel-greebles.md)
       (45° 스테핑 자제 / 팔레트 1+1 / 부위 분리 / 평면화+애니로 디테일 / 그림자 hue·밝기 대비)
     - 리지드 분절 런·어택 애니(12~24fps 스텝) 실제 제작
     - 확인: 크기/개수 성능 한계, Vertex Color 색 표시, GPU Instancing draw call
 
-14. **Voxel 학습 아티클 4편 전문 번역 + 정독** (개념 습득)
+14. ✅ **Voxel 학습 아티클 4편 정독** (개념 습득) — 2026-06-29 완료
     - @Voxels(Zach Soares) 시리즈: greebles / styles / blocky / marching-cube
-    - 요약은 [design/art/research/](../design/art/research/) 에 완료 → 전문 번역으로 깊이 정독
-    - 목적: 스타일 포지션(Vector vs Blocky) + 모델링 원칙 내재화
+    - 전문 번역 3편 완료: [greebles-full](../design/art/research/voxel-greebles-full.md) · [styles-full](../design/art/research/voxel-styles-full.md) · [blocky-full](../design/art/research/blocky-voxelart-full.md)
+    - marching-cube는 브리핑만(우리 방향 아님, 기존 요약본 유지)
+    - 결과: 스타일 포지션(Vector~Blocky) + 모델링 원칙 내재화 → ADR-003 결정의 기반
 
-15. **유사 아티클 검색·습득** (지속)
-    - 주제: voxel 디자인 방식, Blender↔Unity 워크플로우 정리
+15. **유사 아티클 검색·습득** (지속) — 2026-06-29 두 파트로 분리
+    - **파트1: 복셀 캐릭터 디자인 방법론** (← 현재 집중)
+      - 비율/실루엣/해상도/팔레트/가독성 + 부위 분리 전제 설계
+      - ⭐ **성능 방법론**: 귀여움 유지하며 캐릭터를 최대한 많이 띄워도 무거워지지 않는 설계
+        (저 voxel 수, 공유 머티리얼/팔레트, GPU Instancing, LOD, draw call 예산, 메쉬 최적화, 리지드 본 = 저비용 애니)
+    - **파트2: MagicaVoxel 파트 분리 export** (보류, 나중에)
+      - Head/Body/Arms/Legs/Weapon 별 오브젝트/그룹 분리, 피벗 유지, 정점색 보존, Blender 재분리
+      - work-queue 13번(첫 리지드 애니)의 직접 전제 조건
     - 발견 시 design/art/research/ 에 갈무리 → 토론
 
 ---
 
 ## 🔵 아키텍처 / 인프라
 
-11. **`/create-architecture` 시작 가능** — Blocking 없음, ADR-001 채택됨
+11. **`/create-architecture` 시작 가능** — Blocking 없음, ADR-001·002·003 채택됨
 
-12. **향후 ADR 후보**:
-    - ADR-002: 매치 데이터 직렬화 포맷 (Protobuf vs JSON vs MessagePack)
-    - ADR-003: 인프라/BaaS 선택 (Firebase 등)
-    - ADR-004: 신규 플레이어 보호 정책 (AI 매칭 비율, ELO 보정)
-    - ADR-005: 고스트 데이터 갱신 정책
+**채택된 ADR**: [ADR-001](../docs/architecture/ADR-001-async-pvp.md) 비동기 PvP · [ADR-002](../docs/architecture/ADR-002-visual-style-low-poly-3d.md) Low-poly Voxel · [ADR-003](../docs/architecture/ADR-003-rigid-instancing-crowd-rendering.md) 리지드 인스턴싱 대량 렌더/시뮬
+
+12. **향후 ADR 후보** (번호 미정 — 작성 시 다음 번호 부여):
+    - 매치 데이터 직렬화 포맷 (Protobuf vs JSON vs MessagePack) — ADR-003이 병사 데이터 구조 기반 제공
+    - 인프라/BaaS 선택 (Firebase 등)
+    - 신규 플레이어 보호 정책 (AI 매칭 비율, ELO 보정)
+    - 고스트 데이터 갱신 정책
 
 ---
 
