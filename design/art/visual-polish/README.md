@@ -1,10 +1,10 @@
 # Visual Polish — Low-poly Voxel 3D 구현 가이드
 
-> **Status**: HD-2D 방향성 폐기 → Low-poly Voxel 3D 전환 (2026-05-25, [ADR-002](../../../docs/architecture/ADR-002-visual-style-low-poly-3d.md))
-> **Last Updated**: 2026-05-25
+> **Status**: Low-poly Voxel 3D 구현 가이드 (How). 정본 방향(What)은 [art-bible.md](../art-bible.md)
+> **Last Updated**: 2026-06-29
 > **Owner**: nathan
 >
-> ⚠️ **방향 전환 안내**: 이 폴더는 원래 HD-2D 구현 가이드였으나, 2026-05-25 비주얼 스타일 결정으로 **Low-poly Voxel 3D 방향으로 재편**됩니다. [hd2d-setup-plan.md](hd2d-setup-plan.md)는 deprecated 참고용으로 보존됩니다.
+> 구버전 HD-2D 마스터 플랜(`hd2d-setup-plan.md`)은 `design/art/_archive/`로 격리됨. HD-2D에서 유래했지만 복셀에 유효한 연출(DOF·Tilt-shift·Bloom·Color Grading)은 아래 효과 테이블과 art-bible §1·§2에 유지된다.
 
 이 폴더는 DDworld의 **Low-poly Voxel 3D 비주얼**을 실제 Unity 프로젝트에서 구현하기 위한 가이드 문서를 담습니다.
 
@@ -74,8 +74,8 @@ Day 28 (2026-04-27) 작업 마무리 후, **게임의 룩이 "단순한 픽셀 �
 
 | 파일 | 내용 | 상태 |
 |------|------|------|
-| **README.md** | 이 파일. 인덱스 + 현재 작업 컨텍스트 | ✅ 작성됨 |
-| **hd2d-setup-plan.md** ⭐ | **마스터 플랜**. Phase 1~5 단계별 계획 (v2: 3D 환경 우선) | ✅ 작성됨 |
+| **README.md** | 이 파일. 인덱스 + 효과 셋업 | ✅ 작성됨 |
+| ~~hd2d-setup-plan.md~~ | (구 마스터 플랜 — `_archive/`로 격리) | 🗄️ archived |
 | **3d-environment.md** ⭐ | **Phase 1 상세** (Blender 모델 목록, Import 설정, 배치) | 📋 Phase 1 진입 시 작성 |
 | post-processing.md | Phase 2 상세 (Volume Profile 파라미터) | 📋 Phase 2 진입 시 작성 |
 | lighting.md | Phase 3 상세 (조명 시스템) | 📋 Phase 3 진입 시 작성 |
@@ -92,9 +92,9 @@ Day 28 (2026-04-27) 작업 마무리 후, **게임의 룩이 "단순한 픽셀 �
 
 ### Step 1: 컨텍스트 복구
 ```
-1. 이 README.md 읽기 (현재 컨텍스트 파악)
-2. hd2d-setup-plan.md 읽기 (마스터 플랜 확인)
-3. design/art/art-bible.md 읽기 (비주얼 정체성 재확인)
+1. 이 README.md 읽기 (효과 셋업/도구 체인 파악)
+2. design/art/art-bible.md 읽기 (정본 — 비주얼 정체성 + ADR-003 렌더 규칙)
+3. (구 HD-2D 플랜이 필요하면 design/art/_archive/ 참조)
 ```
 
 ### Step 2: 검토 결과에 따라 분기
