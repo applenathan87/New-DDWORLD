@@ -1,7 +1,17 @@
 # Work Queue — DDworld
 
-> **Purpose**: 세션 간 영구 추적 작업 큐. TodoWrite는 현재 세션 한정이라, 다음 세션에도 이어질 작업은 여기에 기록.
+> **Purpose**: 세션 간 영구 추적 작업 큐 = 이 프로젝트의 영구 TODO. (TodoWrite 도구는 세션 한정이라 재시작 시 사라짐 → 영구 추적은 이 파일.)
 > **Last Updated**: 2026-06-29
+
+---
+
+## 🎯 지금 할 일 (TODO) — 여기만 읽으면 됨
+
+> "todo 찾아봐" = **이 블록만** 읽기 (파일 전체 X, 토큰 절약).
+
+- **[진행중]** PvE 전환 Q 리스트 풀기 → **[design/research/pve-pivot.md](../design/research/pve-pivot.md)** (Tier 0 Q1부터, 하나씩 결정→커밋)
+- 다음 큰 갈림길: Q7(출정 형태 — 별도 던전 vs 헥사 국경 밀기)
+- 그 외 모든 큐(아트·검증·보류된 GDD)는 아래 섹션 참조
 
 ---
 
