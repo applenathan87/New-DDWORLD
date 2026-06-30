@@ -90,6 +90,7 @@ namespace DDworld.HexPrototype
             public TileState state;
             public GameObject go;
             public MeshRenderer mr;
+            public GameObject deco;   // 타일 위 식별용 모양(본성/건물/적) — 없으면 null
         }
 
         readonly Dictionary<HexCoord, Tile> tiles = new();
@@ -285,6 +286,49 @@ namespace DDworld.HexPrototype
             var mc = go.AddComponent<MeshCollider>();
             mc.sharedMesh = hexMesh;
             tiles[c] = new Tile { coord = c, state = st, go = go, mr = mr };
+            UpdateDeco(tiles[c]);
+        }
+
+        // 타일 상태별 식별용 플레이스홀더 모양을 타일 위에 올린다 (본성=큐브, 농장=실린더, 금광=구, 적=캡슐).
+        // 던져버릴 프로토타입용 — 나중에 보셀 건물 모델로 교체. 콜라이더는 제거해 클릭이 타일로 통과되게.
+        void UpdateDeco(Tile t)
+        {
+            if (t.deco != null)
+            {
+                var old = t.deco.GetComponent<MeshRenderer>();
+                if (old != null) Destroy(old.material);
+                Destroy(t.deco);
+                t.deco = null;
+            }
+
+            PrimitiveType type; Color col; Vector3 scale; float localY;
+            switch (t.state)
+            {
+                case TileState.Castle:
+                    type = PrimitiveType.Cube;     col = new Color(0.95f, 0.86f, 0.55f);
+                    scale = new Vector3(0.62f, 1.00f, 0.62f) * hexSize; localY = tileHeight + scale.y * 0.5f; break;
+                case TileState.ClaimedFarm:
+                    type = PrimitiveType.Cylinder; col = new Color(0.82f, 0.70f, 0.38f);
+                    scale = new Vector3(0.34f, 0.26f, 0.34f) * hexSize; localY = tileHeight + scale.y; break; // 실린더 기본높이=2
+                case TileState.ClaimedMine:
+                    type = PrimitiveType.Sphere;   col = new Color(0.58f, 0.47f, 0.40f);
+                    scale = Vector3.one * 0.46f * hexSize; localY = tileHeight + scale.y * 0.5f; break;
+                case TileState.UnclaimedEnemy:
+                    type = PrimitiveType.Capsule;  col = new Color(0.62f, 0.22f, 0.22f);
+                    scale = new Vector3(0.30f, 0.30f, 0.30f) * hexSize; localY = tileHeight + scale.y; break; // 캡슐 기본높이=2
+                default:
+                    return; // 빈 땅 / 정복한 빈 타일 = 모양 없음
+            }
+
+            var go = GameObject.CreatePrimitive(type);
+            go.name = $"Deco_{t.state}_{t.coord}";
+            var dc = go.GetComponent<Collider>();
+            if (dc != null) Destroy(dc); // 클릭이 도형을 통과해 타일에 닿도록
+            go.transform.SetParent(t.go.transform, false); // 타일 자식 → 선택 시 함께 떠오름
+            go.transform.localScale = scale;
+            go.transform.localPosition = new Vector3(0f, localY, 0f);
+            ApplyColor(go.GetComponent<MeshRenderer>(), col);
+            t.deco = go;
         }
 
         // ── 입력 (OnGUI 이벤트 기반 — 인풋 백엔드 무관) ─────────────────────────────
@@ -351,6 +395,7 @@ namespace DDworld.HexPrototype
         void Claim(Tile t)
         {
             t.state = TileState.ClaimedEmpty;
+            UpdateDeco(t); // 적이었으면 캡슐 제거
             claimedCount++;
             AdvanceDay();
             // 본성 레벨 = 정복(본성 제외) / N + 1
@@ -375,6 +420,7 @@ namespace DDworld.HexPrototype
             builtCount++;
             if (farm) { t.state = TileState.ClaimedFarm; farmCount++; log = "농장 건설 — 카드 생산 시작"; }
             else { t.state = TileState.ClaimedMine; mineCount++; log = "금광 건설 — 골드 수입 증가"; }
+            UpdateDeco(t); // 건물 모양 올리기
             RefreshColors();
         }
 
