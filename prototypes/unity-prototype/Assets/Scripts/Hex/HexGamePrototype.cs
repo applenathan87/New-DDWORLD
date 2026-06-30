@@ -1,6 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering;          // Volume, VolumeProfile
+using UnityEngine.Rendering.Universal; // DepthOfField, DepthOfFieldMode, GetUniversalAdditionalCameraData
 
 namespace DDworld.HexPrototype
 {
@@ -41,10 +43,27 @@ namespace DDworld.HexPrototype
 
         [Header("Camera Nudge (타일 선택 시 살짝 이동)")]
         public bool cameraNudge = true;     // 선택 시 카메라가 그쪽으로 살짝 이동 on/off
-        public float nudgeDelay = 0.12f;    // 선택 후 이동 시작까지 딜레이(초) — 잠깐 멈췄다가 움직임
-        public float nudgeFactor = 0.25f;   // 타일 방향 이동 비율 (0=정지, 1=타일 중심까지). 살짝만
-        public float nudgeSmooth = 0.35f;   // 이동 부드러움 (SmoothDamp 시간, 클수록 느긋)
+        public float nudgeDelay = 0.15f;    // 선택 후 이동 시작까지 딜레이(초) — 잠깐 멈췄다가 움직임
+        [Range(0f, 1f)] public float nudgeFactor = 0.5f; // 타일 방향 이동 비율 (0=정지, 1=타일이 화면 중앙). 클수록 더 가운데로
+        public float nudgeSmooth = 0.4f;    // 이동 부드러움 (SmoothDamp 시간, 클수록 느긋)
         public float nudgeMaxDist = 3f;     // 최대 이동 거리 (과도한 드리프트/멀미 방지)
+
+        [Header("Camera Pan (우클릭 드래그로 이동)")]
+        public bool cameraPan = true;       // 우클릭 드래그 팬 on/off
+        public float panSpeed = 1f;         // 팬 속도 (1 ≈ grab 1:1)
+        public bool panInvert = false;      // 팬 방향 반대로
+
+        [Header("DOF — 틸트시프트 (런타임 Volume 생성)")]
+        public bool dofEnabled = true;                            // DOF on/off
+        public DepthOfFieldMode dofMode = DepthOfFieldMode.Bokeh; // Bokeh=근/원경 블러(미니어처), Gaussian=원경만(art-bible 표기)
+        [Header("DOF · Bokeh 모드")]
+        [Min(0.1f)] public float dofFocusDistance = 10f;     // 선명한 거리(카메라~중심). cameraDistance(10)와 맞추면 중앙 선명
+        [Range(1f, 32f)] public float dofAperture = 1f;      // 조리개 — 작을수록 블러 강함. URP 유효범위 1~32 (1=최대 블러)
+        [Range(1f, 300f)] public float dofFocalLength = 59f; // 초점거리 — 클수록 블러 강함
+        [Header("DOF · Gaussian 모드")]
+        [Min(0f)] public float dofGaussStart = 11f;          // 블러 시작 거리
+        [Min(0f)] public float dofGaussEnd = 28f;            // 최대 블러 거리
+        [Range(0.5f, 1.5f)] public float dofGaussRadius = 1.2f; // 최대 블러 반경
 
         // ── 상태 ─────────────────────────────
         int day = 1;
@@ -86,6 +105,10 @@ namespace DDworld.HexPrototype
         Vector3 pivotVel;       // SmoothDamp 속도 버퍼
         float nudgeTimer;       // >0 = 딜레이 대기 중 (이동 보류)
 
+        // DOF 런타임 상태
+        Volume postVolume;
+        DepthOfField dof;
+
         // ── 부트스트랩 ─────────────────────────────
         void Start()
         {
@@ -96,6 +119,7 @@ namespace DDworld.HexPrototype
             if (litShader == null) litShader = Shader.Find("Sprites/Default");
 
             SetupCameraAndLight();
+            SetupPostFX();
             hexMesh = BuildHexMesh(hexSize, tileHeight);
             GenerateMap();
             SetupMarker();
@@ -124,6 +148,41 @@ namespace DDworld.HexPrototype
             RenderSettings.ambientLight = new Color(0.32f, 0.34f, 0.45f); // 차가운 앰비언트
         }
 
+        // 런타임으로 글로벌 Volume + DepthOfField를 만들어 틸트시프트 DOF를 켠다 (씬에 Volume 없어도 동작).
+        void SetupPostFX()
+        {
+            if (cam == null) return;
+            // URP: 카메라가 포스트프로세싱을 렌더하도록 보장
+            var camData = cam.GetUniversalAdditionalCameraData();
+            if (camData != null) camData.renderPostProcessing = true;
+
+            var go = new GameObject("PrototypePostFX");
+            postVolume = go.AddComponent<Volume>();
+            postVolume.isGlobal = true;
+            postVolume.priority = 100f; // 씬 볼륨보다 우선 — DOF 확실히 적용
+            var profile = ScriptableObject.CreateInstance<VolumeProfile>();
+            postVolume.profile = profile;
+            dof = profile.Add<DepthOfField>(true);
+            ApplyDof();
+        }
+
+        // 인스펙터 노브 → DepthOfField 파라미터 반영 (LateUpdate에서 매 프레임 = 실시간 튜닝).
+        void ApplyDof()
+        {
+            if (dof == null) return;
+            dof.active = dofEnabled;
+            dof.mode.Override(dofEnabled ? dofMode : DepthOfFieldMode.Off);
+            // Bokeh (근/원경 블러 — 포커스 거리 기준)
+            dof.focusDistance.Override(dofFocusDistance);
+            dof.aperture.Override(dofAperture);
+            dof.focalLength.Override(dofFocalLength);
+            // Gaussian (원경 블러 — 거리 램프)
+            dof.gaussianStart.Override(dofGaussStart);
+            dof.gaussianEnd.Override(dofGaussEnd);
+            dof.gaussianMaxRadius.Override(dofGaussRadius);
+            dof.highQualitySampling.Override(true);
+        }
+
         // 카메라를 피벗 중심으로 pitch/yaw/거리/시야각에 맞춰 배치
         void PositionCamera()
         {
@@ -141,6 +200,7 @@ namespace DDworld.HexPrototype
         {
             UpdateCameraNudge();
             PositionCamera(); // 인스펙터 값 바꾸면 플레이 중에도 즉시 반영
+            ApplyDof();       // DOF 노브 실시간 반영
         }
 
         // 선택 시 카메라가 그쪽으로 살짝 이동 — 딜레이 동안은 멈췄다가, 끝나면 SmoothDamp로 스르륵.
@@ -158,6 +218,24 @@ namespace DDworld.HexPrototype
             toward.y = 0f;
             pivotTarget = cameraPivot + Vector3.ClampMagnitude(toward * nudgeFactor, nudgeMaxDist);
             nudgeTimer = nudgeDelay; // 딜레이 후 이동 시작
+        }
+
+        // 우클릭 드래그 팬 — 마우스 픽셀 이동량을 지면(XZ) 이동으로 변환 (grab 스타일).
+        void HandlePan(Vector2 deltaPixels)
+        {
+            if (cam == null) return;
+            Vector3 right = cam.transform.right; right.y = 0f; right.Normalize();
+            Vector3 fwd = cam.transform.forward; fwd.y = 0f; fwd.Normalize();
+            float dist = cameraDistance > 0f ? cameraDistance : (mapRadius + 2) * hexSize * 2.2f;
+            // 화면 1픽셀당 월드 거리 ≈ 피벗 평면 프러스텀 높이 / 화면 높이 (대략 1:1 grab)
+            float worldPerPixel = 2f * dist * Mathf.Tan(cameraFov * 0.5f * Mathf.Deg2Rad) / Mathf.Max(1, Screen.height);
+            float s = panSpeed * worldPerPixel * (panInvert ? -1f : 1f);
+            // 드래그 방향으로 보드가 끌려오게 → 피벗은 반대로(가로) / 화면 위로 갈수록 안쪽(세로)
+            Vector3 worldDelta = (-right * deltaPixels.x + fwd * deltaPixels.y) * s;
+            // 기준점·nudge목표·현재피벗을 함께 이동 → nudge와 공존 + 드래그 중 즉시 따라감
+            cameraPivot += worldDelta;
+            pivotTarget += worldDelta;
+            pivotCurrent += worldDelta;
         }
 
         void SetupMarker()
@@ -393,6 +471,10 @@ namespace DDworld.HexPrototype
             // 월드 클릭 (버튼이 소비 안 한 MouseDown만)
             if (Event.current.type == EventType.MouseDown && Event.current.button == 0)
                 HandleWorldClick();
+
+            // 우클릭 드래그 = 카메라 팬
+            if (cameraPan && Event.current.type == EventType.MouseDrag && Event.current.button == 1)
+            { HandlePan(Event.current.delta); Event.current.Use(); }
         }
 
         void DrawSelectedPanel()
