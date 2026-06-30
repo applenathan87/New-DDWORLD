@@ -436,4 +436,9 @@ Head / Body / Arm_L / Arm_R / Leg_L / Leg_R / Weapon / Shield (+ 병종별 식�
 
 ## 9. Reference Direction
 
-[To be designed — 비주얼 코어 이후]
+### 연출/보드 프레이밍 (복셀 위에 얹는 레이어)
+
+- **[Yield! Tacticon](references/yield-tacticon.md)** — 헥사 디오라마 *연출* 타깃. 틸트시프트 DOF·**볼륨 구름 경계**·헥사 타일 **두께/릴리프**·미니멀 HUD. ⚠️ 캐릭터 룩은 차용 안 함(이 게임은 매끄러운 미니어처, 우리는 정점색 복셀 유지 §1).
+- **[헥사 왕국 트와일라잇](references/concept-hex-kingdom.md)** — 톤/구도 비전(트와일라잇 + 안개 경계 + 중앙 본성).
+
+[나머지 — 비주얼 코어 이후]
