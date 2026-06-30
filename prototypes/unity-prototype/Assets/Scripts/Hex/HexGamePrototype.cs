@@ -20,6 +20,7 @@ namespace DDworld.HexPrototype
         [Header("Map")]
         public int mapRadius = 4;       // 중심에서 헥사 거리
         public float hexSize = 1f;      // 헥사 외접 반지름
+        public float tileHeight = 0.4f; // 타일 두께(릴리프) — 0이면 평면 (Yield! Tacticon 레퍼 차용)
         public int mapSeed = 12345;     // 적 배치 시드(재현용)
 
         [Header("Economy / Tuning")]
@@ -32,10 +33,10 @@ namespace DDworld.HexPrototype
         public int tilesPerCastleLevel = 4;   // 정복 N개마다 본성 레벨업
 
         [Header("Camera (플레이 중 실시간 조정 가능)")]
-        public float cameraPitch = 35f;             // 내려다보는 각도(°). 작을수록 낮은 쿼터뷰
-        public float cameraYaw = 0f;                // 좌우 회전(°)
-        public float cameraDistance = 0f;           // 0 = 맵 크기에 맞춰 자동
-        public float cameraFov = 40f;               // 시야각
+        public float cameraPitch = 23f;             // 내려다보는 각도(°). 작을수록 낮은 쿼터뷰
+        public float cameraYaw = 0.2f;              // 좌우 회전(°)
+        public float cameraDistance = 10f;          // 0 = 맵 크기에 맞춰 자동
+        public float cameraFov = 30f;               // 시야각
         public Vector3 cameraPivot = Vector3.zero;  // 바라보는 중심점
 
         // ── 상태 ─────────────────────────────
@@ -81,7 +82,7 @@ namespace DDworld.HexPrototype
             if (litShader == null) litShader = Shader.Find("Sprites/Default");
 
             SetupCameraAndLight();
-            hexMesh = BuildHexMesh(hexSize);
+            hexMesh = BuildHexMesh(hexSize, tileHeight);
             GenerateMap();
             SetupMarker();
             RefreshColors();
@@ -418,32 +419,61 @@ namespace DDworld.HexPrototype
             RefreshColors();
         }
 
-        // ── 헥사 메쉬 (pointy-top, 평면 윗면, 양면) ─────────────────────────────
-        static Mesh BuildHexMesh(float size)
+        // ── 헥사 메쉬 (pointy-top 3D 프리즘: 윗면 + 6 옆면, 양면) ─────────────────────────────
+        // height=0 이면 기존처럼 평면. height>0 이면 두께 있는 타일(릴리프)이 된다.
+        // 윗면 노멀=up, 옆면 노멀=바깥쪽 → 낮은 쿼터뷰(pitch 23°)에서 옆면이 입체로 보인다.
+        static Mesh BuildHexMesh(float size, float height)
         {
             var mesh = new Mesh { name = "HexTile" };
-            var verts = new Vector3[7];
-            var normals = new Vector3[7];
-            verts[0] = Vector3.zero; normals[0] = Vector3.up;
+            var verts = new List<Vector3>();
+            var normals = new List<Vector3>();
+            var tris = new List<int>();
+
+            // 윗면/바닥 링 좌표 (윗면 y=height, 바닥 y=0)
+            var top = new Vector3[6];
+            var bot = new Vector3[6];
             for (int i = 0; i < 6; i++)
             {
                 float ang = Mathf.Deg2Rad * (60f * i - 30f);
-                verts[i + 1] = new Vector3(size * 0.96f * Mathf.Cos(ang), 0f, size * 0.96f * Mathf.Sin(ang));
-                normals[i + 1] = Vector3.up;
+                float x = size * 0.96f * Mathf.Cos(ang);
+                float z = size * 0.96f * Mathf.Sin(ang);
+                top[i] = new Vector3(x, height, z);
+                bot[i] = new Vector3(x, 0f, z);
             }
-            // 양면(36개) — 컬링 방향에 상관없이 위에서 항상 보이게
-            var tris = new int[36];
+
+            // ── 윗면 (양면, 노멀 up) ──
+            int center = verts.Count;
+            verts.Add(new Vector3(0f, height, 0f)); normals.Add(Vector3.up);
+            int ring = verts.Count;
+            for (int i = 0; i < 6; i++) { verts.Add(top[i]); normals.Add(Vector3.up); }
             for (int i = 0; i < 6; i++)
             {
-                int a = 1 + i, b = 1 + (i + 1) % 6;
-                // 앞면
-                tris[i * 6] = 0; tris[i * 6 + 1] = a; tris[i * 6 + 2] = b;
-                // 뒷면(역winding)
-                tris[i * 6 + 3] = 0; tris[i * 6 + 4] = b; tris[i * 6 + 5] = a;
+                int a = ring + i, b = ring + (i + 1) % 6;
+                tris.Add(center); tris.Add(a); tris.Add(b);   // 앞면
+                tris.Add(center); tris.Add(b); tris.Add(a);   // 뒷면(역winding) — 컬링 방향 무관하게 보이게
             }
-            mesh.vertices = verts;
-            mesh.normals = normals;
-            mesh.triangles = tris;
+
+            // ── 옆면 6개 (양면, 노멀 바깥쪽) ──
+            if (height > 0f)
+            {
+                for (int i = 0; i < 6; i++)
+                {
+                    int j = (i + 1) % 6;
+                    Vector3 outward = (top[i] + top[j]) * 0.5f; outward.y = 0f; outward.Normalize();
+                    int v = verts.Count;
+                    verts.Add(top[i]); verts.Add(top[j]); verts.Add(bot[i]); verts.Add(bot[j]);
+                    for (int k = 0; k < 4; k++) normals.Add(outward);
+                    // 쿼드(top_i, top_j, bot_i, bot_j) 양면
+                    tris.Add(v); tris.Add(v + 2); tris.Add(v + 1);
+                    tris.Add(v + 1); tris.Add(v + 2); tris.Add(v + 3);
+                    tris.Add(v); tris.Add(v + 1); tris.Add(v + 2);       // 역winding
+                    tris.Add(v + 1); tris.Add(v + 3); tris.Add(v + 2);
+                }
+            }
+
+            mesh.SetVertices(verts);
+            mesh.SetNormals(normals);
+            mesh.SetTriangles(tris, 0);
             mesh.RecalculateBounds();
             return mesh;
         }
