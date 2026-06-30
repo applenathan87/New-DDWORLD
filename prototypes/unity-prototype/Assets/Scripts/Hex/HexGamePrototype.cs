@@ -37,7 +37,14 @@ namespace DDworld.HexPrototype
         public float cameraYaw = 0.2f;              // 좌우 회전(°)
         public float cameraDistance = 10f;          // 0 = 맵 크기에 맞춰 자동
         public float cameraFov = 30f;               // 시야각
-        public Vector3 cameraPivot = Vector3.zero;  // 바라보는 중심점
+        public Vector3 cameraPivot = Vector3.zero;  // 바라보는 중심점(기준점)
+
+        [Header("Camera Nudge (타일 선택 시 살짝 이동)")]
+        public bool cameraNudge = true;     // 선택 시 카메라가 그쪽으로 살짝 이동 on/off
+        public float nudgeDelay = 0.12f;    // 선택 후 이동 시작까지 딜레이(초) — 잠깐 멈췄다가 움직임
+        public float nudgeFactor = 0.25f;   // 타일 방향 이동 비율 (0=정지, 1=타일 중심까지). 살짝만
+        public float nudgeSmooth = 0.35f;   // 이동 부드러움 (SmoothDamp 시간, 클수록 느긋)
+        public float nudgeMaxDist = 3f;     // 최대 이동 거리 (과도한 드리프트/멀미 방지)
 
         // ── 상태 ─────────────────────────────
         int day = 1;
@@ -73,10 +80,17 @@ namespace DDworld.HexPrototype
         Mesh hexMesh;
         Shader litShader;
 
+        // 카메라 nudge 런타임 상태
+        Vector3 pivotCurrent;   // 카메라가 실제로 바라보는 현재 피벗 (애니메이션됨)
+        Vector3 pivotTarget;    // 목표 피벗 (기준점 + 선택 타일 방향 오프셋)
+        Vector3 pivotVel;       // SmoothDamp 속도 버퍼
+        float nudgeTimer;       // >0 = 딜레이 대기 중 (이동 보류)
+
         // ── 부트스트랩 ─────────────────────────────
         void Start()
         {
             gold = startGold;
+            pivotCurrent = pivotTarget = cameraPivot; // 카메라 nudge 초기값 = 기준점
             litShader = Shader.Find("Universal Render Pipeline/Lit");
             if (litShader == null) litShader = Shader.Find("Standard");
             if (litShader == null) litShader = Shader.Find("Sprites/Default");
@@ -118,14 +132,32 @@ namespace DDworld.HexPrototype
             float p = cameraPitch * Mathf.Deg2Rad;
             float y = cameraYaw * Mathf.Deg2Rad;
             Vector3 dir = new Vector3(Mathf.Cos(p) * Mathf.Sin(y), Mathf.Sin(p), -Mathf.Cos(p) * Mathf.Cos(y));
-            cam.transform.position = cameraPivot + dir * dist;
-            cam.transform.LookAt(cameraPivot);
+            cam.transform.position = pivotCurrent + dir * dist;
+            cam.transform.LookAt(pivotCurrent);
             cam.fieldOfView = cameraFov;
         }
 
         void LateUpdate()
         {
+            UpdateCameraNudge();
             PositionCamera(); // 인스펙터 값 바꾸면 플레이 중에도 즉시 반영
+        }
+
+        // 선택 시 카메라가 그쪽으로 살짝 이동 — 딜레이 동안은 멈췄다가, 끝나면 SmoothDamp로 스르륵.
+        void UpdateCameraNudge()
+        {
+            if (!cameraNudge) pivotTarget = cameraPivot;        // 꺼져 있으면 피벗은 기준점을 따라감
+            if (nudgeTimer > 0f) { nudgeTimer -= Time.deltaTime; return; } // 딜레이 중엔 정지
+            pivotCurrent = Vector3.SmoothDamp(pivotCurrent, pivotTarget, ref pivotVel, nudgeSmooth);
+        }
+
+        // 선택 타일 방향으로 목표 피벗을 잡고 딜레이 타이머 시작.
+        void NudgeToward(Tile t)
+        {
+            Vector3 toward = t.coord.ToWorld(hexSize) - cameraPivot;
+            toward.y = 0f;
+            pivotTarget = cameraPivot + Vector3.ClampMagnitude(toward * nudgeFactor, nudgeMaxDist);
+            nudgeTimer = nudgeDelay; // 딜레이 후 이동 시작
         }
 
         void SetupMarker()
@@ -188,7 +220,7 @@ namespace DDworld.HexPrototype
             if (Physics.Raycast(ray, out RaycastHit hit, 1000f))
             {
                 var t = hit.collider.GetComponent<MeshFilter>() ? FindTileByGo(hit.collider.gameObject) : null;
-                if (t != null) { selected = t; RefreshColors(); }
+                if (t != null) { selected = t; RefreshColors(); if (cameraNudge) NudgeToward(t); }
             }
         }
 
