@@ -3,10 +3,9 @@
 > **생성**: 2026-06-30 (GPT 이미지 생성) · **용도**: PvE 헥사 영토 확장 게임의 비전 타깃
 > **상태**: 비전 레퍼런스 (MVP 스코프 아님 — 일부 요소는 Post-MVP)
 
-## 이미지 저장 안내
+## 이미지
 
-실제 PNG를 이 폴더(`design/art/references/`)에 저장하세요 — 예: `concept-hex-kingdom-twilight.png`.
-(이 폴더의 이미지 파일은 gitignore 대상일 수 있음 — 텍스트 설명만 git 추적.)
+**`concept-hex-kingdom-twilight.png`** (이 폴더, git 강제 추적). 폴더 자체는 기본 gitignore라, 추가 이미지는 로컬 보관되거나 `git add -f`로 추적.
 
 ## 무엇을 담고 있나 (장면 설명)
 
