@@ -180,14 +180,26 @@ namespace DDworld.HexPrototype
         void HandleWorldClick()
         {
             if (busy) return;
-            Vector3 sp = new Vector3(Event.current.mousePosition.x,
-                                     Screen.height - Event.current.mousePosition.y, 0f);
+            Vector2 m = Event.current.mousePosition;
+            if (IsOverGui(m)) return; // HUD/로그/버튼/패널 위 클릭은 뒤 타일 선택으로 흘리지 않음 (click-through 방지)
+            Vector3 sp = new Vector3(m.x, Screen.height - m.y, 0f);
             Ray ray = cam.ScreenPointToRay(sp);
             if (Physics.Raycast(ray, out RaycastHit hit, 1000f))
             {
                 var t = hit.collider.GetComponent<MeshFilter>() ? FindTileByGo(hit.collider.gameObject) : null;
                 if (t != null) { selected = t; RefreshColors(); }
             }
+        }
+
+        // OnGUI에서 그리는 패널들과 동일한 Rect — 그 위를 클릭하면 월드 raycast를 건너뜀.
+        // (GUI.Box/Label은 마우스 이벤트를 소비하지 않아 박스 위 클릭이 뒤 타일을 선택하던 문제 차단)
+        bool IsOverGui(Vector2 m)
+        {
+            if (new Rect(8, 8, 360, 92).Contains(m)) return true;                                 // 상단 HUD
+            if (new Rect(8, Screen.height - 40, Screen.width - 16, 32).Contains(m)) return true;   // 하단 로그
+            if (new Rect(Screen.width - 150, 10, 140, 72).Contains(m)) return true;                // End Turn + 맵 리셋 버튼
+            if (selected != null && new Rect(8, 110, 300, 150).Contains(m)) return true;           // 선택 패널
+            return false;
         }
 
         Tile FindTileByGo(GameObject go)
@@ -260,6 +272,10 @@ namespace DDworld.HexPrototype
             day++;
             gold += claimedCount * incomePerClaimedTile + mineCount * mineBonus;
             // 농장 카드 생산
+            // TODO(claude/검토): farmTimer가 전역 공유 + cards += farmCount 라서, 기존 농장이 타이머를
+            //   쌓아둔 상태에서 새 농장을 지으면 그 농장도 1일 만에 카드를 소급 생산함(농장별 독립 타이머 부재).
+            //   프로토타입 손맛 검증 목적상 의도적으로 방치 — production 경제 설계 시 농장별 builtDay 기반으로
+            //   (day - builtDay) % farmIntervalDays == 0 처리로 교체할 것. (적대적 리뷰 2026-06-30 확정 결함 #5)
             if (farmCount > 0)
             {
                 farmTimer++;
@@ -336,7 +352,7 @@ namespace DDworld.HexPrototype
             if (GUI.Button(new Rect(Screen.width - 150, 10, 140, 30), "End Turn (하루 보내기)"))
             { if (!busy) { AdvanceDay(); log = $"하루 경과 — Day {day}"; } }
             if (GUI.Button(new Rect(Screen.width - 150, 46, 140, 30), "맵 리셋"))
-                Reset();
+                ResetMap();
 
             // 선택 타일 패널
             if (selected != null) DrawSelectedPanel();
@@ -384,9 +400,15 @@ namespace DDworld.HexPrototype
             _ => "빈 땅",
         };
 
-        void Reset()
+        // 주의: 'Reset'은 MonoBehaviour 예약 메시지(에디터에서 컴포넌트 부착/컨텍스트 Reset 시 자동 호출)라 이름을 피함.
+        void ResetMap()
         {
-            foreach (var t in tiles.Values) Destroy(t.go);
+            // 진행 중 이동 연출을 끊고 입력 잠금/마커를 정리 — 코루틴 완료 콜백이 새 맵 상태를 오염시키는 것 방지.
+            StopAllCoroutines();
+            busy = false;
+            if (marker != null) marker.SetActive(false);
+            // 타일별 머티리얼 인스턴스도 함께 파괴 (GameObject만 Destroy하면 인스턴스 머티리얼이 누수됨).
+            foreach (var t in tiles.Values) { if (t.mr != null) Destroy(t.mr.material); Destroy(t.go); }
             tiles.Clear();
             selected = null;
             day = 1; gold = startGold; castleLevel = 1; claimedCount = 0;
