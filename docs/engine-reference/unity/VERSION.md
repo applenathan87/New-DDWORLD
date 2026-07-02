@@ -2,9 +2,12 @@
 
 | Field | Value |
 |-------|-------|
-| **Engine Version** | Unity 6.3 LTS (December 2025) |
-| **Project Pinned** | 2026-02-13 |
+| **Engine Version** | Unity **6000.5.1f1** (Unity 6.5, 2026-07-02 실측 — 프로토타입·Origin 동일) |
+| **Project Pinned** | 2026-02-13 (6.3 LTS) → 2026-07-02 갱신 (6000.5.1f1) |
 | **LLM Knowledge Cutoff** | May 2025 (~Unity 2022 LTS 2022.3) |
+
+> ⚠️ 이 폴더의 나머지 레퍼런스 문서들(modules/, plugins/, breaking-changes 등)은 **6.3 LTS 기준으로 작성**된 스냅샷이다.
+> 6.5에서 대부분 유효하나, API 세부가 다를 수 있으니 의심스러우면 공식 문서(6000.5) 교차 확인.
 
 ## Knowledge Gap Warning
 

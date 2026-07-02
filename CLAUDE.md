@@ -7,6 +7,16 @@
 
 1인 인디 게임 "DDworld" 개발 프로젝트.
 
+## ⭐ 현재 작업 트랙 (2026-07-02~): Origin — 이해하며 직접 만들기
+
+**당분간 메인 작업은 [`Origin/`](Origin/CLAUDE.md)에서 진행한다.**
+유니티를 처음부터 하나하나 이해하며 전투 MVP("재밌고 보기 좋은 전투")를 직접 만드는 학습·제작 트랙.
+
+- 전체 지도: [Origin/roadmap.md](Origin/roadmap.md) (0~9단계) · 작업일지: `Origin/journal/`
+- **작업 방식의 핵심 = 사용자의 이해도 축적**: 이해를 쌓아 확실한 디렉션을 주고, 직접 고칠 부분은 직접 고칠 수 있게 되는 것이 목표. 분담은 유연 — 사용자가 직접 하는 부분도, Claude에게 맡기는 부분도 있다. 단 Claude는 항상 "왜/어떻게"를 설명하며 진행. 상세는 [Origin/CLAUDE.md](Origin/CLAUDE.md).
+- Origin 폴더에서의 작업은 학습 공간이므로 아래 프로덕션 기준(coding standards의 GDD 8섹션, 테스트 게이트 등)을 적용하지 않는다 (프로토타입 수준).
+- 기획 문서 작업(GDD·아트바이블 등)은 기존대로 이 저장소 규칙을 따른다.
+
 ## Game Overview
 
 - **게임명**: DDworld
@@ -40,7 +50,7 @@
 
 ## Technology Stack
 
-- **Engine**: Unity 6.3 LTS
+- **Engine**: Unity **6000.5.1f1** (Unity 6.5 — 2026-07-02 실측. 기존 프로토타입·Origin 새 프로젝트 동일 버전)
 - **Language**: C#
 - **Rendering**: URP (Universal Render Pipeline) — 쿼터뷰 3D + Post-processing
 - **3D 모델링**: MagicaVoxel (캐릭터) + Blender (애니메이션, 환경)

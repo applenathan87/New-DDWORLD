@@ -4,7 +4,7 @@
 
 ## Engine & Language
 
-- **Engine**: Unity 6.3 LTS
+- **Engine**: Unity **6000.5.1f1** (Unity 6.5 — 2026-07-02 실측, 프로토타입·Origin 동일)
 - **Language**: C#
 - **Rendering**: URP (Universal Render Pipeline) — 쿼터뷰 3D
 - **Physics**: Unity Physics (기본)
