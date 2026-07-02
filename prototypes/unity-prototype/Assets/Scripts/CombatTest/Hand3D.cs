@@ -1,0 +1,709 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using TMPro;
+using DG.Tweening;
+
+namespace DDworld.CombatTest
+{
+
+/// <summary>
+/// 3D 공간에서 카드 핸드를 관리.
+/// 카메라 뷰포트 하단에 카드를 아치형으로 배치.
+/// </summary>
+public class Hand3D : MonoBehaviour
+{
+    public static Hand3D Instance { get; private set; }
+
+    [Header("카드 크기")]
+    public float cardWidth = 0.2f;
+    public float cardHeight = 0.27f;
+
+    [Header("핸드 배치")]
+    public float cardSpacing = 0.22f;
+    public float arcHeight = 0.03f;
+    public float arcMaxRotation = 2.5f;
+
+    [Header("핸드 위치 (뷰포트 기준)")]
+    public float handDepth = 6f;               // 카메라로부터의 거리
+    [Tooltip("내 핸드 Y 위치 비율 (0=화면 중앙, 1=화면 하단 끝). 작을수록 카드가 위로 올라감")]
+    [Range(0f, 1f)]
+    public float playerHandYRatio = 0.55f;
+    [Tooltip("상대 핸드 Y 위치 비율 (0=화면 중앙, 1=화면 상단 끝)")]
+    [Range(0f, 1f)]
+    public float enemyHandYRatio = 0.75f;
+
+    [Header("폰트")]
+    public TMP_FontAsset koreanFont;
+
+    private Camera mainCamera;
+    private Transform cardAnchor;       // 내 핸드 앵커 (카메라 하단, 가까움)
+    private Transform enemyCardAnchor;  // 상대 핸드 앵커 (카메라 상단, 멀리)
+    private Transform drawAnchor;       // 드로우 연출용 중앙 앵커
+    private GameObject dimQuad;         // 3D 검은 오버레이 (카드 뒤, 그리드 앞)
+    private float playerScaleFactor = 1f;
+    private List<Card3D> myCards = new();
+    private List<Card3D> enemyCards = new();
+
+    private void Awake()
+    {
+        Instance = this;
+    }
+
+    private bool debugLogged = false;
+
+    private void Start()
+    {
+        mainCamera = Camera.main;
+        GameManager.Instance.OnPhaseChanged += OnPhaseChanged;
+    }
+
+    private void OnPhaseChanged(GameManager.GamePhase phase)
+    {
+        if (phase == GameManager.GamePhase.Battle)
+        {
+            // 전투 중 핸드 숨기기
+            if (cardAnchor != null) cardAnchor.gameObject.SetActive(false);
+            if (enemyCardAnchor != null) enemyCardAnchor.gameObject.SetActive(false);
+        }
+        else if (phase == GameManager.GamePhase.Draw)
+        {
+            // 드로우 시 핸드 다시 표시
+            if (cardAnchor != null) cardAnchor.gameObject.SetActive(true);
+            if (enemyCardAnchor != null) enemyCardAnchor.gameObject.SetActive(true);
+        }
+    }
+
+    private void LateUpdate()
+    {
+        if (!debugLogged && cardAnchor != null && myCards.Count > 0)
+        {
+            debugLogged = true;
+            Debug.Log($"[Hand3D] 앵커 월드위치: {cardAnchor.position}");
+            Debug.Log($"[Hand3D] 앵커 로컬위치: {cardAnchor.localPosition}");
+            Debug.Log($"[Hand3D] 카드0 월드위치: {myCards[0].transform.position}");
+            Debug.Log($"[Hand3D] 카드0 부모: {myCards[0].transform.parent?.name}");
+            Debug.Log($"[Hand3D] 카메라 위치: {mainCamera.transform.position}");
+        }
+    }
+
+    /// <summary>
+    /// 카메라 하위에 카드 앵커 생성 (최초 호출 시 1회만)
+    /// </summary>
+    private void EnsureAnchors()
+    {
+        if (cardAnchor != null) return;
+
+        mainCamera = Camera.main;
+        float halfH = handDepth * Mathf.Tan(mainCamera.fieldOfView * 0.5f * Mathf.Deg2Rad);
+        float halfW = halfH * mainCamera.aspect;
+
+        // --- 내 핸드 앵커 (카메라 하단, 가까움) ---
+        float playerDepth = handDepth * 0.55f;
+        playerScaleFactor = playerDepth / handDepth;
+        float playerHalfH = playerDepth * Mathf.Tan(mainCamera.fieldOfView * 0.5f * Mathf.Deg2Rad);
+
+        var anchorObj = new GameObject("PlayerHandAnchor");
+        anchorObj.transform.SetParent(mainCamera.transform);
+        anchorObj.transform.localPosition = new Vector3(0, -playerHalfH * playerHandYRatio, playerDepth);
+        anchorObj.transform.localRotation = Quaternion.identity;
+        cardAnchor = anchorObj.transform;
+
+        // --- 상대 핸드 앵커 (카메라 상단, 멀리) ---
+        var enemyObj = new GameObject("EnemyHandAnchor");
+        enemyObj.transform.SetParent(mainCamera.transform);
+        enemyObj.transform.localPosition = new Vector3(0, halfH * enemyHandYRatio, handDepth);
+        enemyObj.transform.localRotation = Quaternion.identity;
+        enemyCardAnchor = enemyObj.transform;
+
+        // --- 드로우 연출용 중앙 앵커 (화면 정중앙) ---
+        var drawObj = new GameObject("DrawAnchor");
+        drawObj.transform.SetParent(mainCamera.transform);
+        drawObj.transform.localPosition = new Vector3(0, 0, handDepth * 0.7f);
+        drawObj.transform.localRotation = Quaternion.identity;
+        drawAnchor = drawObj.transform;
+
+        // --- 3D 딤 오버레이 (카드 뒤, 그리드 앞) ---
+        dimQuad = GameObject.CreatePrimitive(PrimitiveType.Quad);
+        dimQuad.name = "DimOverlay3D";
+        dimQuad.transform.SetParent(mainCamera.transform);
+        dimQuad.transform.localPosition = new Vector3(0, -0.58f, 5.28f);
+        dimQuad.transform.localRotation = Quaternion.Euler(47.5f, 0f, 0f);
+        dimQuad.transform.localScale = new Vector3(50f, 50f, 1f);
+
+        Destroy(dimQuad.GetComponent<Collider>());
+        var dimMat = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
+        dimMat.color = new Color(0, 0, 0, 0);
+        dimMat.SetFloat("_Surface", 1); // Transparent
+        dimMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+        dimMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+        dimMat.SetInt("_ZWrite", 0);
+        dimMat.renderQueue = 3100;
+        dimQuad.GetComponent<Renderer>().material = dimMat;
+        dimQuad.SetActive(false);
+    }
+
+    /// <summary>
+    /// 3D 딤 오버레이 페이드
+    /// </summary>
+    public void FadeDim(float targetAlpha, float duration)
+    {
+        if (dimQuad == null) return;
+        if (targetAlpha > 0) dimQuad.SetActive(true);
+
+        var renderer = dimQuad.GetComponent<Renderer>();
+        Color c = renderer.material.color;
+        DOTween.To(() => c.a, a => {
+            c.a = a;
+            renderer.material.color = c;
+        }, targetAlpha, duration).OnComplete(() => {
+            if (targetAlpha <= 0) dimQuad.SetActive(false);
+        });
+    }
+
+    // === 카드 생성 ===
+
+    /// <summary>
+    /// 플레이어 손패 카드 생성
+    /// </summary>
+    public List<Card3D> CreatePlayerCards(List<CardData> hand)
+    {
+        EnsureAnchors();
+        ClearCards(myCards);
+        foreach (var data in hand)
+        {
+            var card = CreateCard3D(data, isEnemy: false);
+            card.hoverEnabled = false; // 드로우 연출 중 호버 비활성화
+            myCards.Add(card);
+        }
+        return myCards;
+    }
+
+    /// <summary>
+    /// 상대 손패 카드 생성
+    /// </summary>
+    public List<Card3D> CreateEnemyCards(List<CardData> hand)
+    {
+        ClearCards(enemyCards);
+        foreach (var data in hand)
+        {
+            var card = CreateCard3D(data, isEnemy: true);
+            card.interactable = false;
+            card.hoverEnabled = false; // 드로우 중 호버 비활성화
+            card.isEnemyCard = true;   // 상대 카드 호버 스타일
+            enemyCards.Add(card);
+        }
+        return enemyCards;
+    }
+
+    private Card3D CreateCard3D(CardData data, bool isEnemy = false)
+    {
+        var obj = new GameObject(data.unitData.unitName);
+        // 드로우 연출 시 drawAnchor에 배치되므로 일단 drawAnchor에 넣음
+        obj.transform.SetParent(drawAnchor);
+        obj.transform.localRotation = Quaternion.identity;
+
+        // 모든 카드 동일 크기로 생성 (핸드 이동 시 스케일 조절)
+        var card = obj.AddComponent<Card3D>();
+        card.Setup(data, cardWidth, cardHeight);
+        if (koreanFont != null) card.SetFont(koreanFont);
+
+        return card;
+    }
+
+    private void ClearCards(List<Card3D> cards)
+    {
+        foreach (var c in cards)
+            if (c != null) Destroy(c.gameObject);
+        cards.Clear();
+    }
+
+    // === 핸드 레이아웃 ===
+
+    /// <summary>
+    /// 활성 카드만 모아서 아치형 배치 적용
+    /// </summary>
+    public void LayoutPlayerHand(bool animated = false)
+    {
+        var activeCards = GetActiveCards(myCards);
+        LayoutCards(activeCards, false, animated);
+    }
+
+    public void LayoutEnemyHand()
+    {
+        LayoutCards(enemyCards, true, false);
+    }
+
+    private List<Card3D> GetActiveCards(List<Card3D> cards)
+    {
+        var active = new List<Card3D>();
+        foreach (var c in cards)
+            if (c != null && c.gameObject.activeSelf) active.Add(c);
+        return active;
+    }
+
+    /// <summary>
+    /// 카드를 앵커 기준 로컬 좌표로 배치 (카메라에 고정)
+    /// </summary>
+    private void LayoutCards(List<Card3D> cards, bool isEnemy, bool animated)
+    {
+        int n = cards.Count;
+        if (n == 0) return;
+
+        Transform anchor = isEnemy ? enemyCardAnchor : cardAnchor;
+
+        float spacing = isEnemy ? cardSpacing * 0.85f : cardSpacing * playerScaleFactor;
+        float totalWidth = (n - 1) * spacing;
+        float startX = -totalWidth / 2f;
+
+        for (int i = 0; i < n; i++)
+        {
+            float xOffset = startX + i * spacing;
+
+            // 아치 (플레이어만)
+            float yOffset = 0;
+            float zRotation = 0;
+            if (!isEnemy && n > 1)
+            {
+                float t = (i - (n - 1) / 2f) / ((n - 1) / 2f);
+                yOffset = arcHeight * (1f - t * t);
+                zRotation = -arcMaxRotation * t;
+            }
+
+            // 로컬 좌표 (앵커 기준)
+            Vector3 localPos = new Vector3(xOffset, yOffset, 0);
+            Quaternion localRot = Quaternion.Euler(0, 0, zRotation);
+
+            // 월드 좌표로 변환하여 저장
+            Vector3 worldPos = anchor.TransformPoint(localPos);
+            Quaternion worldRot = anchor.rotation * localRot;
+
+            cards[i].SetHandTransform(worldPos, worldRot, i);
+
+            // 부모를 앵커로 설정
+            cards[i].transform.SetParent(anchor);
+
+            // 내 핸드 카드는 가까이 있으므로 스케일 축소
+            Vector3 targetScale = isEnemy
+                ? new Vector3(cardWidth, cardHeight, 1f)
+                : new Vector3(cardWidth * playerScaleFactor, cardHeight * playerScaleFactor, 1f);
+
+            cards[i].SetBaseScale(targetScale);
+
+            if (animated)
+            {
+                cards[i].transform.DOLocalMove(localPos, 0.35f).SetEase(Ease.OutCubic);
+                cards[i].transform.DOLocalRotateQuaternion(localRot, 0.35f).SetEase(Ease.OutCubic);
+                cards[i].transform.DOScale(targetScale, 0.35f).SetEase(Ease.OutCubic);
+            }
+            else
+            {
+                cards[i].transform.localPosition = localPos;
+                cards[i].transform.localRotation = localRot;
+                cards[i].transform.localScale = targetScale;
+            }
+        }
+    }
+
+    // === 배치 ===
+
+    /// <summary>
+    /// 카드를 3D 타일에 배치
+    /// </summary>
+    public void PlaceCardOnTile(BattleTile tile, Card3D card)
+    {
+        if (card == null || tile == null) return;
+
+        // 이미 유닛이 있으면 스왑
+        if (tile.IsOccupied)
+        {
+            Card3D oldCard = ReturnCardFromTile(tile);
+            if (oldCard != null)
+            {
+                oldCard.SetReturned();
+                LayoutPlayerHand(animated: true);
+            }
+        }
+
+        // 필드 가득 찼는지 확인
+        if (GameManager.Instance.PlayerPlacements.Count >= 5)
+        {
+            PlacementUI.Instance?.ShowFloatingMessage("필드가 가득 찼습니다!");
+            return;
+        }
+
+        bool success = GameManager.Instance.PlaceCard(card.cardData, tile.row, tile.col);
+        if (!success) return;
+
+        tile.PlaceUnit3D(card);
+        card.SetPlaced();
+
+        PlacementUI.Instance?.UpdateInfoText();
+        LayoutPlayerHand(animated: true);
+    }
+
+    /// <summary>
+    /// 타일에서 카드 제거하여 핸드로 복귀
+    /// </summary>
+    public Card3D ReturnCardFromTile(BattleTile tile)
+    {
+        if (!tile.IsOccupied) return null;
+
+        Card3D card = tile.RemoveUnit3D();
+        GameManager.Instance.RemovePlacement(tile.row, tile.col);
+
+        return card;
+    }
+
+    /// <summary>
+    /// 타일 클릭으로 카드 제거 + 핸드 복귀 애니메이션
+    /// </summary>
+    public void RemoveAndReturnToHand(BattleTile tile)
+    {
+        Card3D card = ReturnCardFromTile(tile);
+        if (card == null) return;
+
+        card.SetReturned();
+        card.transform.SetParent(cardAnchor);
+
+        LayoutPlayerHand(animated: true);
+
+        PlacementUI.Instance?.UpdateInfoText();
+    }
+
+    /// <summary>
+    /// 타일에서 카드를 픽업하여 드래그 시작 (타일→타일 이동용)
+    /// </summary>
+    public void PickUpFromTile(BattleTile tile)
+    {
+        if (!tile.IsOccupied) return;
+
+        Card3D card = tile.RemoveUnit3D();
+        if (card == null) return;
+
+        GameManager.Instance.RemovePlacement(tile.row, tile.col);
+
+        // 카드를 타일 위치 위에 활성화
+        card.gameObject.SetActive(true);
+        card.transform.SetParent(null);
+        card.transform.position = tile.transform.position + Vector3.up * 0.25f;
+
+        // 타일과 같은 방향(바닥에 누운 상태)으로 배치, 그리드에서 보이는 크기로
+        float tileSize = BattleField.Instance != null ? BattleField.Instance.tileSize : 1f;
+        Vector3 gridScale = new Vector3(tileSize * 0.8f, tileSize * 0.8f, 1f);
+        card.transform.rotation = Quaternion.Euler(90, 0, 0);
+        card.transform.localScale = gridScale;
+        card.SetBaseScale(gridScale);
+        card.interactable = true;
+
+        card.StartDragFromTile(tile);
+
+        PlacementUI.Instance?.UpdateInfoText();
+    }
+
+    /// <summary>
+    /// 타일→타일 이동: 원본 타일에서 제거 후 새 타일에 배치
+    /// </summary>
+    public void MoveCardBetweenTiles(BattleTile fromTile, BattleTile toTile, Card3D card)
+    {
+        if (card == null || toTile == null) return;
+
+        // 핸드 스케일로 복원
+        Vector3 handScale = new Vector3(cardWidth * playerScaleFactor, cardHeight * playerScaleFactor, 1f);
+        card.SetBaseScale(handScale);
+
+        // 대상 타일에 이미 유닛이 있으면 스왑
+        if (toTile.IsOccupied)
+        {
+            Card3D otherCard = ReturnCardFromTile(toTile);
+            if (otherCard != null)
+            {
+                otherCard.SetBaseScale(handScale);
+                GameManager.Instance.PlaceCard(otherCard.cardData, fromTile.row, fromTile.col);
+                fromTile.PlaceUnit3D(otherCard);
+                otherCard.SetPlaced();
+            }
+        }
+
+        // 새 타일에 배치
+        bool success = GameManager.Instance.PlaceCard(card.cardData, toTile.row, toTile.col);
+        if (success)
+        {
+            toTile.PlaceUnit3D(card);
+            card.SetPlaced();
+        }
+        else
+        {
+            ReturnCardToTile(fromTile, card);
+        }
+
+        PlacementUI.Instance?.UpdateInfoText();
+    }
+
+    /// <summary>
+    /// 클릭 취소: 타일에서 픽업한 카드를 핸드로 복귀
+    /// </summary>
+    public void CancelPickUpToHand(BattleTile fromTile, Card3D card)
+    {
+        if (card == null) return;
+
+        // 핸드 스케일 복원
+        Vector3 handScale = new Vector3(cardWidth * playerScaleFactor, cardHeight * playerScaleFactor, 1f);
+        card.SetBaseScale(handScale);
+
+        card.SetReturned();
+        card.transform.SetParent(cardAnchor);
+
+        LayoutPlayerHand(animated: true);
+        PlacementUI.Instance?.UpdateInfoText();
+    }
+
+    /// <summary>
+    /// 드래그 실패 시 카드를 원래 타일로 되돌리기
+    /// </summary>
+    public void ReturnCardToTile(BattleTile tile, Card3D card)
+    {
+        if (card == null || tile == null) return;
+
+        // 핸드 스케일로 복원 (다음 핸드 복귀 시를 대비)
+        Vector3 handScale = new Vector3(cardWidth * playerScaleFactor, cardHeight * playerScaleFactor, 1f);
+        card.SetBaseScale(handScale);
+
+        GameManager.Instance.PlaceCard(card.cardData, tile.row, tile.col);
+        tile.PlaceUnit3D(card);
+        card.SetPlaced();
+
+        PlacementUI.Instance?.UpdateInfoText();
+    }
+
+    // === 드로우 애니메이션 ===
+
+    /// <summary>
+    /// 카드 1장 드로우 연출: XY 탄성 이동 + Z 깊이 아치
+    /// </summary>
+    private void AnimateCardDraw(Transform card, Vector3 target, Vector3 scale)
+    {
+        card.DOLocalMoveX(target.x, 0.55f).SetEase(Ease.OutElastic, 0.8f, 0.4f);
+        card.DOLocalMoveY(target.y, 0.55f).SetEase(Ease.OutElastic, 0.8f, 0.4f);
+
+        DOTween.Sequence()
+            .Append(card.DOLocalMoveZ(0.15f, 0.2f).SetEase(Ease.OutSine))
+            .Append(card.DOLocalMoveZ(0f, 0.35f).SetEase(Ease.InOutSine));
+
+        card.DOScale(scale, 0.4f).SetEase(Ease.OutBack);
+    }
+
+    /// <summary>
+    /// 드로우 페이즈 전체 연출.
+    /// playerCarryover/enemyCarryover: 이월 카드 수 (myCards/enemyCards 앞쪽에 위치).
+    /// 이월 카드는 손패 위치에 즉시 표시, 신규 카드만 덱에서 드로우 애니메이션.
+    /// </summary>
+    public IEnumerator AnimateDrawSequence(int playerCarryover = 0, int enemyCarryover = 0)
+    {
+        int totalPlayer = myCards.Count;
+        int totalEnemy = enemyCards.Count;
+        float ps = playerScaleFactor;
+        playerCarryover = Mathf.Clamp(playerCarryover, 0, totalPlayer);
+        enemyCarryover = Mathf.Clamp(enemyCarryover, 0, totalEnemy);
+
+        // 모든 카드 동일 크기
+        Vector3 drawCardScale = new Vector3(cardWidth, cardHeight, 1f);
+        float drawSpacing = cardSpacing * 0.85f;
+
+        // 2행 배치: 상대(위), 나(아래) — drawAnchor 로컬 좌표
+        float rowGap = cardHeight * 1.2f; // 두 줄 사이 간격
+
+        // 상대 카드 위치 (윗줄)
+        float eW = (totalEnemy - 1) * drawSpacing;
+        float eStartX = -eW / 2f;
+        Vector3[] enemyCenterLocal = new Vector3[totalEnemy];
+        for (int i = 0; i < totalEnemy; i++)
+            enemyCenterLocal[i] = new Vector3(eStartX + i * drawSpacing, rowGap * 0.5f, 0);
+
+        // 내 카드 위치 (아랫줄)
+        float pW = (totalPlayer - 1) * drawSpacing;
+        float pStartX = -pW / 2f;
+        Vector3[] playerCenterLocal = new Vector3[totalPlayer];
+        for (int i = 0; i < totalPlayer; i++)
+            playerCenterLocal[i] = new Vector3(pStartX + i * drawSpacing, -rowGap * 0.5f, 0);
+
+        // 덱 출발 위치 (좌하단 / 우상단)
+        float drawHalfH = drawAnchor.localPosition.z * Mathf.Tan(mainCamera.fieldOfView * 0.5f * Mathf.Deg2Rad);
+        float drawHalfW = drawHalfH * mainCamera.aspect;
+        Vector3 playerDeckPos = new Vector3(-drawHalfW * 0.8f, -drawHalfH * 0.6f, 0);
+        Vector3 enemyDeckPos = new Vector3(drawHalfW * 0.8f, drawHalfH * 0.6f, 0);
+
+        // 3D 딤 오버레이 페이드인
+        FadeDim(0.8f, 0.4f);
+
+        // 이월 카드: 손패 영역 중앙에 작게 모여서 시작 → 손패 위치로 펼쳐지는 애니메이션
+        // (가지고 있던 카드가 직접 이동하는 느낌)
+        Vector3 playerCarryoverStart = new Vector3(0, -rowGap * 0.5f - cardHeight * 0.3f, 0);
+        Vector3 enemyCarryoverStart = new Vector3(0, rowGap * 0.5f + cardHeight * 0.3f, 0);
+        Vector3 carryoverStartScale = drawCardScale * 0.7f;
+        float carryoverFanSpacing = drawSpacing * 0.3f; // 시작 시 살짝 펼친 폭
+
+        for (int i = 0; i < playerCarryover; i++)
+        {
+            float fanX = (i - (playerCarryover - 1) * 0.5f) * carryoverFanSpacing;
+            myCards[i].transform.SetParent(drawAnchor);
+            myCards[i].transform.localPosition = playerCarryoverStart + new Vector3(fanX, 0, 0);
+            myCards[i].transform.localRotation = Quaternion.identity;
+            myCards[i].transform.localScale = carryoverStartScale;
+        }
+        for (int i = 0; i < enemyCarryover; i++)
+        {
+            float fanX = (i - (enemyCarryover - 1) * 0.5f) * carryoverFanSpacing;
+            enemyCards[i].transform.SetParent(drawAnchor);
+            enemyCards[i].transform.localPosition = enemyCarryoverStart + new Vector3(fanX, 0, 0);
+            enemyCards[i].transform.localRotation = Quaternion.identity;
+            enemyCards[i].transform.localScale = carryoverStartScale;
+        }
+
+        // 신규 카드: 덱 위치에 숨김 (드로우 애니메이션으로 손패에 합류)
+        for (int i = playerCarryover; i < totalPlayer; i++)
+        {
+            myCards[i].transform.SetParent(drawAnchor);
+            myCards[i].transform.localPosition = playerDeckPos;
+            myCards[i].transform.localRotation = Quaternion.identity;
+            myCards[i].transform.localScale = Vector3.zero;
+        }
+        for (int i = enemyCarryover; i < totalEnemy; i++)
+        {
+            enemyCards[i].transform.SetParent(drawAnchor);
+            enemyCards[i].transform.localPosition = enemyDeckPos;
+            enemyCards[i].transform.localRotation = Quaternion.identity;
+            enemyCards[i].transform.localScale = Vector3.zero;
+        }
+
+        // === 0단계: 이월 카드가 손패 위치로 직접 이동 (가지고 있던 3장이 손패에 정렬) ===
+        if (playerCarryover > 0 || enemyCarryover > 0)
+        {
+            for (int i = 0; i < playerCarryover; i++)
+            {
+                Transform t = myCards[i].transform;
+                t.DOLocalMove(playerCenterLocal[i], 0.6f).SetEase(Ease.OutCubic);
+                t.DOScale(drawCardScale, 0.6f).SetEase(Ease.OutBack);
+            }
+            for (int i = 0; i < enemyCarryover; i++)
+            {
+                Transform t = enemyCards[i].transform;
+                t.DOLocalMove(enemyCenterLocal[i], 0.6f).SetEase(Ease.OutCubic);
+                t.DOScale(drawCardScale, 0.6f).SetEase(Ease.OutBack);
+            }
+            yield return new WaitForSeconds(0.7f);
+        }
+
+        // === 1단계: 교대로 각자의 줄로 드로우 (이월 카드 다음 인덱스부터) ===
+        int pi = playerCarryover, ei = enemyCarryover;
+        bool playerTurn = true;
+
+        while (pi < totalPlayer || ei < totalEnemy)
+        {
+            if (playerTurn && pi < totalPlayer)
+            {
+                AnimateCardDraw(myCards[pi].transform, playerCenterLocal[pi], drawCardScale);
+                pi++;
+            }
+            else if (!playerTurn && ei < totalEnemy)
+            {
+                AnimateCardDraw(enemyCards[ei].transform, enemyCenterLocal[ei], drawCardScale);
+                ei++;
+            }
+            playerTurn = !playerTurn;
+            yield return new WaitForSeconds(0.25f);
+        }
+
+        yield return new WaitForSeconds(0.8f);
+
+        // === 2단계: 병종별 정렬 ===
+        List<Card3D> sortedPlayer = new(myCards);
+        sortedPlayer.Sort((a, b) =>
+            GetSortOrder(a.cardData.unitData).CompareTo(GetSortOrder(b.cardData.unitData)));
+
+        List<Card3D> sortedEnemy = new(enemyCards);
+        sortedEnemy.Sort((a, b) =>
+            GetSortOrder(a.cardData.unitData).CompareTo(GetSortOrder(b.cardData.unitData)));
+
+        PlacementUI.Instance?.ShowPhaseTitle("배치 페이즈");
+        yield return new WaitForSeconds(0.5f);
+
+        // === 3단계: 정렬 순서대로 핸드로 이동 (로컬 좌표) ===
+        int nPlayer = sortedPlayer.Count;
+        int nEnemy = sortedEnemy.Count;
+        float playerSpacing = cardSpacing * ps;
+        float handTotalW = (nPlayer - 1) * playerSpacing;
+        float handStartX = -handTotalW / 2f;
+        float enemySpacing = cardSpacing * 0.85f;
+        float enemyTotalW = (nEnemy - 1) * enemySpacing;
+        float enemyStartX = -enemyTotalW / 2f;
+        Vector3 playerCardScale = new Vector3(cardWidth * ps, cardHeight * ps, 1f);
+        Vector3 enemyCardScale = new Vector3(cardWidth, cardHeight, 1f);
+
+        int maxCards = Mathf.Max(nPlayer, nEnemy);
+        for (int i = 0; i < maxCards; i++)
+        {
+            if (i < nPlayer)
+            {
+                var card = sortedPlayer[i];
+                card.transform.SetParent(cardAnchor);
+
+                float t = nPlayer > 1 ? (i - (nPlayer - 1) / 2f) / ((nPlayer - 1) / 2f) : 0;
+                Vector3 localPos = new Vector3(handStartX + i * playerSpacing, arcHeight * ps * (1f - t * t), 0);
+                Quaternion localRot = Quaternion.Euler(0, 0, -arcMaxRotation * t);
+
+                card.SetHandTransform(cardAnchor.TransformPoint(localPos), cardAnchor.rotation * localRot, i);
+                card.SetBaseScale(playerCardScale);
+                card.transform.DOLocalMove(localPos, 0.3f).SetEase(Ease.OutCubic);
+                card.transform.DOScale(playerCardScale, 0.3f).SetEase(Ease.OutBack);
+                card.transform.DOLocalRotateQuaternion(localRot, 0.3f).SetEase(Ease.OutCubic);
+            }
+
+            if (i < nEnemy)
+            {
+                var card = sortedEnemy[i];
+                card.transform.SetParent(enemyCardAnchor);
+
+                Vector3 localPos = new Vector3(enemyStartX + i * enemySpacing, 0, 0);
+                Quaternion localRot = Quaternion.identity;
+
+                card.SetHandTransform(enemyCardAnchor.TransformPoint(localPos), enemyCardAnchor.rotation, i);
+                card.transform.DOLocalMove(localPos, 0.3f).SetEase(Ease.OutCubic);
+                card.transform.DOScale(enemyCardScale, 0.3f).SetEase(Ease.OutBack);
+            }
+
+            yield return new WaitForSeconds(0.12f);
+        }
+
+        yield return new WaitForSeconds(0.35f);
+
+        // 3D 딤 오버레이 페이드아웃
+        FadeDim(0f, 0.6f);
+
+        // 호버 활성화
+        foreach (var card in sortedPlayer)
+            card.hoverEnabled = true;
+        foreach (var card in sortedEnemy)
+            card.hoverEnabled = true;
+
+        // 정렬된 순서로 리스트 갱신
+        myCards = sortedPlayer;
+        enemyCards = sortedEnemy;
+    }
+
+    public List<Card3D> GetMyCards() => myCards;
+    public List<Card3D> GetEnemyCards() => enemyCards;
+
+    private int GetSortOrder(UnitData data)
+    {
+        return data.category switch
+        {
+            UnitCategory.Cavalry => 0,
+            UnitCategory.Melee => data.unitName.Contains("민") ? 1 : 2,
+            UnitCategory.Ranged => 3,
+            UnitCategory.Special => 4,
+            _ => 5
+        };
+    }
+}
+}

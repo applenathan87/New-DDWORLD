@@ -1,0 +1,484 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using TMPro;
+using DG.Tweening;
+
+namespace DDworld.CombatTest
+{
+
+/// <summary>
+/// 전투 시뮬레이션 (combat_test PvE). 개별 병사가 독립적으로 이동/타겟팅/공격한다.
+/// BattleSimulator는 병사 리스트 관리, 승패 판정만 담당. (상성 배수 = PvE 전환으로 제거)
+/// </summary>
+public class BattleSimulator : MonoBehaviour
+{
+    public static BattleSimulator Instance { get; private set; }
+
+    [Header("폰트")]
+    public TMP_FontAsset koreanFont;
+
+    [Header("시뮬레이션 설정")]
+    public float moveSpeedBase = 2f;
+    [Tooltip("함정 폭발 반경 (단위: 타일). 1.0=인접 4방향만, 1.5=대각선 일부 포함, √2≈1.42=대각선 4방향 전부")]
+    public float trapExplosionRadius = 1.5f;
+
+    private List<Soldier> playerSoldiers = new();
+    private List<Soldier> enemySoldiers = new();
+    private bool battleRunning;
+
+    // 전장 경계
+    private float fieldMinX;
+    private float fieldMaxX;
+    private float fieldMinZ;
+    private float fieldMaxZ;
+
+    private void Awake()
+    {
+        Instance = this;
+    }
+
+    private void Start()
+    {
+        // 페이즈 변경 구독: Draw 진입 시 이전 라운드의 시각 잔재(라인 + 결과 화면) 자동 정리
+        if (GameManager.Instance != null)
+            GameManager.Instance.OnPhaseChanged += OnPhaseChanged;
+    }
+
+    private void OnDestroy()
+    {
+        if (GameManager.Instance != null)
+            GameManager.Instance.OnPhaseChanged -= OnPhaseChanged;
+    }
+
+    private void OnPhaseChanged(GameManager.GamePhase phase)
+    {
+        // 다음 라운드의 Draw 페이즈 진입 시 이전 라운드 잔재 정리
+        if (phase == GameManager.GamePhase.Draw)
+        {
+            ClearVisualOverlays();
+        }
+    }
+
+    /// <summary>
+    /// 전투 시각 잔재 일괄 제거: 필드 경계선, 자유 추적 라인, 결과 화면,
+    /// 모든 타일의 병사(시체 + 생존자), 비행 중인 화살.
+    /// 다음 라운드 진입 시 자동 호출됨.
+    /// </summary>
+    public void ClearVisualOverlays()
+    {
+        DestroyByName("FieldBounds");
+        DestroyByName("LaneLine_Player");
+        DestroyByName("LaneLine_Enemy");
+        if (resultScreen != null) Destroy(resultScreen);
+
+        // 모든 타일의 병사 정리 (시체 + 생존자). Soldier.OnDestroy가 부속물(DirArrow/RangeIndicator) 함께 정리.
+        var bf = BattleField.Instance;
+        if (bf != null)
+        {
+            for (int col = 0; col < bf.columns; col++)
+                for (int row = 0; row < bf.rows; row++)
+                {
+                    var tile = bf.GetBattleTile(col, row);
+                    if (tile != null) tile.ClearSoldiers();
+                }
+        }
+
+        // 비행 중인 화살 정리
+        var arrows = FindObjectsByType<Arrow>(FindObjectsSortMode.None);
+        foreach (var a in arrows)
+            if (a != null) Destroy(a.gameObject);
+
+        // 병사 리스트도 클리어 (이미 GameObject는 destroy됐지만 참조 정리)
+        playerSoldiers.Clear();
+        enemySoldiers.Clear();
+    }
+
+    private void DestroyByName(string objName)
+    {
+        var obj = GameObject.Find(objName);
+        if (obj != null) Destroy(obj);
+    }
+
+    public void ResetState()
+    {
+        battleRunning = false;
+        StopAllCoroutines();
+    }
+
+    public void StartBattle()
+    {
+        battleRunning = false; // 이전 상태 리셋
+
+        var bf = BattleField.Instance;
+        if (bf != null)
+        {
+            float halfTile = bf.tileSize * 0.5f;
+            fieldMinX = bf.GetTileWorldPosition(0, 0).x - halfTile;
+            fieldMaxX = bf.GetTileWorldPosition(bf.columns - 1, 0).x + halfTile;
+            fieldMinZ = bf.GetTileWorldPosition(0, 0).z - halfTile;
+            fieldMaxZ = bf.GetTileWorldPosition(0, bf.rows - 1).z + halfTile;
+        }
+
+        // 타일 색 리셋 (병종 색 → 원래 그리드 색)
+        ResetTileColors();
+
+        // 경계선 시각화
+        DrawFieldBounds();
+        DrawLaneBoundaryLines();
+
+        CollectSoldiers();
+        StartCoroutine(RunBattle());
+    }
+
+    private void CollectSoldiers()
+    {
+        playerSoldiers.Clear();
+        enemySoldiers.Clear();
+
+        var gm = GameManager.Instance;
+        var bf = BattleField.Instance;
+
+        // 플레이어 배치 → 개별 병사 수집
+        foreach (var kvp in gm.PlayerPlacements)
+        {
+            var tile = bf.GetBattleTile(kvp.Key.y, kvp.Key.x);
+            if (tile == null) continue;
+
+            foreach (var soldier in tile.Soldiers)
+            {
+                soldier.StartBattle(kvp.Value.unitData, true, moveSpeedBase);
+                playerSoldiers.Add(soldier);
+            }
+        }
+
+        // 적 배치 → 개별 병사 수집
+        foreach (var kvp in gm.EnemyPlacements)
+        {
+            int gridCol = 9 + (4 - kvp.Key.y);
+            var tile = bf.GetBattleTile(gridCol, kvp.Key.x);
+            if (tile == null) continue;
+
+            foreach (var soldier in tile.Soldiers)
+            {
+                soldier.StartBattle(kvp.Value.unitData, false, moveSpeedBase);
+                enemySoldiers.Add(soldier);
+            }
+        }
+
+        Debug.Log($"[전투 시작] 플레이어 {playerSoldiers.Count}명 vs 적 {enemySoldiers.Count}명");
+    }
+
+    private IEnumerator RunBattle()
+    {
+        battleRunning = true;
+
+        yield return new WaitForSeconds(1f);
+        PlacementUI.Instance?.ShowPhaseTitle("전투 개시!");
+        yield return new WaitForSeconds(0.5f);
+
+        while (battleRunning)
+        {
+            // 각 병사가 스스로 행동 (아군 리스트도 전달 → 분리 처리)
+            foreach (var s in playerSoldiers)
+                s.UpdateBattle(playerSoldiers, enemySoldiers, fieldMinX, fieldMaxX, fieldMinZ, fieldMaxZ);
+            foreach (var s in enemySoldiers)
+                s.UpdateBattle(enemySoldiers, playerSoldiers, fieldMinX, fieldMaxX, fieldMinZ, fieldMaxZ);
+
+            // 승패 체크
+            int playerAlive = CountAlive(playerSoldiers);
+            int enemyAlive = CountAlive(enemySoldiers);
+
+            if (playerAlive == 0 || enemyAlive == 0)
+            {
+                yield return new WaitForSeconds(0.5f);
+                EndBattle(playerAlive, enemyAlive);
+                yield break;
+            }
+
+            yield return null;
+        }
+    }
+
+    private int CountAlive(List<Soldier> soldiers)
+    {
+        int count = 0;
+        foreach (var s in soldiers)
+            if (!s.isDead && !s.isTrap) count++;
+        return count;
+    }
+
+    private void EndBattle(int playerAlive, int enemyAlive)
+    {
+        battleRunning = false;
+
+        string result;
+        if (playerAlive > 0 && enemyAlive == 0)
+        {
+            result = $"승리! ({playerAlive}명 생존)";
+            GameManager.Instance.ReportRoundResult(true);
+        }
+        else if (enemyAlive > 0 && playerAlive == 0)
+        {
+            result = $"패배... (적 {enemyAlive}명 생존)";
+            GameManager.Instance.ReportRoundResult(false);
+        }
+        else
+        {
+            // PvE 관대 처리: 동시 전멸 = 플레이어 승 (combat.md)
+            result = "동시 전멸 — 승리 처리!";
+            GameManager.Instance.ReportRoundResult(true);
+        }
+
+        Debug.Log($"=== 라운드 종료: {result} ===");
+        LogBattleStats();
+        // ResultScreen이 result 텍스트를 큰 사이즈로 포함하므로 PhaseTitle 중복 제거
+        ShowResultScreen(result);
+    }
+
+    private GameObject resultScreen;
+
+    private void ShowResultScreen(string result)
+    {
+        // 이전 결과 화면 제거
+        if (resultScreen != null) Destroy(resultScreen);
+
+        var cam = Camera.main;
+        if (cam == null) return;
+
+        resultScreen = new GameObject("ResultScreen");
+        resultScreen.transform.SetParent(cam.transform);
+        resultScreen.transform.localPosition = new Vector3(0, 0, 5f);
+        resultScreen.transform.localRotation = Quaternion.identity;
+
+        // === 1. 검은 배경 Quad === (가장 뒤, z=0.2)
+        var bg = GameObject.CreatePrimitive(PrimitiveType.Quad);
+        bg.name = "Background";
+        bg.transform.SetParent(resultScreen.transform);
+        bg.transform.localPosition = new Vector3(0, 0, 0.2f);
+        bg.transform.localRotation = Quaternion.identity;
+        bg.transform.localScale = new Vector3(2.8f, 1.5f, 1f);
+        Destroy(bg.GetComponent<Collider>());
+
+        var bgMat = new Material(Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color"));
+        bgMat.color = new Color(0f, 0f, 0f, 0.85f);
+        bgMat.SetFloat("_Surface", 1);
+        bgMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+        bgMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+        bgMat.SetInt("_ZWrite", 0);
+        bgMat.renderQueue = 3000;
+        bg.GetComponent<Renderer>().material = bgMat;
+
+        // 모든 텍스트는 z=-0.1 (배경보다 0.3 unit 가까이 — Z-fighting 방지)
+        const float textZ = -0.1f;
+
+        // === 2. 헤더 (상단 중앙): 결과 메시지 ===
+        CreateResultText(
+            parent: resultScreen.transform,
+            name: "Header",
+            text: $"<size=180%><b>{result}</b></size>",
+            localPos: new Vector3(0, 0.55f, textZ),
+            sizeDelta: new Vector2(2.6f, 0.3f),
+            fontSize: 1.4f,
+            alignment: TextAlignmentOptions.Center
+        );
+
+        // === 3. 좌측 (아군) === X=-0.7로 분리, Y=-0.2로 헤더와 충분한 마진
+        CreateResultText(
+            parent: resultScreen.transform,
+            name: "LeftStats",
+            text: BuildSideStats("아군", playerSoldiers),
+            localPos: new Vector3(-0.7f, -0.2f, textZ),
+            sizeDelta: new Vector2(1.2f, 0.9f),
+            fontSize: 0.9f,
+            alignment: TextAlignmentOptions.TopLeft
+        );
+
+        // === 4. 우측 (적군) === X=0.7로 분리, Y=-0.2로 헤더와 충분한 마진
+        CreateResultText(
+            parent: resultScreen.transform,
+            name: "RightStats",
+            text: BuildSideStats("적군", enemySoldiers),
+            localPos: new Vector3(0.7f, -0.2f, textZ),
+            sizeDelta: new Vector2(1.2f, 0.9f),
+            fontSize: 0.9f,
+            alignment: TextAlignmentOptions.TopLeft
+        );
+
+
+        // 등장 애니메이션: 작게 시작 → 부드럽게 풀스케일 (0.4초)
+        resultScreen.transform.localScale = Vector3.zero;
+        resultScreen.transform.DOScale(Vector3.one, 0.4f).SetEase(Ease.OutBack);
+    }
+
+    /// <summary>
+    /// ResultScreen용 텍스트 자식 GameObject 생성 헬퍼
+    /// </summary>
+    private void CreateResultText(Transform parent, string name, string text,
+        Vector3 localPos, Vector2 sizeDelta, float fontSize, TextAlignmentOptions alignment)
+    {
+        var obj = new GameObject(name);
+        obj.transform.SetParent(parent);
+        obj.transform.localPosition = localPos;
+        obj.transform.localRotation = Quaternion.identity;
+
+        var tmp = obj.AddComponent<TextMeshPro>();
+        if (koreanFont != null) tmp.font = koreanFont;
+        tmp.text = text;
+        tmp.fontSize = fontSize;
+        tmp.alignment = alignment;
+        tmp.color = Color.white;
+        tmp.rectTransform.sizeDelta = sizeDelta;
+        tmp.raycastTarget = false;
+        tmp.richText = true;
+    }
+
+    /// <summary>
+    /// 결과 화면 제거 (BalanceTestManager에서 호출)
+    /// </summary>
+    public void ClearResultScreen()
+    {
+        if (resultScreen != null) Destroy(resultScreen);
+    }
+
+    private string BuildSideStats(string sideName, List<Soldier> soldiers)
+    {
+        var stats = new Dictionary<string, (int total, int alive, int dmgDealt, int dmgTaken, int kills)>();
+
+        foreach (var s in soldiers)
+        {
+            string name = s.unitData.unitName;
+            if (!stats.ContainsKey(name))
+                stats[name] = (0, 0, 0, 0, 0);
+
+            var st = stats[name];
+            st.total++;
+            if (!s.isDead) st.alive++;
+            st.dmgDealt += s.totalDamageDealt;
+            st.dmgTaken += s.totalDamageTaken;
+            st.kills += s.killCount;
+            stats[name] = st;
+        }
+
+        string text = $"<color=#FFD700>[ {sideName} ]</color>\n";
+        foreach (var kvp in stats)
+        {
+            var s = kvp.Value;
+            string aliveColor = s.alive > 0 ? "#4CAF50" : "#F44336";
+            text += $"  {kvp.Key}: <color={aliveColor}>{s.alive}/{s.total}</color> | 딜 {s.dmgDealt} | 처치 {s.kills}\n";
+        }
+        return text;
+    }
+
+    private void DrawFieldBounds()
+    {
+        var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
+        var mat = new Material(shader);
+        mat.color = new Color(0f, 1f, 0f, 0.8f);
+
+        var obj = new GameObject("FieldBounds");
+        var lr = obj.AddComponent<LineRenderer>();
+        lr.useWorldSpace = true;
+        lr.loop = true;
+        lr.positionCount = 4;
+        lr.startWidth = 0.03f;
+        lr.endWidth = 0.03f;
+        lr.material = mat;
+        lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+
+        float y = 0.03f;
+        lr.SetPosition(0, new Vector3(fieldMinX, y, fieldMinZ));
+        lr.SetPosition(1, new Vector3(fieldMaxX, y, fieldMinZ));
+        lr.SetPosition(2, new Vector3(fieldMaxX, y, fieldMaxZ));
+        lr.SetPosition(3, new Vector3(fieldMinX, y, fieldMaxZ));
+    }
+
+    /// <summary>
+    /// 자유 추적 전환 라인 (하얀 선 2개: 플레이어→적3열, 적→플레이어3열)
+    /// </summary>
+    private void DrawLaneBoundaryLines()
+    {
+        var bf = BattleField.Instance;
+        if (bf == null) return;
+
+        var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
+        var mat = new Material(shader);
+        mat.color = new Color(1f, 1f, 1f, 0.5f);
+
+        float y = 0.04f;
+
+        // 플레이어 측 라인: 적 3열째 (col 11)
+        DrawVerticalLine("LaneLine_Player", bf.GetTileWorldPosition(11, 0).x, y, mat);
+        // 적 측 라인: 플레이어 3열째 (col 2)
+        DrawVerticalLine("LaneLine_Enemy", bf.GetTileWorldPosition(2, 0).x, y, mat);
+    }
+
+    private void DrawVerticalLine(string name, float x, float y, Material mat)
+    {
+        var obj = new GameObject(name);
+        var lr = obj.AddComponent<LineRenderer>();
+        lr.useWorldSpace = true;
+        lr.positionCount = 2;
+        lr.startWidth = 0.02f;
+        lr.endWidth = 0.02f;
+        lr.material = mat;
+        lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+
+        lr.SetPosition(0, new Vector3(x, y, fieldMinZ));
+        lr.SetPosition(1, new Vector3(x, y, fieldMaxZ));
+    }
+
+    private void ResetTileColors()
+    {
+        var bf = BattleField.Instance;
+        if (bf == null) return;
+
+        for (int col = 0; col < bf.columns; col++)
+            for (int row = 0; row < bf.rows; row++)
+            {
+                var tile = bf.GetBattleTile(col, row);
+                if (tile != null) tile.ResetForBattle();
+            }
+    }
+
+    private void LogBattleStats()
+    {
+        Debug.Log("=== 전투 통계 ===");
+
+        Debug.Log("--- 아군 ---");
+        LogSideStats(playerSoldiers);
+
+        Debug.Log("--- 적군 ---");
+        LogSideStats(enemySoldiers);
+    }
+
+    private void LogSideStats(List<Soldier> soldiers)
+    {
+        // 병종별로 그룹핑
+        var stats = new Dictionary<string, (int total, int alive, int dmgDealt, int dmgTaken, int kills)>();
+
+        foreach (var s in soldiers)
+        {
+            string name = s.unitData.unitName;
+            if (!stats.ContainsKey(name))
+                stats[name] = (0, 0, 0, 0, 0);
+
+            var st = stats[name];
+            st.total++;
+            if (!s.isDead) st.alive++;
+            st.dmgDealt += s.totalDamageDealt;
+            st.dmgTaken += s.totalDamageTaken;
+            st.kills += s.killCount;
+            stats[name] = st;
+        }
+
+        foreach (var kvp in stats)
+        {
+            var s = kvp.Value;
+            Debug.Log($"  {kvp.Key}: {s.alive}/{s.total}생존 | 딜 {s.dmgDealt} | 피해 {s.dmgTaken} | 처치 {s.kills}");
+        }
+    }
+
+    // (RPS 상성 배수는 PvE 전환으로 완전 제거 — 유불리는 공격 패턴 × 몬스터 진형에서만)
+}
+}
