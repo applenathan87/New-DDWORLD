@@ -62,6 +62,13 @@
 
 @.claude/docs/directory-structure.md
 
+### 참고 전용 폴더 (자동 참조 금지 — 토큰 절약)
+
+- `article/` — 인디 개발 아티클 모음 (사용자 개인 읽기용)
+- `CONTEST/` — 공모전 캘린더·목표
+
+이 두 폴더는 **아이디에이션·일반 작업 시 자동으로 읽지 않는다.** 사용자가 명시적으로 요청할 때만 참조.
+
 ## Engine Version Reference
 
 @docs/engine-reference/unity/VERSION.md
