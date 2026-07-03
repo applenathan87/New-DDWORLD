@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+**Superseded** (2026-07-03 — 「마왕성 인사팀」 전환. 대량 캐릭터 전투/크라우드 렌더링 자체가 폐기됨: 면접 게임엔 400명 전투가 없다. 현행 컨셉 = ideation/, 아카이브 인덱스 = design/gdd/_archive/README.md)
 
 ## Date
 

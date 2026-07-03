@@ -1,16 +1,17 @@
 # DDworld
 
-> ⚠️ **2026-06-29 코어 전환: PvP 심리전 → PvE 헥사 영토 확장 오토배틀러.**
-> **현행 기준 = [game-concept.md](design/gdd/game-concept.md) + [pve-pivot.md](design/research/pve-pivot.md)(결정 로그).**
-> 아래 "Game Overview"·"Multiplayer-Ready 원칙"은 **옛 PvP 기준이라 폐기 대기** — game-concept.md가 우선한다.
-> 옛 시스템 GDD(combat/deck/economy/deck-building/systems-index)는 `design/gdd/_archive/`로 이동, [ADR-001](docs/architecture/ADR-001-async-pvp.md)(비동기 PvP)도 폐기 예정. **PvP·고스트·매칭·판돈·심리전 내용 참조 금지.**
+> ⚠️ **2026-07-03 코어 전환: (PvE 헥사 오토배틀러) → 「마왕성 인사팀」(가제) — 다크판타지 코미디 HR 시뮬 + 다이어제틱 데스크.**
+> **현행 기준 = [ideation/concept-demon-hr.md](ideation/concept-demon-hr.md) + [ideation/mvp-design.md](ideation/mvp-design.md).**
+> 정식 GDD는 아직 미작성 — ideation에서 확정 후 `design/gdd/`로 승격 예정 ([design/gdd/README.md](design/gdd/README.md)).
+> **폐기(참조 금지) — 컨셉이 두 번 죽었다**: ① 1세대 PvP 심리전 ② 2세대 PvE 헥사 영토 확장. 옛 문서 전부 `design/gdd/_archive/`(01-pvp-psychological·02-pve-hex) + `design/research/_archive/`로 이동. 인덱스 = [_archive/README.md](design/gdd/_archive/README.md).
+> **다음 키워드가 나오면 폐기 맥락이다**: PvP·고스트·매칭·판돈·심리전 / 헥사·영토 확장·내 군대·400명 전투·소모전·permadeath·오토배틀러.
 
-1인 인디 게임 "DDworld" 개발 프로젝트.
+1인 인디 게임 "DDworld"(현 작업명 「마왕성 인사팀」) 개발 프로젝트.
 
 ## ⭐ 현재 작업 트랙 (2026-07-02~): Origin — 이해하며 직접 만들기
 
 **당분간 메인 작업은 [`Origin/`](Origin/CLAUDE.md)에서 진행한다.**
-유니티를 처음부터 하나하나 이해하며 전투 MVP("재밌고 보기 좋은 전투")를 직접 만드는 학습·제작 트랙.
+유니티를 처음부터 하나하나 이해하며 「마왕성 인사팀」 MVP("간파가 재밌고 도장이 손맛 있는 면접 데스크")를 직접 만드는 학습·제작 트랙.
 
 - 전체 지도: [Origin/roadmap.md](Origin/roadmap.md) (0~9단계) · 작업일지: `Origin/journal/`
 - **작업 방식의 핵심 = 사용자의 이해도 축적**: 이해를 쌓아 확실한 디렉션을 주고, 직접 고칠 부분은 직접 고칠 수 있게 되는 것이 목표. 분담은 유연 — 사용자가 직접 하는 부분도, Claude에게 맡기는 부분도 있다. 단 Claude는 항상 "왜/어떻게"를 설명하며 진행. 상세는 [Origin/CLAUDE.md](Origin/CLAUDE.md).
@@ -19,41 +20,31 @@
 
 ## Game Overview
 
-- **게임명**: DDworld
-- **장르**: 심리전 오토배틀러 (배틀십 + 가위바위보 + 자동전투)
-- **핵심 경험**: 상대 패를 보고 배치를 읽는 "두뇌 싸움"
-- **플랫폼**: PC (Steam)
-- **멀티플레이어**: **비동기 PvP** (MVP — 다른 플레이어 배치 고스트와 대전). 동기 실시간 PvP는 Post-1.0 옵션 모드. 프로토타입은 AI 대전. (→ [ADR-001](docs/architecture/ADR-001-async-pvp.md))
-- **개발 규모**: 솔로 인디
-
-### Multiplayer-Ready 원칙 (src/ 프로덕션 코드에 적용)
-
-**비동기 PvP가 MVP 모드이므로 결정론과 직렬화는 절대 요구사항**입니다.
-프로토타입(`prototypes/`)에는 적용하지 않고, `src/`에 프로덕션 코드를 작성할 때 적용:
-
-1. **결정론적 시뮬레이션** ⭐ 필수: 랜덤은 반드시 시드 기반. **같은 MatchData → 어떤 클라이언트에서도 같은 결과 보장** (비동기 고스트 재현의 핵심)
-2. **입력/로직 분리**: 플레이어 입력 → Command 객체 → 게임 상태 변경 (직접 변경 금지)
-3. **게임 상태 직렬화** ⭐ 필수: 핵심 게임 상태는 한 곳에 모아서 직렬화 가능하게 관리 (고스트 데이터 = 직렬화된 MatchData)
-4. **고정 시뮬레이션 스텝**: 전투 시뮬레이션은 `Time.deltaTime` 대신 고정 틱 사용 (프레임레이트 무관)
-5. **매치 데이터 구조** ⭐ 필수: 양측 배치 + 시드 + 영웅 정보를 하나의 MatchData로 묶어서 저장/전달 (고스트 풀의 단위)
+- **게임명**: DDworld — 현 작업명 「마왕성 인사팀」(가제)
+- **장르**: 다크판타지 코미디 HR 시뮬 (Papers, Please 계열 판단·심문 + 다이어제틱 데스크)
+- **핵심 경험 / 후크**: 악당을 뽑는 인사팀이라 **판단축이 비틀린다** — 거짓말·잔인함이 (직무 JD에 따라) 장점, "알고 보니 착함"이 위험 신호. "세상을 한번 꼬아서 본다" + 가젯으로 업무 스코프가 늘어나는 성장.
+- **코어 루프**: 지원 몬스터 등장 → 질문 카드로 심문 → 서류·진술·반응 대조로 거짓 간파 → 도장으로 판단(JD 적합 합·불).
+- **핵심 원칙 = 물성**: UI 클릭이 아니라 책상 위 물건(도장·이력서·질문카드·서랍·촛불·돋보기)을 직접 잡고 만진다.
+- **플랫폼**: PC (Steam) · **개발 규모**: 솔로 인디
+- **멀티플레이어**: 없음 (싱글플레이). *비동기 PvP는 폐기 — [ADR-001](docs/architecture/ADR-001-async-pvp.md) Superseded.*
 
 ## Visual Style
 
-**Low-poly Voxel 3D** ([ADR-002](docs/architecture/ADR-002-visual-style-low-poly-3d.md))
+**캐릭터 = Low-poly Voxel / 환경 = Low-poly 3D 모델링** (스타일 근거 = [ADR-002](docs/architecture/ADR-002-visual-style-low-poly-3d.md), 단 아래대로 갱신)
 
-- **캐릭터**: MagicaVoxel로 부위별 분리 모델링 (Head/Body/Arms/Legs/Weapon)
-- **애니메이션**: Blender에서 본 + 리깅 + 키프레임 (B 방식)
-- **환경**: Low-poly 메쉬 (Blender 또는 MagicaVoxel)
-- **카메라**: 쿼터뷰 (X 29.2°) + Zoom 시 캐릭터 디테일
-- **톤**: 따뜻한 색감 + Tilt-shift 미니어처 효과 + Bloom + DOF
-- **레퍼런스**: Bad North, Tabletop Tavern, A Short Hike, Crossy Road
+- **캐릭터(몬스터·플레이어 손)**: MagicaVoxel 복셀 모델링.
+- **환경(책상·사무실·소품)**: Low-poly 3D 메쉬 (복셀 아님).
+- **톤**: 촛불 켜진 마왕성 사무실 — 따뜻+어두운 대비, "귀여운데 사악한" 대비. **코지 미니어처/틸트시프트 디오라마 톤은 미승계**(옛 헥사 전투 게임 기준).
+- **애니메이션**: 면접 리액션 2종(긴장/안도) + 이펙트 수준. *전투용 부위분리 풀 리깅·400명 크라우드 렌더링([ADR-003](docs/architecture/ADR-003-rigid-instancing-crowd-rendering.md))은 폐기.*
+- **카메라**: 고정 데스크 클로즈업.
+- **레퍼런스**: Papers, Please · Strange Horticulture(다이어제틱 데스크). 화면 목업 = [ideation/refs/면접화면-목업.png](ideation/refs/면접화면-목업.png).
 
 ## Technology Stack
 
 - **Engine**: Unity **6000.5.1f1** (Unity 6.5 — 2026-07-02 실측. 기존 프로토타입·Origin 새 프로젝트 동일 버전)
 - **Language**: C#
-- **Rendering**: URP (Universal Render Pipeline) — 쿼터뷰 3D + Post-processing
-- **3D 모델링**: MagicaVoxel (캐릭터) + Blender (애니메이션, 환경)
+- **Rendering**: URP (Universal Render Pipeline) — 고정 데스크 뷰 3D + Post-processing (Bloom/DOF/비네트)
+- **3D 모델링**: MagicaVoxel (캐릭터 복셀) + Low-poly 3D 메쉬 (환경·소품)
 - **Version Control**: Git with trunk-based development
 - **Asset Pipeline**: Addressables
 - **UI**: UI Toolkit

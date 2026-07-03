@@ -1,6 +1,6 @@
 # DDworld Art Bible
 
-> **Status**: **Canonical (정본)** — DDworld 아트의 단일 기준 문서. 복셀 제작 관련 답은 여기서 완결되어야 한다.
+> **Status**: ⚠️ **STALE (옛 헥사 전투 기준)** — 이 문서는 폐기된 2세대(PvE 헥사 오토배틀러) 기준으로 쓰였다. 「마왕성 인사팀」에 **승계되는 것 = 캐릭터 복셀(MagicaVoxel) + 정점색 기술 파이프라인**뿐. **환경 = 로우폴리 3D**이며, 아래의 '장난감 전쟁 디오라마'·코지 미니어처·틸트시프트 톤·대량 병사 렌더링은 **미승계**. 아트 정본 재작성 대기 — 현행 컨셉 = ideation/, 아카이브 인덱스 = design/gdd/_archive/README.md.
 > **Author**: nathan
 > **Last Updated**: 2026-06-29
 > **Style**: **Low-poly Voxel 3D + Tilt-shift 디오라마**

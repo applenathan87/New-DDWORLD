@@ -40,12 +40,10 @@
 2. **솔로로 만들 수 있는가** (스코프)
 3. **남이 봤을 때 "오?" 하는가** (차별성)
 
-## 다음 할 것
+## 다음 할 것 — ✅ 해소됨 (이 문서는 히스토리)
 
-- [ ] 후크 세션: `article/`의 연료(Choosing Game Concept, Cursed Problems in Game Design, How to Find Amazing Game Ideas) + `design/research/pve-pivot.md` 읽고, 위 A/B/C를 각각 "게임의 중심으로 키우면 어떤 게임?"으로 전개
-- [ ] 셋 중 판정기준 3개 통과하는 것 선택 → **후크 확정**
-- [ ] 후크에 맞춰 로그라인 확정 → `design/gdd/game-concept.md`의 Elevator Pitch 갱신
-- [ ] 후크 중심으로 데모 스코프 좁히기 (→ Origin roadmap / CONTEST 마일스톤 반영)
+> 아래 액션은 **컨셉 전환(마왕성 인사팀)으로 무효**가 됐다. 헥사 후크(A/B/C)를 키우는 대신 새 컨셉으로 전환해 후크 문제를 해결했다. (참조하던 `pve-pivot.md`·`game-concept.md`는 아카이브됨.)
+> 현행 = [concept-demon-hr.md](concept-demon-hr.md) + [mvp-design.md](mvp-design.md).
 
 ## 로그
 

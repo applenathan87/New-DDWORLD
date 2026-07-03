@@ -1,30 +1,32 @@
 # Work Queue — DDworld
 
-> **Purpose**: 세션 간 영구 추적 작업 큐 = 이 프로젝트의 영구 TODO. (TodoWrite 도구는 세션 한정이라 재시작 시 사라짐 → 영구 추적은 이 파일.)
-> **Last Updated**: 2026-06-29
+> **Purpose**: 세션 간 영구 추적 작업 큐. (TodoWrite는 세션 한정 → 영구 추적은 이 파일.)
+> **Last Updated**: 2026-07-03
 
 ---
+
+## ⚠️ 이 큐 전체가 STALE (2026-07-03) — 재작성 대기
+
+> 아래 "옛 큐" 항목은 **폐기된 옛 컨셉(1세대 PvP 심리전 / 2세대 PvE 헥사 오토배틀러) 기준**이다. 실행 금지.
+> **현행 코어 = 「마왕성 인사팀」** (악당 면접 HR 시뮬). 옛 컨셉 인덱스 = [design/gdd/_archive/README.md](../design/gdd/_archive/README.md)
 
 ## 🎯 지금 할 일 (TODO) — 여기만 읽으면 됨
 
-> "todo 찾아봐" = **이 블록만** 읽기 (파일 전체 X, 토큰 절약).
+> "todo 찾아봐" = **이 블록만** 읽기.
 
-- **[진행중]** PvE 전환 Q 리스트 풀기 → **[design/research/pve-pivot.md](../design/research/pve-pivot.md)** (Tier 0 Q1부터, 하나씩 결정→커밋)
-- 다음 큰 갈림길: Q7(출정 형태 — 별도 던전 vs 헥사 국경 밀기)
-- 그 외 모든 큐(아트·검증·보류된 GDD)는 아래 섹션 참조
+- **현행 제작**: [Origin/roadmap.md](../Origin/roadmap.md) (면접 데스크 MVP — 0단계 유니티 친해지기부터)
+- **현행 기획**: [ideation/mvp-design.md](../ideation/mvp-design.md) 다듬기 → 확정 시 `design/gdd/` 승격
+- 아래 옛 큐(헥사·PvP)는 **전부 폐기** — 새 컨셉 기준으로 이 파일을 언젠가 재작성할 것.
 
 ---
 
-## 🟥 최우선 (2026-06-29) — 코어 전환: PvE 헥사 영토 확장
+## 🗄️ 옛 큐 (폐기 — 히스토리 참고용, 실행 금지)
 
-> ⚠️ **게임 근간이 바뀌었습니다.** PvP 심리전 폐기 → PvE 헥사 영토 확장 + 카운터배치 오토배틀.
-> 아래 "Phase 2"의 GDD 작성들은 **옛 PvP 구조 기반이라 보류** — 전환 Q 해결 후 재정의됨.
+> 이하 원문 보존. 헥사·PvP·판돈·400명 전투 = 죽은 맥락. 링크된 pve-pivot.md 등은 `_archive/`로 이동됨.
 
-0. **PvE 전환 Q 리스트 해결** ⭐⭐ — 시작점: **[design/research/pve-pivot.md](../design/research/pve-pivot.md)**
-   - 확정 결정 9개 + 미결 Q 24개가 Tier별로 정리됨
-   - 진행: Tier 0 → 1 순서로 Q 하나씩 결정 → 해당 문서 반영 → 커밋
-   - 최대 미결: **Q7(출정 형태 — 별도 던전 맵 vs 헥사 국경 밀기)**
-   - Q 충분히 닫히면 → game-concept.md 개정 → ADR-001 Superseded + 새 ADR → combat/deck/economy/deck-building 개정 → systems-index 갱신 (pve-pivot.md §C 참조)
+### (구) 최우선 (2026-06-29) — 코어 전환: PvE 헥사 영토 확장
+
+0. **PvE 전환 Q 리스트 해결** — (폐기) 옛 시작점은 pve-pivot.md(현 `design/gdd/_archive/02-pve-hex/pve-pivot.md`)였음. 헥사 컨셉 자체가 폐기되어 무효.
 
 ---
 

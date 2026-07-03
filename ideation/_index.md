@@ -5,7 +5,8 @@
 
 ## 지금 진행 중
 
-- [concept-demon-hr.md](concept-demon-hr.md) — ⭐ **현재 방향: 악마성 인사팀 (가제).** DDworld 헥사 오토배틀러를 대체.
+- [concept-demon-hr.md](concept-demon-hr.md) — ⭐ **현재 방향: 마왕성 인사팀 (가제).** DDworld 헥사 오토배틀러를 대체.
+- [mvp-design.md](mvp-design.md) — ⭐ **MVP 기획 v0.1** (3일+승진 1회, JD 적합 판정, 하루 결산+지연 사고)
 - [logline-and-hook.md](logline-and-hook.md) — 후크 탐색 기록 (헥사 컨셉의 후크 문제 → 위 전환으로 해소)
 
 ## 성격

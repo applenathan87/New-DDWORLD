@@ -1,6 +1,6 @@
 # ADR-001: 비동기 PvP를 MVP 대전 모드로 채택
 
-> **Status**: Accepted
+> **Status**: **Superseded** (2026-07-03 — 「마왕성 인사팀」 전환으로 PvP 자체가 폐기됨. 현행 컨셉 = ideation/, 아카이브 인덱스 = design/gdd/_archive/README.md)
 > **Date**: 2026-05-25
 > **Decider**: nathan
 > **Tags**: networking, multiplayer, scope, mvp

@@ -55,9 +55,11 @@
 
 ## Architecture Decisions Log
 
-- [ADR-001](../../docs/architecture/ADR-001-async-pvp.md) — 비동기 PvP를 MVP 대전 모드로 채택 (2026-05-25, Accepted)
-- [ADR-002](../../docs/architecture/ADR-002-visual-style-low-poly-3d.md) — 비주얼 스타일 Low-poly Voxel 3D (2026-05-25, Accepted · 성능 가정은 ADR-003이 갱신)
-- [ADR-003](../../docs/architecture/ADR-003-rigid-instancing-crowd-rendering.md) — 대량 캐릭터 렌더링 & 전투 시뮬: 리지드 부위 인스턴싱 + 정점색 1머티리얼 + 데이터 결정론 시뮬 (목표 상한 400, VAT 배제) (2026-06-29, Accepted)
+> ⚠️ **2026-07-03 「마왕성 인사팀」 전환**: ADR-001·003 Superseded. ADR-002는 캐릭터 복셀 결정만 유효(환경=로우폴리 3D). 인덱스 = design/gdd/_archive/README.md
+
+- [ADR-001](../../docs/architecture/ADR-001-async-pvp.md) — 비동기 PvP (2026-05-25) → **Superseded** (PvP 자체 폐기)
+- [ADR-002](../../docs/architecture/ADR-002-visual-style-low-poly-3d.md) — 비주얼 스타일 Low-poly Voxel (2026-05-25, Accepted) · ⚠️ **캐릭터 복셀만 유효** — 환경=로우폴리 3D, 미니어처 톤·400명 크라우드 전제는 폐기
+- [ADR-003](../../docs/architecture/ADR-003-rigid-instancing-crowd-rendering.md) — 400명 크라우드 렌더링/전투 시뮬 (2026-06-29) → **Superseded** (전투 자체 폐기)
 
 ## Engine Specialists
 

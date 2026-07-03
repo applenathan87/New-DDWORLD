@@ -1,5 +1,9 @@
 # Technical Requirement ID Registry
 #
+# ⚠️ 2026-07-03 STALE — 이 레지스트리의 TR-ID는 옛 (헥사/PvP) GDD 기준이다.
+#    「마왕성 인사팀」 전환으로 대응 GDD가 아카이브됨 → 현행 아님, 재작성 대기.
+#    현행 컨셉 = ideation/, 아카이브 인덱스 = design/gdd/_archive/README.md
+#
 # PURPOSE: Persistent, stable IDs for every GDD technical requirement.
 # Prevents TR-ID renumbering across /architecture-review runs, which would
 # break story references.

@@ -1,6 +1,6 @@
 # ADR-002: 비주얼 스타일 — Low-poly Voxel 3D 채택
 
-> **Status**: Accepted
+> **Status**: Accepted — ⚠️ 2026-07-03 「마왕성 인사팀」 전환: **캐릭터 복셀 결정은 유효**하나 (1) 환경 = **로우폴리 3D**로 명확화, (2) 미니어처·틸트시프트 톤 / 부위분리(전투 애니) / 400명 크라우드([ADR-003](ADR-003-rigid-instancing-crowd-rendering.md), Superseded) 전제는 폐기. 상세 = design/gdd/_archive/README.md
 > **Date**: 2026-05-25
 > **Decider**: nathan
 > **Tags**: visual, art-direction, scope, tooling

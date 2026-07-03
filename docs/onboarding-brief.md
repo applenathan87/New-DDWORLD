@@ -1,43 +1,50 @@
 # DDworld — 신규 모델/협업자 온보딩 브리핑
 
-> **용도**: 새 AI 모델(예: Fable)이나 협업자에게 프로젝트를 "다 읽지 않고" 빠르게 파악시키기 위한 큐레이션 읽기 가이드.
-> **핵심 주의**: 2026-06-29 코어 전환 때문에 문서가 "현행 정본 / 참고 / 폐기"로 갈린다. 아래 순서·구분을 반드시 지킬 것.
-> **Last Updated**: 2026-07-02
+> **용도**: 새 AI 모델이나 협업자에게 프로젝트를 "다 읽지 않고" 빠르게 파악시키는 큐레이션 읽기 가이드.
+> **Last Updated**: 2026-07-03 (「마왕성 인사팀」 전환 반영)
 
 ---
 
 ## 한 줄 요약
 
-솔로 인디 게임(Unity 6.3 / C#). **2026-06-29에 코어를 전환**했다: `비동기 PvP 심리전 오토배틀러` → **`PvE 헥사 영토 확장 오토배틀러`**.
+솔로 인디 게임(Unity 6.5 / C#). 현 컨셉 = **「마왕성 인사팀」(가제)** — 마왕성 인사팀 신입이 되어, 사악한 직무에 지원한 몬스터를 면접 보는 **다크판타지 코미디 HR 시뮬**. Papers, Please식 판단·심문 + 책상 위 물건을 직접 만지는 다이어제틱 데스크.
+
+**후크**: 악당을 뽑기에 **판단축이 비틀린다** — 거짓말·잔인함이 (직무 JD에 따라) 장점, "알고 보니 착함"이 위험 신호.
 
 ---
 
-## ① 먼저 읽어라 (정본 — 이게 전부의 기준)
+## ⚠️ 컨셉을 두 번 갈아엎었다 — 옛 문서 대량 폐기
 
-1. **[design/research/pve-pivot.md](../design/research/pve-pivot.md)** — **결정 로그 = 정본.** 확정된 것(A섹션 LOCKED)과 미결 질문(Q리스트)이 여기 다 있다. 뭐가 정해졌고 뭐가 안 정해졌는지 판단의 최종 근거.
-2. **[design/gdd/game-concept.md](../design/gdd/game-concept.md)** — 위 결정들을 "읽히는 서사"로 합본한 게임 개요. 용어집(캠페인/진격/티어/레벨)·엘리베이터 피치·Open Items.
+코어가 **두 번** 전환됐다. 아래 키워드가 나오면 **폐기 맥락**이다:
 
-## ② 시스템 상세가 필요하면
+- **1세대(폐기)**: PvP · 고스트 · 매칭 · 판돈 · 심리전
+- **2세대(폐기)**: 헥사 · 영토 확장 · 내 군대 · 400명 전투 · 소모전 · permadeath · 오토배틀러
+- 옛 문서 전부 = `design/gdd/_archive/` + `design/research/_archive/` — 인덱스: [design/gdd/_archive/README.md](../design/gdd/_archive/README.md)
 
-3. **[design/gdd/combat.md](../design/gdd/combat.md)** — 현행 전투(PvE 레인 오토배틀, 5×5 카운터 배치). *2026-06-30 재작성본.*
-4. **[design/art/art-bible.md](../design/art/art-bible.md)** — 아트 정본. Low-poly Voxel 3D + Tilt-shift. (렌더 전제는 ADR-002/003)
+## ① 먼저 읽어라 (현행 정본)
 
-## ③ 코드(프로토타입)를 볼 거면 진입점
+1. **[ideation/concept-demon-hr.md](../ideation/concept-demon-hr.md)** — 컨셉·후크·물성 원칙·업무 스코프 확장(가젯 진행)·커리어 아크.
+2. **[ideation/mvp-design.md](../ideation/mvp-design.md)** — MVP 전체 기획: 3일+승진(성과), JD 적합 판정, 가젯 진행(촛불→질문카드→돋보기), 하루 결산+지연 사고, 질문 횟수 제한.
+3. **[ideation/refs/면접화면-목업.png](../ideation/refs/면접화면-목업.png)** — 사용자 제작 화면 목업 (비주얼·UX 타깃).
 
-- **[prototypes/unity-prototype/Assets/Scripts/Hex/HexGamePrototype.cs](../prototypes/unity-prototype/Assets/Scripts/Hex/HexGamePrototype.cs)** — 현재 활발히 작업 중인 헥사 프로토타입 (최근 커밋 전부 여기).
-- **[Scripts/Systems/](../prototypes/unity-prototype/Assets/Scripts/Systems/)** — BattleSimulator·Soldier·GameManager 등 전투 시뮬. ⚠️ 일부는 옛 PvP 프로토타입 잔재일 수 있으니 헥사 쪽과 대조.
+## ② 지금 실제 제작 (작업 트랙)
 
-## 🚫 읽지 마라 (폐기 — 옛 PvP 기준이라 오정보를 준다)
+- **[Origin/](../Origin/CLAUDE.md)** — 유니티를 처음부터 이해하며 만드는 학습·제작 트랙. 지도 = [Origin/roadmap.md](../Origin/roadmap.md) (마왕성 인사팀 MVP로 개편됨).
 
-- `design/gdd/_archive/` 전체 (옛 combat/deck/economy/systems-index)
-- `design/art/_archive/` 전체 (HD-2D 시절 자료)
-- `docs/architecture/ADR-001` (비동기 PvP — 폐기 예정)
-- CLAUDE.md의 "Game Overview"·"Multiplayer-Ready 원칙" 섹션 → **옛 PvP 기준, game-concept.md가 우선.**
-- 키워드로 **PvP·고스트·매칭·판돈·심리전**이 나오면 폐기 맥락이다.
+## ③ 아트
+
+- **[design/art/art-bible.md](../design/art/art-bible.md)** — ⚠️ 옛 헥사 전투 기준 문서. **승계 = 캐릭터 복셀 + 정점색 기술만.** 「마왕성 인사팀」은 **환경 = 로우폴리 3D**, 코지 미니어처 톤 미승계. 재작성 대기.
+
+## 🚫 읽지 마라 (폐기 — 오정보를 준다)
+
+- `design/gdd/_archive/` 전체 (1·2세대 GDD)
+- `design/research/_archive/` 전체
+- `docs/architecture/ADR-001`(비동기 PvP) · `ADR-003`(400명 크라우드 렌더링) = **Superseded**
+- 정식 `design/gdd/` GDD는 아직 없음 — [design/gdd/README.md](../design/gdd/README.md) 참고.
 
 ---
 
 ## 사용 팁
 
-- 목적이 명확하면(리뷰 / 특정 시스템 검증 / 밸런스) ①의 2개만으로도 충분할 때가 많다. 상세(②)·코드(③)는 필요할 때만.
-- 이 문서 자체도 전환이 더 진행되면 갱신 대상이다. 정본(pve-pivot.md)과 어긋나면 정본이 우선.
+- 목적이 명확하면 ①의 2개(concept + mvp-design)만으로 충분할 때가 많다.
+- 이 문서도 전환이 진행되면 갱신 대상. 현행 정본(ideation/)과 어긋나면 정본이 우선.
