@@ -14,8 +14,9 @@
 
 > "todo 찾아봐" = **이 블록만** 읽기.
 
-- **현행 제작**: [Origin/roadmap.md](../Origin/roadmap.md) (면접 데스크 MVP — 0단계 유니티 친해지기부터)
-- **현행 기획**: [ideation/mvp-design.md](../ideation/mvp-design.md) 다듬기 → 확정 시 `design/gdd/` 승격
+- **[진행중] MVP 프로토 스프린트 (7/4~7/7)**: [docs/mawang-hr-proto-brief.md](../docs/mawang-hr-proto-brief.md) — S1 완료, S2(도장 물성+면접 루프)부터 계속
+- **현행 학습**: [Origin/roadmap.md](../Origin/roadmap.md) (사용자 개인 진행 — 유니티 친해지기)
+- **현행 기획**: [ideation/mvp-design.md](../ideation/mvp-design.md) — 프로토 검증 결과 반영 → 확정 시 `design/gdd/` 승격
 - 아래 옛 큐(헥사·PvP)는 **전부 폐기** — 새 컨셉 기준으로 이 파일을 언젠가 재작성할 것.
 
 ---

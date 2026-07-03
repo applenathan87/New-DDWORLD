@@ -1,0 +1,149 @@
+{
+  "version": "S1.5-2026-07-04",
+  "jds": [
+    {
+      "id": "adm",
+      "title": "일반 행정 (하급)",
+      "required": ["꼼꼼함", "야근 내성", "서류를 위조하지 않을 것 (남의 서류는 예외)"],
+      "banned": ["서류 위조 (본인 이력서 포함)", "업무와 무관한 방화 충동"],
+      "note": "마왕성의 살림을 굴리는 자리. 사악함보다 꼼꼼함이 먼저다."
+    },
+    {
+      "id": "guard",
+      "title": "던전 경비",
+      "required": ["우직함", "겁 없음", "침입자에게 위협적인 인상"],
+      "banned": ["침입자와 친해지는 성격", "지나친 상냥함", "용사 측 인사"],
+      "note": "성문 앞에 서서 용사를 겁주는 자리. 성실보다 살벌함."
+    }
+  ],
+  "applicants": [
+    {
+      "id": "grblin",
+      "name": "그볼린",
+      "species": "고블린 ♂",
+      "jdId": "adm",
+      "salary": "연 2,400 G",
+      "quote": "열심히 하겠습니다 (진짜예요!)",
+      "resumeLines": [
+        { "text": "전 직장: 고블린 물류 (계약직 3년, 무단결근 0회)", "evidence": "PASS" },
+        { "text": "특기: 회계 돌려까기 — 장부 두 벌 동시 기입 가능", "evidence": "PASS" },
+        { "text": "자격증: 주판 1급, 저주 문서 속독 3급", "evidence": "" }
+      ],
+      "special": "이력서 여백에 '야근 좋아합니다'라고 세 번 적음. 필체가 점점 진해짐.",
+      "specialEvidence": "PASS",
+      "correct": "PASS",
+      "reveal": "장부 두 벌 동시 기입은 마왕성 행정의 핵심 역량. 성실하기까지 한 악당은 흔치 않다. 합격이 정답."
+    },
+    {
+      "id": "mulkeong",
+      "name": "물컹이",
+      "species": "슬라임 ♂",
+      "jdId": "guard",
+      "salary": "연 1,800 G",
+      "quote": "저… 무섭게 생겼다는 말 많이 들어요!",
+      "resumeLines": [
+        { "text": "동네 아이들 사이에서 '말랑이 형'으로 통함", "evidence": "FAIL" },
+        { "text": "다친 참새를 3개월 간호해 하늘로 날려보냄", "evidence": "FAIL" },
+        { "text": "추천서: '이렇게 착한 슬라임은 처음입니다' — 인간 마을 촌장", "evidence": "FAIL" }
+      ],
+      "special": "추천서에서 은은한 꽃향기가 남. 이력서 모서리에 참새 스티커.",
+      "specialEvidence": "FAIL",
+      "correct": "FAIL",
+      "reveal": "경비의 결격 = 상냥함. 인간 촌장의 훈훈한 추천서는 마왕성에선 위험 신호다. 탈락이 정답. — 여기선 '착함'이 결격이다. 판단축이 뒤집혔다!"
+    },
+    {
+      "id": "vlad3",
+      "name": "블라드 3세",
+      "species": "뱀파이어 ♂",
+      "jdId": "adm",
+      "salary": "연 9,999 G",
+      "quote": "나의 사악함은 서류 따위에 담기지 않는다.",
+      "resumeLines": [
+        { "text": "대표 업적: 631년 대기근의 설계자 (본인 주장)", "evidence": "FAIL" },
+        { "text": "직전 경력: 466년~666년 관 속 수면 (200년, 본인 기재)", "evidence": "FAIL" },
+        { "text": "특기: 위엄, 망토 펄럭이기", "evidence": "" }
+      ],
+      "special": "대기근(631년)이 본인 수면 기간(466~666년) 한복판임. 계산이 안 맞음.",
+      "specialEvidence": "FAIL",
+      "correct": "FAIL",
+      "reveal": "악행 뻥튀기는 애교지만, 연도 계산도 안 맞는 어설픈 서류 위조는 행정 결격이다. 탈락이 정답. — 사악함이 부족해서가 아니라, 위조가 서툴러서다."
+    },
+    {
+      "id": "dolsoe",
+      "name": "돌쇠",
+      "species": "오크 ♂",
+      "jdId": "guard",
+      "salary": "연 2,000 G",
+      "quote": "문이 없어도 서 있을 수 있습니다.",
+      "resumeLines": [
+        { "text": "전 직장: 폐성 북문 앞 (같은 자리 10년)", "evidence": "PASS" },
+        { "text": "특기: 서 있기, 노려보기, 비 맞으며 서 있기", "evidence": "PASS" },
+        { "text": "퇴사 사유: 성문이 헐려서 (본인 잘못 아님, 확인됨)", "evidence": "" }
+      ],
+      "special": "이력서가 돌판에 새겨져 있음. 운반도 본인이 함.",
+      "specialEvidence": "",
+      "correct": "PASS",
+      "reveal": "우직함의 화신. 던전 경비 요구 자질 그 자체다. 합격이 정답. 돌판 이력서는 인사팀 최초의 소장품이 되었다."
+    },
+    {
+      "id": "ppyeodagu",
+      "name": "뼈다구",
+      "species": "스켈레톤 ♂",
+      "jdId": "adm",
+      "salary": "연 1,200 G (식대 불요)",
+      "quote": "죽어서도 일하고 싶었습니다.",
+      "resumeLines": [
+        { "text": "생전 경력: 인간 왕국 세무서 7년 (연체세 징수 담당)", "evidence": "PASS" },
+        { "text": "신체 특성: 수면 불필요(뼈), 식사 불필요(뼈), 화장실 불필요(뼈)", "evidence": "PASS" },
+        { "text": "특기: 무한 야근, 뼈 소리로 채무자 위협", "evidence": "PASS" }
+      ],
+      "special": "생전 경력증명서를 본인 무덤에서 직접 발급받아 옴 (진본 확인됨).",
+      "specialEvidence": "",
+      "correct": "PASS",
+      "reveal": "세무 경력 + 무한 야근 + 식대 불요. 행정의 꿈의 인재다. 합격이 정답. 인사팀은 급여 협상에서 식대 항목을 조용히 지웠다."
+    },
+    {
+      "id": "kimyongsa",
+      "name": "김용사",
+      "species": "인간 ♂ (본인 기재: '평범한 인간 악당')",
+      "jdId": "guard",
+      "salary": "무급 가능 (!)",
+      "quote": "마왕성의 내부 구조가 궁금… 아니, 경비가 하고 싶어서요.",
+      "resumeLines": [
+        { "text": "특기: 검술 (악한 용도로만 씀, 진짜임)", "evidence": "" },
+        { "text": "소지품: 물병 1개 — 본인은 '그냥 음료수'라 주장 (라벨: 聖水)", "evidence": "FAIL" },
+        { "text": "희망 급여: 무급 가능 — '돈은 중요하지 않습니다'", "evidence": "FAIL" }
+      ],
+      "special": "공문 3항 참조 — 최근 용사 측 위장 지원 증가. 무급으로 일하겠다는 지원자를 믿지 말 것.",
+      "specialEvidence": "FAIL",
+      "correct": "FAIL",
+      "reveal": "공문의 경고 + 성수 + 말실수 + 무급 가능. 용사 측 위장 지원이다. 탈락(및 경비대 신고)이 정답. 그는 정중한 저주 편지를 받고 성문 앞에서 연행되었다."
+    },
+    {
+      "id": "buljangnan",
+      "name": "불장난",
+      "species": "임프 ♀",
+      "jdId": "adm",
+      "salary": "연 2,200 G",
+      "quote": "종이가 제일 잘 타요.",
+      "resumeLines": [
+        { "text": "특기: 방화, 큰 방화, 아주 큰 방화", "evidence": "FAIL" },
+        { "text": "수상: 올해의 화재 대상 3년 연속", "evidence": "FAIL" },
+        { "text": "포부: 마왕성의 모든 서류를 불태우… 정리하고 싶습니다", "evidence": "FAIL" }
+      ],
+      "special": "이력서 모서리가 그을려 있음. 면접 대기석 의자도 살짝 그을려 있음.",
+      "specialEvidence": "FAIL",
+      "correct": "FAIL",
+      "reveal": "훌륭한 악당이지만 '행정' JD엔 결격(방화 충동)이다. 탈락이 정답. — 방화부서 오프닝이었다면 즉시 합격감. 직무가 다르면 정답도 다르다."
+    }
+  ],
+  "days": [
+    {
+      "day": 1,
+      "title": "Day 1 — 서류 심사 (수습)",
+      "directive": "마왕성 인사팀 공문 제666-05호\n\n1. 금일 접수된 서류 7건을 전부 심사할 것.\n2. 내일 면접 일정 확보를 위해 최소 3명을 서류 통과시킬 것.\n3. 경고: 최근 용사 측의 위장 지원 시도가 늘고 있음. 수상한 자는 통과 금지.\n4. 마왕성 인재상: '악행에 진심인 자'. 훈훈한 인재는 정중히 거절할 것.\n\n— 인사팀장 카우즈",
+      "quotaMin": 3,
+      "applicantIds": ["grblin", "mulkeong", "vlad3", "dolsoe", "ppyeodagu", "kimyongsa", "buljangnan"]
+    }
+  ]
+}
