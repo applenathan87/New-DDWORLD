@@ -562,12 +562,16 @@ namespace MawangHR
             }
         }
 
-        /// 도장 잉크 자국 — 스크린 광선 ↔ 종이 면 교차점에 찍기
+        /// 도장 잉크 자국 — 스크린 광선 ↔ 종이 면 교차점에 찍기.
+        /// 자체 정렬 캔버스를 부여해 사진 카드 등 다른 월드 캔버스보다 항상 위에 찍힌다.
         private void SpawnImprint(RectTransform refCanvas, Transform parent, Vector2 screenPos, string text, Color color)
         {
             Vector2 lp;
             RectTransformUtility.ScreenPointToLocalPointInRectangle(refCanvas, screenPos, rig.Cam, out lp);
             var imprint = UiKit.Rect("Imprint", parent);
+            var sortCanvas = imprint.gameObject.AddComponent<Canvas>();
+            sortCanvas.overrideSorting = true;
+            sortCanvas.sortingOrder = 10;
             imprint.anchorMin = imprint.anchorMax = new Vector2(0.5f, 0.5f);
             imprint.pivot = new Vector2(0.5f, 0.5f);
             imprint.anchoredPosition = lp;
@@ -623,6 +627,7 @@ namespace MawangHR
             // 책상 종이는 치우기 (수정구 가림 방지 — 이 업무엔 지침서 불필요)
             rig.ResumeCanvas.gameObject.SetActive(false);
             rig.JdCanvas.gameObject.SetActive(false);
+            if (rig.OrbProp != null) rig.OrbProp.enabled = false; // 통화 장비를 던지는 사고 방지
 
             rig.TweenToHold();
             scheduling = new GameObject("SchedulingFlow").AddComponent<SchedulingFlow>();
@@ -662,6 +667,7 @@ namespace MawangHR
             scheduling = null;
             rig.ResumeCanvas.gameObject.SetActive(true); // 치웠던 종이 복귀
             rig.JdCanvas.gameObject.SetActive(true);
+            if (rig.OrbProp != null) rig.OrbProp.enabled = true;
             rig.TweenToDesk();
             DestroyHud();
             yield return new WaitForSeconds(0.4f);

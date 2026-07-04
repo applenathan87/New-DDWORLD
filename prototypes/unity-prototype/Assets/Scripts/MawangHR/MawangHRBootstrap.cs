@@ -45,7 +45,8 @@ namespace MawangHR
             cam.clearFlags = CameraClearFlags.SolidColor;
             cam.backgroundColor = new Color(0.045f, 0.032f, 0.028f);
             cam.nearClipPlane = 0.05f;
-            cam.gameObject.AddComponent<PhysicsRaycaster>(); // 3D 도장 포인터 이벤트용
+            var raycaster = cam.gameObject.AddComponent<PhysicsRaycaster>(); // 3D 도장·소품 포인터 이벤트용
+            raycaster.eventMask = ~(1 << 2); // 레이어 2(환경 물리 콜라이더)는 클릭 대상 제외 — "허공 클릭 = 내려놓기" 유지
 
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
             RenderSettings.ambientLight = new Color(0.14f, 0.11f, 0.10f);

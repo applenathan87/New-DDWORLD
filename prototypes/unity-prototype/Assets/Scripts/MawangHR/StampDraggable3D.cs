@@ -10,6 +10,7 @@ namespace MawangHR
     public class StampDraggable3D : MonoBehaviour, IPointerDownHandler, IDragHandler, IPointerUpHandler
     {
         private Camera cam;
+        private DeskRig rig;
         private Vector3 home;
         private Quaternion homeRot;
         private bool isPass;
@@ -21,16 +22,22 @@ namespace MawangHR
 
         private bool dragging;
         private Coroutine anim;
+        private Rigidbody rb;
+        private Collider bodyCol;
+        private Vector3 dragVel;       // 세게 휘두르면 도장도 날아간다
+        private Vector3 lastDragPos;
+        private float lastDragTime;
 
         private const float HoverLift = 0.22f;   // 책상 위 공중 높이
         private const float PaperHover = 0.13f;  // 종이 면 위 공중 높이
         private const float BaseHalf = 0.055f;   // 도장 밑면 오프셋
 
-        public void Init(bool pass, Camera camera, RectTransform paperRect, float deskTopY,
+        public void Init(bool pass, Camera camera, DeskRig deskRig, RectTransform paperRect, float deskTopY,
             Func<bool> canStampFn, Action<bool, Vector2> onSlamFn, Action onBlockedFn)
         {
             isPass = pass;
             cam = camera;
+            rig = deskRig;
             paper = paperRect;
             deskTop = deskTopY;
             canStamp = canStampFn;
@@ -38,6 +45,12 @@ namespace MawangHR
             onBlocked = onBlockedFn;
             home = transform.position;
             homeRot = transform.rotation;
+            bodyCol = GetComponent<Collider>();
+
+            rb = gameObject.AddComponent<Rigidbody>();
+            rb.isKinematic = true;
+            rb.interpolation = RigidbodyInterpolation.Interpolate;
+            gameObject.AddComponent<ImpactSound>();
         }
 
         /// 종이 앞면 법선 (캔버스 front = -forward)
@@ -48,15 +61,27 @@ namespace MawangHR
 
         public void OnPointerDown(PointerEventData e)
         {
+            if (bodyCol != null && !bodyCol.enabled) return; // 마법 소멸 중
             if (anim != null) { StopCoroutine(anim); anim = null; }
+            if (rb != null) rb.isKinematic = true; // 날아가던 도장도 잡으면 손에 붙음
             dragging = true;
+            dragVel = Vector3.zero;
+            lastDragPos = transform.position;
+            lastDragTime = Time.time;
             Sfx.Pick();
             MoveToPointer(e.position);
         }
 
         public void OnDrag(PointerEventData e)
         {
-            if (dragging) MoveToPointer(e.position);
+            if (!dragging) return;
+            MoveToPointer(e.position);
+
+            float dt = Mathf.Max(Time.time - lastDragTime, 0.001f);
+            Vector3 instant = (transform.position - lastDragPos) / dt;
+            dragVel = Vector3.Lerp(dragVel, instant, 0.5f);
+            lastDragPos = transform.position;
+            lastDragTime = Time.time;
         }
 
         private void MoveToPointer(Vector2 screenPos)
@@ -103,7 +128,22 @@ namespace MawangHR
                 return;
             }
 
-            if (overPaper) onBlocked?.Invoke();
+            if (overPaper)
+            {
+                onBlocked?.Invoke();
+                anim = StartCoroutine(ReturnHome(0.18f));
+                return;
+            }
+
+            // 세게 휘두르면 = 던지기 (진짜 물리 + 마법 정리). 살짝 놓으면 = 제자리 복귀 (코어 루프 속도 유지)
+            Vector3 v = Vector3.ClampMagnitude(dragVel, 5.5f);
+            if (v.magnitude > 1.2f && rb != null && rig != null)
+            {
+                Vector3 spin = UnityEngine.Random.onUnitSphere * Mathf.Lerp(2f, 9f, v.magnitude / 5.5f);
+                anim = StartCoroutine(PropPhysics.ThrowAndRespawn(
+                    transform, rb, bodyCol, v, spin, home, homeRot, rig));
+                return;
+            }
             anim = StartCoroutine(ReturnHome(0.18f));
         }
 
