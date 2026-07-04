@@ -173,6 +173,15 @@ namespace MawangHR
             if (species.Contains("임프")) return new Color(0.82f, 0.42f, 0.24f);
             if (species.Contains("드래곤")) return new Color(0.80f, 0.62f, 0.22f);
             if (species.Contains("나이트메어")) return new Color(0.18f, 0.16f, 0.28f);
+            if (species.Contains("미라")) return new Color(0.78f, 0.72f, 0.58f);
+            if (species.Contains("비홀더")) return new Color(0.60f, 0.30f, 0.45f);
+            if (species.Contains("나가")) return new Color(0.20f, 0.50f, 0.55f);
+            if (species.Contains("트롤")) return new Color(0.25f, 0.42f, 0.38f);
+            if (species.Contains("미믹")) return new Color(0.55f, 0.40f, 0.22f);
+            if (species.Contains("하피")) return new Color(0.62f, 0.46f, 0.26f);
+            if (species.Contains("데스나이트")) return new Color(0.24f, 0.24f, 0.30f);
+            if (species.Contains("픽시")) return new Color(0.85f, 0.55f, 0.70f);
+            if (species.Contains("수인")) return new Color(0.70f, 0.58f, 0.42f);
             return new Color(0.5f, 0.45f, 0.4f);
         }
 
