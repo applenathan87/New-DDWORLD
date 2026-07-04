@@ -11,9 +11,31 @@ namespace MawangHR
     {
         public string version;
         public Jd[] jds;
-        public Applicant[] applicants;
+        public Applicant[] applicants;    // 서류 심사 케이스 풀 (시트 파이프라인 대상)
+        public Applicant[] interviewees;  // 면접 케이스 풀 (단계 독립 세트 — 시트 대상 아님, answers 필수)
+        public QuestionCard[] cards;      // 면접 질문 카드
         public DayConfig[] days;
         public SchedulingData scheduling; // Day 1 후반 업무 — 면접 일정 잡기 (단계 독립 지원자 세트)
+    }
+
+    /// 면접 질문 카드 — 책상 위 3D 카드로 잡아 지원자에게 던지면 발동.
+    [Serializable]
+    public class QuestionCard
+    {
+        public string id;      // 예: basic / terms / motive / trap
+        public string label;   // 예: "기본 질문"
+        public string prompt;  // 면접관이 실제로 묻는 문장
+        public int cost;       // 질문 포인트 소모 (★ 개수)
+    }
+
+    /// 면접 답변 — 카드 하나당 하나. 답변도 마킹 가능한 단서다.
+    [Serializable]
+    public class Answer
+    {
+        public string cardId;   // 어느 카드에 대한 답인가
+        public string text;     // 답변 대사
+        public string tell;     // 반응 지시문 (예: "…목소리가 작아진다") — 없으면 ""
+        public string evidence; // "" | PASS | FAIL (resumeLines와 같은 규칙)
     }
 
     [Serializable]
@@ -78,6 +100,7 @@ namespace MawangHR
         public string specialEvidence;// 특이사항의 근거 여부 ("", "PASS", "FAIL")
         public string correct;        // 정답: "PASS" | "FAIL"
         public string reveal;         // 결산 해설 (정답 근거 + 코미디)
+        public Answer[] answers;      // 면접 단계 전용 — 질문 카드별 답변 (서류 단계는 비움)
 
         public bool CorrectIsPass => correct == "PASS";
     }
@@ -88,10 +111,12 @@ namespace MawangHR
         public int day;
         public string title;       // 예: "Day 1 — 서류 심사 (수습)"
         public string directive;   // 오늘의 공문 전문
+        public string phase;       // "" = 서류 심사 / "interview" = 1차 면접
         public int meritGoal;      // 승진에 필요한 공적 원점수 (정확 ×2 + 근거 적중 ×1) — 게이지 100% 지점
         public int drawCount;      // 풀에서 매 판 뽑을 서류 수 (0 = 뽑기 없이 명단 순서 그대로)
         public string firstId;     // 첫 슬롯 고정 케이스 — 미출현일 때만 고정 (반전 튜토리얼 보장)
-        public string[] applicantIds; // 케이스 풀 전체 (drawCount > 0이면 여기서 뽑는다)
+        public int questionPoints; // 면접 전용 — 면접당 질문 포인트 (카드 ★ 소모)
+        public string[] applicantIds; // 케이스 풀 전체 (drawCount > 0이면 여기서 뽑는다. 면접 day는 interviewees에서 찾음)
     }
 
     /// 로드 직후 데이터 무결성 검사 + null 정규화.
@@ -113,18 +138,67 @@ namespace MawangHR
                 if (j.banned == null) j.banned = new string[0];
             }
 
-            foreach (var a in d.applicants)
+            // 지원자 공통 검사 + null 정규화 (서류·면접 풀 공용)
+            string CheckApplicant(Applicant a, string poolName)
             {
                 if (a.resumeLines == null || a.resumeLines.Length == 0)
-                    return $"지원자 '{a.id}': resumeLines가 비었습니다";
+                    return $"{poolName} '{a.id}': resumeLines가 비었습니다";
                 if (a.resumeLines.Length > 3)
-                    Debug.LogWarning($"[MawangHR] 지원자 '{a.id}': 이력 {a.resumeLines.Length}줄 — 레이아웃 한계(3줄) 초과, 특이사항과 겹칩니다");
+                    Debug.LogWarning($"[MawangHR] {poolName} '{a.id}': 이력 {a.resumeLines.Length}줄 — 레이아웃 한계(3줄) 초과, 특이사항과 겹칩니다");
                 if (a.correct != "PASS" && a.correct != "FAIL")
-                    return $"지원자 '{a.id}': correct는 PASS/FAIL이어야 합니다 (현재 '{a.correct}')";
+                    return $"{poolName} '{a.id}': correct는 PASS/FAIL이어야 합니다 (현재 '{a.correct}')";
                 foreach (var l in a.resumeLines)
                     if (l.evidence == null) l.evidence = "";
                 if (a.special == null) a.special = "";
                 if (a.specialEvidence == null) a.specialEvidence = "";
+                if (a.answers == null) a.answers = new Answer[0];
+                foreach (var ans in a.answers)
+                {
+                    if (ans.tell == null) ans.tell = "";
+                    if (ans.evidence == null) ans.evidence = "";
+                    if (ans.evidence != "" && ans.evidence != a.correct)
+                        return $"{poolName} '{a.id}': 답변({ans.cardId}) evidence는 빈칸 또는 정답({a.correct})이어야 합니다";
+                }
+                return null;
+            }
+
+            foreach (var a in d.applicants)
+            {
+                string err = CheckApplicant(a, "지원자");
+                if (err != null) return err;
+            }
+
+            // ─ 면접 데이터 (phase == "interview"인 day가 있을 때만 필수) ─
+            bool hasInterview = false;
+            foreach (var day in d.days)
+            {
+                if (day.phase == null) day.phase = "";
+                if (day.phase == "interview") hasInterview = true;
+            }
+            if (d.interviewees == null) d.interviewees = new Applicant[0];
+            if (d.cards == null) d.cards = new QuestionCard[0];
+            if (hasInterview)
+            {
+                if (d.interviewees.Length == 0) return "면접 day가 있는데 interviewees가 비었습니다";
+                if (d.cards.Length == 0) return "면접 day가 있는데 cards(질문 카드)가 비었습니다";
+                foreach (var c in d.cards)
+                    if (c.cost < 1) return $"질문 카드 '{c.id}': cost는 1 이상이어야 합니다";
+                foreach (var a in d.interviewees)
+                {
+                    string err = CheckApplicant(a, "면접자");
+                    if (err != null) return err;
+                    foreach (var c in d.cards)
+                    {
+                        bool found = false;
+                        foreach (var ans in a.answers) if (ans.cardId == c.id) { found = true; break; }
+                        if (!found) return $"면접자 '{a.id}': 카드 '{c.id}'에 대한 답변이 없습니다";
+                    }
+                    // 결정적 근거(정답 방향)가 이력·답변·특이사항 어딘가엔 있어야 함
+                    bool hasKey = a.specialEvidence == a.correct;
+                    foreach (var l in a.resumeLines) if (l.evidence == a.correct) hasKey = true;
+                    foreach (var ans in a.answers) if (ans.evidence == a.correct) hasKey = true;
+                    if (!hasKey) return $"면접자 '{a.id}': 결정적 근거(정답 방향 표시)가 하나도 없습니다";
+                }
             }
 
             foreach (var day in d.days)
@@ -134,6 +208,8 @@ namespace MawangHR
                 if (day.meritGoal < 1)
                     return $"Day {day.day}: meritGoal(승진 공적 기준)이 없거나 0입니다";
                 if (day.firstId == null) day.firstId = "";
+                if (day.phase == "interview" && day.questionPoints < 1)
+                    return $"Day {day.day}: questionPoints(질문 포인트)가 없거나 0입니다";
                 if (day.drawCount > day.applicantIds.Length)
                     Debug.LogWarning($"[MawangHR] Day {day.day}: drawCount({day.drawCount})가 풀({day.applicantIds.Length}건)보다 큼 — 전원 등장");
                 if (!string.IsNullOrEmpty(day.firstId) && Array.IndexOf(day.applicantIds, day.firstId) < 0)
@@ -141,6 +217,15 @@ namespace MawangHR
                 int lineupSize = day.drawCount > 0 ? Math.Min(day.drawCount, day.applicantIds.Length) : day.applicantIds.Length;
                 if (day.meritGoal > lineupSize * 3)
                     return $"Day {day.day}: meritGoal({day.meritGoal})이 하루 최대 공적({lineupSize * 3})보다 큼 — 승진 불가능";
+
+                // 풀 id 실존 확인 (없으면 조용히 제외되므로 경고)
+                var source = day.phase == "interview" ? d.interviewees : d.applicants;
+                foreach (var id in day.applicantIds)
+                {
+                    bool found = false;
+                    foreach (var a in source) if (a.id == id) { found = true; break; }
+                    if (!found) Debug.LogWarning($"[MawangHR] Day {day.day}: '{id}'가 풀에 없음 — 등장에서 제외됩니다");
+                }
             }
 
             // scheduling은 선택 블록 — 있으면 내부 배열만 정규화

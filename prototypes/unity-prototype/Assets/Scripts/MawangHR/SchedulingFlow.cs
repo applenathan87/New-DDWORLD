@@ -162,13 +162,17 @@ namespace MawangHR
             }
         }
 
-        private static Color SpeciesColor(string species)
+        /// 종족 대표색 — 스케줄링 사진 카드 + 면접 몬스터 그레이박스 공용
+        public static Color SpeciesColor(string species)
         {
             if (species.Contains("뱀파이어")) return new Color(0.45f, 0.15f, 0.20f);
             if (species.Contains("슬라임")) return new Color(0.30f, 0.55f, 0.75f);
             if (species.Contains("스켈레톤")) return new Color(0.85f, 0.83f, 0.75f);
             if (species.Contains("오크")) return new Color(0.35f, 0.50f, 0.28f);
             if (species.Contains("마녀")) return new Color(0.45f, 0.30f, 0.55f);
+            if (species.Contains("임프")) return new Color(0.82f, 0.42f, 0.24f);
+            if (species.Contains("드래곤")) return new Color(0.80f, 0.62f, 0.22f);
+            if (species.Contains("나이트메어")) return new Color(0.18f, 0.16f, 0.28f);
             return new Color(0.5f, 0.45f, 0.4f);
         }
 

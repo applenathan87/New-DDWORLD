@@ -1,5 +1,101 @@
 {
-  "version": "S2c-pool-2026-07-04",
+  "version": "S2b-interview-2026-07-04",
+  "cards": [
+    { "id": "basic",  "label": "기본 질문", "prompt": "자기소개를 해보시죠.", "cost": 1 },
+    { "id": "terms",  "label": "근무 조건", "prompt": "야근과 밤샘 근무, 가능합니까?", "cost": 1 },
+    { "id": "motive", "label": "지원 동기", "prompt": "왜 하필 마왕성입니까?", "cost": 1 },
+    { "id": "trap",   "label": "함정 질문", "prompt": "용사님께서 오시면 어떻게 모실 건가요?", "cost": 2 }
+  ],
+  "interviewees": [
+    {
+      "id": "kkeureong",
+      "name": "끄르렁",
+      "species": "오크 ♂",
+      "jdId": "guard",
+      "salary": "연 2,400 G",
+      "quote": "문. 지키러 왔다.",
+      "resumeLines": [
+        { "text": "전직: 오우거 체육관 정문 (야간 전담 5년)", "evidence": "PASS" },
+        { "text": "특이: 함성으로 유리창 파손 전과 3회 (본인은 '인사'였다고 주장)", "evidence": "" }
+      ],
+      "special": "",
+      "specialEvidence": "",
+      "correct": "PASS",
+      "reveal": "밤 근무 즉답에 '용사님' 함정을 콧김으로 통과. 경비의 정석이다. 합격이 정답. 유리창 예산만 미리 늘려두자.",
+      "answers": [
+        { "cardId": "basic",  "text": "끄르렁. 문 앞에 서면 마음이 고요해진다.", "tell": "", "evidence": "" },
+        { "cardId": "terms",  "text": "밤? 문은 밤에도 문이다. 서 있는다.", "tell": "", "evidence": "PASS" },
+        { "cardId": "motive", "text": "여기 정문이 제일 크고 무겁다고 들었다. 설렌다.", "tell": "", "evidence": "" },
+        { "cardId": "trap",   "text": "용사…님? 문 앞에서 '님'은 없다. 침입자는 두드려서 돌려보낸다.", "tell": "(팔짱을 끼고 콧김을 뿜는다)", "evidence": "PASS" }
+      ]
+    },
+    {
+      "id": "milkti",
+      "name": "밀크티",
+      "species": "임프 ♀",
+      "jdId": "guard",
+      "salary": "연 1,900 G",
+      "quote": "나, 나는 어둠의 임프다! (연습한 대로…)",
+      "resumeLines": [
+        { "text": "악행 경력: 마을 우물에 저주를 걸었다고 기재", "evidence": "" },
+        { "text": "확인 결과: 해당 우물, 저주 이후 물맛이 좋아져 마을 명물이 됨", "evidence": "FAIL" }
+      ],
+      "special": "",
+      "specialEvidence": "",
+      "correct": "FAIL",
+      "reveal": "저주받은 우물이 마을 명물이 된 시점에서 승부는 끝났다. 착한 임프다. 탈락이 정답. — 인사팀은 몰래 그 우물물을 주문했다.",
+      "answers": [
+        { "cardId": "basic",  "text": "크크… 나는 공포 그 자체…", "tell": "(손바닥에 적은 대본을 훔쳐본다)", "evidence": "FAIL" },
+        { "cardId": "terms",  "text": "야근! 좋아! …아, 밤엔 좀 무서운데. 아니, 내가 무서운 존재라는 뜻!", "tell": "(목소리가 갈수록 작아진다)", "evidence": "" },
+        { "cardId": "motive", "text": "악당이 되면 다들 나를 무서워하겠지. 그럼… 친구는 언제 생기지?", "tell": "(꼬리가 축 처진다)", "evidence": "FAIL" },
+        { "cardId": "trap",   "text": "용사님이 오시면… 다치지 않게 조심히… 아니! 혼내줄 거다!", "tell": "", "evidence": "FAIL" }
+      ]
+    },
+    {
+      "id": "goldba",
+      "name": "골드바",
+      "species": "아기 드래곤 ♂",
+      "jdId": "adm",
+      "salary": "무급 가능 (금고 옆 자리 조건)",
+      "quote": "장부는 보물이다. 보물은 지킨다.",
+      "resumeLines": [
+        { "text": "주의: 재채기 시 소규모 화염 발생 (행정 지원인데?)", "evidence": "" },
+        { "text": "지참물: 개인 물양동이 2개, 방화 담요 1장 (자비 구매)", "evidence": "PASS" }
+      ],
+      "special": "",
+      "specialEvidence": "",
+      "correct": "PASS",
+      "reveal": "화염 재채기는 결격처럼 보이지만 — 물양동이를 스스로 들고 온 준비성이야말로 행정의 자질이다. 보물 애착은 금고지기의 재능. 합격이 정답. — 무급 지원은 보통 위험 신호지만, 드래곤의 '금고 옆 무급'은 애착의 증거다. 같은 말도 종족이 다르면 신호가 다르다.",
+      "answers": [
+        { "cardId": "basic",  "text": "골드바. 동전 세는 소리를 들으면 잠이 잘 온다.", "tell": "", "evidence": "" },
+        { "cardId": "terms",  "text": "금고 옆이라면 무급도 좋다. 내 보물… 아니, 회사의 보물이니까.", "tell": "(눈동자가 금화 모양이 된다)", "evidence": "PASS" },
+        { "cardId": "motive", "text": "마왕성 금고가 대륙 3대 금고라 들었다. 숫자가 많은 곳이 좋은 곳이다.", "tell": "", "evidence": "" },
+        { "cardId": "trap",   "text": "용사가 금고에 손을 대면… (조용히 물양동이를 내려놓는다)", "tell": "(방 온도가 2도 올라갔다)", "evidence": "" }
+      ]
+    },
+    {
+      "id": "hapum",
+      "name": "하품",
+      "species": "나이트메어 ♂ (악몽 말)",
+      "jdId": "guard",
+      "salary": "연 2,600 G (야간수당 별도 요구)",
+      "quote": "히힝… (하품)",
+      "resumeLines": [
+        { "text": "종특: 악몽을 배달하는 밤의 명마. 위압적인 검은 갈기", "evidence": "" },
+        { "text": "전직 기재란: '프리랜서' (상세 기재 없음)", "evidence": "FAIL" }
+      ],
+      "special": "",
+      "specialEvidence": "",
+      "correct": "FAIL",
+      "reveal": "위압감은 진짜지만 밤엔 배달, 낮엔 수면 — 경비 설 시간이 없다. 투잡 탈락이 정답. 악몽 배달 서비스는 사내 복지몰에 입점시켰다.",
+      "answers": [
+        { "cardId": "basic",  "text": "밤마다 인간들 꿈에 악몽을 배달한다. 아, 이건 부업이고… 본업인가?", "tell": "(말끝을 흐린다)", "evidence": "FAIL" },
+        { "cardId": "terms",  "text": "밤 근무? 밤엔… 배달 물량이 많아서. 새벽 4시 이후엔 가능하다.", "tell": "", "evidence": "FAIL" },
+        { "cardId": "motive", "text": "낮에 잘 곳이 필요… 아니, 낮 경비에 자신 있다. 히힝.", "tell": "(하품을 참는다)", "evidence": "" },
+        { "cardId": "trap",   "text": "용사의 꿈에 악몽을 넣어본 적 있다. 청구서는 아직 못 받았지만.", "tell": "", "evidence": "" }
+      ]
+    }
+  ],
   "jds": [
     {
       "id": "adm",
@@ -320,6 +416,17 @@
         "wagujak", "meongmeong", "kukihalmi", "harong", "beolbeori", "seureureuk",
         "paswaegi", "ppeongbolin", "nayana", "neugeut"
       ]
+    },
+    {
+      "day": 2,
+      "phase": "interview",
+      "title": "Day 2 — 1차 면접 (신임 면접관)",
+      "directive": "마왕성 인사팀 공문 제666-06호\n\n1. 금일부로 귀하를 1차 면접관에 임명함.\n2. 면접당 질문 포인트는 3 — 카드의 ★ 개수만큼 소모됨. 아껴 쓸 것.\n3. 서류 요약은 스켈레톤 인턴이 작성함. 진술과 서류의 어긋남을 잡아낼 것.\n4. 인재상은 여전함: '악행에 진심인 자'. 겁 많고 상냥한 자는 결격.\n\n— 인사팀장 카우즈",
+      "meritGoal": 7,
+      "drawCount": 0,
+      "firstId": "",
+      "questionPoints": 3,
+      "applicantIds": ["kkeureong", "milkti", "goldba", "hapum"]
     }
   ],
   "scheduling": {

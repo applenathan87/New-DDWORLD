@@ -61,6 +61,21 @@ namespace MawangHR
         private Button schedConfirmBtn;
         private List<string> schedulingViolations = new List<string>();
 
+        // 면접 페이즈 (Day 2 — S2b)
+        private int dayIndex;
+        private bool lastPromoted;               // 직전 결산의 승진 여부 (다음날 분기)
+        private int pointsLeft;                  // 이번 면접의 남은 질문 포인트
+        private float stmtY;                     // 진술 기록이 붙을 다음 y (이력서 좌표)
+        private readonly List<RectTransform> cardRts = new List<RectTransform>();
+        private readonly List<Vector3> cardHomes = new List<Vector3>();
+        private readonly List<Quaternion> cardHomeRots = new List<Quaternion>();
+        private bool[] cardUsed;
+        private GameObject speechPanel;          // 지원자 대사 자막 (HUD) — 월드 말풍선은 글씨가 안 보여 화면 자막으로 교체
+        private TextMeshProUGUI speechText;
+        private Coroutine speechCo;
+        private const float CardScale = 0.0007f; // 질문 카드 월드 스케일 (가독성 확보 크기)
+        private bool IsInterview => day != null && day.phase == "interview";
+
         private static readonly Color MarkPosBg = new Color(0.24f, 0.49f, 0.30f, 0.22f); // V 합격 신호
         private static readonly Color MarkNegBg = new Color(0.69f, 0.23f, 0.18f, 0.22f); // X 탈락 신호
         private const string DefaultHint = "종이 클릭 = 들기 · 단서에 좌클릭 = V(합격 신호) / 우클릭 = X(탈락 신호) · 도장을 서류에 쾅";
@@ -71,9 +86,17 @@ namespace MawangHR
             data = gameData;
             canvas = mainCanvas;
             rig = deskRig;
-            day = data.days[0];
+            StartDay(0);
+        }
+
+        /// 하루 시작 (인덱스 0 = 서류 심사 / 1 = 면접) — 상태 리셋 + 풀 뽑기 + 출근 공문
+        private void StartDay(int idx)
+        {
+            dayIndex = Mathf.Clamp(idx, 0, data.days.Length - 1);
+            day = data.days[dayIndex];
+            var source = IsInterview ? data.interviewees : data.applicants; // 단계 독립 지원자 세트
             var pool = day.applicantIds
-                .Select(id => data.applicants.FirstOrDefault(a => a.id == id))
+                .Select(id => source.FirstOrDefault(a => a.id == id))
                 .Where(a => a != null)
                 .ToList();
             lineup = DrawLineup(pool);
@@ -89,6 +112,9 @@ namespace MawangHR
             holding = false;
             schedulingViolations.Clear();
             if (scheduling != null) { scheduling.Cleanup(); scheduling = null; }
+            DestroyCards();
+            HideMonsterBubble();
+            rig.DespawnMonster();
             rig.ResumeCanvas.gameObject.SetActive(true);
             rig.JdCanvas.gameObject.SetActive(true);
             rig.ClearDone();
@@ -199,6 +225,11 @@ namespace MawangHR
         {
             var line = a.resumeLines.FirstOrDefault(l => l.evidence == a.correct);
             if (line != null) return line.text;
+            if (a.answers != null)
+            {
+                var ans = a.answers.FirstOrDefault(x => x.evidence == a.correct);
+                if (ans != null) return ans.text; // 결정적 단서가 답변에 있는 경우 (면접)
+            }
             if (a.specialEvidence == a.correct) return a.special;
             return null;
         }
@@ -227,8 +258,17 @@ namespace MawangHR
                 x += w + 30;
             }
 
-            var btn = UiKit.MakeButton(s, "출근하기", UiKit.Accent, UiKit.Ink, 32, StartScreeningPhase);
+            var btn = UiKit.MakeButton(s, IsInterview ? "면접 시작" : "출근하기", UiKit.Accent, UiKit.Ink, 32,
+                () => { if (IsInterview) StartInterviewPhase(); else StartScreeningPhase(); });
             UiKit.Place((RectTransform)btn.transform, 810, 990, 300, 68);
+
+            // 개발용 지름길 — 승진 없이 면접 페이즈 바로 테스트
+            if (dayIndex == 0 && data.days.Length > 1 && data.interviewees.Length > 0)
+            {
+                var dev = UiKit.MakeButton(s, "[개발] Day 2 면접 바로가기", UiKit.Panel, UiKit.TextDim, 18,
+                    () => StartDay(1));
+                UiKit.Place((RectTransform)dev.transform, 20, 1005, 260, 46);
+            }
         }
 
         // ─── 3D 심사 페이즈 ─────────────────────────────
@@ -239,7 +279,12 @@ namespace MawangHR
             screeningActive = true;
             holding = false;
             BuildHud("마왕성 인사팀 — " + day.title, DefaultHint, "근거 메모", MemoDefault);
+            EnsureStamps();
+            ShowApplicantOnDesk();
+        }
 
+        private void EnsureStamps()
+        {
             if (!stampsCreated)
             {
                 stamps.Add(rig.MakeStamp(true, "통 과", UiKit.Approve, new Vector3(0.40f, DeskRig.DeskTop, -0.36f),
@@ -248,9 +293,205 @@ namespace MawangHR
                     CanStampNow, OnSlam, OnStampBlocked));
                 stampsCreated = true;
             }
-            foreach (var s2 in stamps) s2.SetTarget(rig.ResumeCanvas); // 심사 = 이력서가 도장 대상
+            foreach (var s2 in stamps) s2.SetTarget(rig.ResumeCanvas); // 이력서(면접 = 서류+진술)가 도장 대상
+        }
 
+        // ─── 면접 페이즈 (Day 2 — S2b) ─────────────────────────────
+
+        private const string InterviewHint = "카드를 잡아 지원자에게 던지면 질문 · 답변 줄 좌/우클릭 = V/X · 근거 표시 후 도장 쾅";
+
+        private void StartInterviewPhase()
+        {
+            ClearScreen();
+            screeningActive = true;
+            holding = false;
+            BuildHud("마왕성 인사팀 — " + day.title, InterviewHint, "근거 메모", MemoDefault);
+            BuildSpeechPanel();
+            EnsureStamps();
+            BuildQuestionCards();
             ShowApplicantOnDesk();
+        }
+
+        /// 지원자 대사 자막 패널 (HUD 상단 중앙) — 데스크 거리에서도 읽히는 크기
+        private void BuildSpeechPanel()
+        {
+            var panel = UiKit.PanelRect(hud, "Speech", new Color(0.16f, 0.11f, 0.09f, 0.93f));
+            UiKit.Place(panel, 460, 118, 1000, 170);
+            panel.GetComponent<Image>().raycastTarget = false;
+            speechPanel = panel.gameObject;
+            speechText = UiKit.LabelAt(panel, "", 29, UiKit.Text, 30, 20, 940, 132, TextAlignmentOptions.TopLeft, true);
+            speechText.raycastTarget = false;
+            speechPanel.SetActive(false);
+        }
+
+        /// 책상 앞줄에 질문 카드 배치 (월드 캔버스 + 드래그 — 지원자에게 던지면 발동)
+        private void BuildQuestionCards()
+        {
+            DestroyCards();
+            cardUsed = new bool[data.cards.Length];
+            for (int i = 0; i < data.cards.Length; i++)
+            {
+                var c = data.cards[i];
+                var rt = UiKit.MakeWorldCanvas("Card_" + c.id, 320, 200, CardScale, rig.Cam);
+                rt.SetParent(rig.transform, false);
+                rt.localPosition = new Vector3(-0.90f + i * 0.28f, DeskRig.DeskTop + 0.003f, -0.42f);
+                rt.localRotation = Quaternion.Euler(90, 0, Random.Range(-4f, 4f));
+                rt.gameObject.AddComponent<Image>().color = UiKit.Paper;
+
+                string stars = new string('★', Mathf.Max(1, c.cost));
+                UiKit.LabelAt(rt, $"<b>{c.label}</b> <color=#B03A2E>{stars}</color>", 42, UiKit.Ink,
+                    18, 14, 288, 54, TextAlignmentOptions.TopLeft, true);
+                UiKit.LabelAt(rt, "“" + c.prompt + "”", 28, UiKit.InkDim, 18, 74, 288, 112, TextAlignmentOptions.TopLeft, true);
+
+                cardRts.Add(rt);
+                cardHomes.Add(rt.position);
+                cardHomeRots.Add(rt.rotation);
+
+                int idx = i;
+                rt.gameObject.AddComponent<PhotoDraggable>().Init(
+                    rig.Cam,
+                    () => screeningActive && IsInterview && !stamping && cardUsed != null && !cardUsed[idx],
+                    () => ShowHint($"{c.label} ({stars}) — “{c.prompt}”  · 지원자에게 끌어다 던지세요", 2.2f),
+                    dropPos => TryAskCard(idx));
+            }
+        }
+
+        private void DestroyCards()
+        {
+            foreach (var rt in cardRts) if (rt != null) Destroy(rt.gameObject);
+            cardRts.Clear();
+            cardHomes.Clear();
+            cardHomeRots.Clear();
+            cardUsed = null;
+        }
+
+        /// 새 지원자 — 카드 전부 복귀 + 질문 포인트 리셋
+        private void ResetCardsForApplicant()
+        {
+            pointsLeft = Mathf.Max(1, day.questionPoints);
+            if (cardUsed == null) return;
+            for (int i = 0; i < cardRts.Count; i++)
+            {
+                cardUsed[i] = false;
+                if (cardRts[i] == null) continue;
+                cardRts[i].gameObject.SetActive(true);
+                cardRts[i].localScale = Vector3.one * CardScale;
+                cardRts[i].position = cardHomes[i];
+                cardRts[i].rotation = cardHomeRots[i];
+            }
+        }
+
+        private void ReturnCardHome(int i)
+        {
+            if (cardRts[i] == null) return;
+            cardRts[i].position = cardHomes[i];
+            cardRts[i].rotation = cardHomeRots[i];
+        }
+
+        /// 카드 드롭 — 지원자 근처에 놓으면 질문 발동, 아니면 제자리 복귀
+        private void TryAskCard(int i)
+        {
+            if (!IsInterview || stamping || rig.MonsterHead == null) { ReturnCardHome(i); return; }
+            var def = data.cards[i];
+            Vector2 cardScreen = rig.Cam.WorldToScreenPoint(cardRts[i].position);
+            Vector2 monScreen = rig.Cam.WorldToScreenPoint(rig.MonsterHead.position);
+            if (Vector2.Distance(cardScreen, monScreen) > Screen.height * 0.30f)
+            {
+                ReturnCardHome(i);
+                return;
+            }
+            if (def.cost > pointsLeft)
+            {
+                ShowHint($"질문 포인트 부족! (남은 ★{pointsLeft} · 필요 {new string('★', def.cost)})", 1.6f, true);
+                ReturnCardHome(i);
+                return;
+            }
+            pointsLeft -= def.cost;
+            cardUsed[i] = true;
+            UpdateHudProgress();
+            StartCoroutine(AskRoutine(i));
+        }
+
+        private IEnumerator AskRoutine(int i)
+        {
+            var def = data.cards[i];
+            var a = lineup[index];
+            var rt = cardRts[i];
+
+            // 카드가 지원자에게 날아가 마법으로 흡수
+            Sfx.Swish();
+            Vector3 from = rt.position;
+            Vector3 to = rig.MonsterHead != null ? rig.MonsterHead.position + Vector3.down * 0.15f : from;
+            float t = 0f;
+            const float fly = 0.22f;
+            while (t < fly)
+            {
+                t += Time.deltaTime;
+                if (rt == null) yield break;
+                float k = Mathf.SmoothStep(0f, 1f, t / fly);
+                rt.position = Vector3.Lerp(from, to, k);
+                rt.localScale = Vector3.one * CardScale * (1f - 0.5f * k);
+                yield return null;
+            }
+            if (rt != null)
+            {
+                rig.MagicBurst(rt.position);
+                rt.localScale = Vector3.one * CardScale;
+                rt.gameObject.SetActive(false);
+            }
+
+            // 질문 → (텀) → 답변 + 반응 지시문
+            ShowMonsterBubble($"<color=#D98F3E><b>Q.</b></color> {def.prompt}", 30f);
+            yield return new WaitForSeconds(0.8f);
+            if (!IsInterview || index >= lineup.Count || lineup[index] != a) yield break; // 지원자가 바뀌었으면 중단
+
+            Answer ans = null;
+            foreach (var x in a.answers) if (x.cardId == def.id) { ans = x; break; }
+            if (ans == null) yield break; // 검증기가 막지만 방어
+
+            string bubble = $"“{ans.text}”";
+            if (!string.IsNullOrEmpty(ans.tell))
+            {
+                bubble += $"\n<size=25><color=#A6947C><i>{ans.tell}</i></color></size>";
+                rig.MonsterReact(true); // 반응 연출 = 긴장 움찔
+            }
+            ShowMonsterBubble(bubble, 6.5f);
+            AddStatementLine(def, ans);
+        }
+
+        /// 답변을 이력서의 '진술 기록'에 단서 줄로 추가 (마킹 가능 — 답변도 단서다)
+        private void AddStatementLine(QuestionCard def, Answer ans)
+        {
+            if (resumeContent == null || stamping) return;
+            string text = $"<color=#6B5A42>[{def.label}]</color> “{ans.text}”";
+            if (!string.IsNullOrEmpty(ans.tell))
+                text += $"\n<size=19><color=#6B5A42><i>{ans.tell}</i></color></size>";
+            AddClueLine(resumeContent, text, ans.evidence, UiKit.Ink, 45, stmtY, 810, 86);
+            stmtY += 96;
+        }
+
+        // ─ 지원자 대사 자막 (HUD) ─
+
+        private void ShowMonsterBubble(string text, float duration)
+        {
+            if (speechPanel == null) return; // 면접 HUD가 없는 상태(전환 중)면 무시
+            speechPanel.SetActive(true);
+            speechText.text = text;
+            if (speechCo != null) StopCoroutine(speechCo);
+            speechCo = StartCoroutine(HideSpeechAfter(duration));
+        }
+
+        private IEnumerator HideSpeechAfter(float t)
+        {
+            yield return new WaitForSeconds(t);
+            if (speechPanel != null) speechPanel.SetActive(false);
+            speechCo = null;
+        }
+
+        private void HideMonsterBubble()
+        {
+            if (speechCo != null) { StopCoroutine(speechCo); speechCo = null; }
+            if (speechPanel != null) speechPanel.SetActive(false);
         }
 
         private bool CanStampNow()
@@ -317,8 +558,14 @@ namespace MawangHR
 
         private void UpdateHudProgress()
         {
+            if (progressLabel == null) return;
             int passCount = verdicts.Count(v => v);
-            if (progressLabel != null)
+            if (IsInterview)
+            {
+                string stars = pointsLeft > 0 ? new string('★', pointsLeft) : "소진";
+                progressLabel.text = $"면접 {index + 1} / {lineup.Count}    ·    질문 포인트 {stars}    ·    합격 {passCount}명";
+            }
+            else
                 progressLabel.text = $"서류 {index + 1} / {lineup.Count}    ·    통과 {passCount}명";
         }
 
@@ -401,6 +648,12 @@ namespace MawangHR
             rig.SetPending(lineup.Count - index - 1);
             BuildJdContent(a);
             BuildResumeContent(a);
+            if (IsInterview)
+            {
+                ResetCardsForApplicant();
+                rig.SpawnMonster(SchedulingFlow.SpeciesColor(a.species));
+                ShowMonsterBubble($"<b>{a.name}</b>  <color=#A6947C>({a.species})</color>\n“{a.quote}”", 4.5f);
+            }
             EnsureZoomOverlays();
             SyncHeldUi();
             UpdateHudProgress();
@@ -438,7 +691,10 @@ namespace MawangHR
             var divider = UiKit.PanelRect(resumeContent, "Divider", UiKit.PaperShade);
             UiKit.Place(divider, 45, 292, 810, 4);
 
-            UiKit.LabelAt(resumeContent, "<b>이력</b>  <size=19><color=#6B5A42>(줄을 클릭해 판정 근거를 표시)</color></size>",
+            UiKit.LabelAt(resumeContent,
+                IsInterview
+                    ? "<b>서류 요약 (스켈레톤 인턴 작성)</b>  <size=19><color=#6B5A42>(줄 클릭 = 근거 표시)</color></size>"
+                    : "<b>이력</b>  <size=19><color=#6B5A42>(줄을 클릭해 판정 근거를 표시)</color></size>",
                 26, UiKit.Ink, 45, 312, 810, 38);
 
             float y = 360;
@@ -448,8 +704,27 @@ namespace MawangHR
                 y += 74;
             }
 
-            UiKit.LabelAt(resumeContent, "<b>특이사항 (인사팀 메모)</b>", 24, UiKit.StampInk, 45, 640, 810, 36);
-            AddClueLine(resumeContent, a.special, a.specialEvidence, UiKit.StampInk, 45, 682, 810, 100);
+            if (IsInterview)
+            {
+                // 면접: 진술 기록 섹션 — 답변이 도착할 때마다 stmtY에 단서 줄로 쌓인다
+                var divider2 = UiKit.PanelRect(resumeContent, "Divider2", UiKit.PaperShade);
+                UiKit.Place(divider2, 45, y + 6, 810, 4);
+                UiKit.LabelAt(resumeContent,
+                    "<b>진술 기록</b>  <size=19><color=#6B5A42>(카드를 던져 질문 — 답변도 단서다)</color></size>",
+                    26, UiKit.StampInk, 45, y + 26, 810, 38);
+                stmtY = y + 78;
+
+                if (!string.IsNullOrEmpty(a.special))
+                {
+                    UiKit.LabelAt(resumeContent, "<b>특이사항 (인사팀 메모)</b>", 24, UiKit.StampInk, 45, 950, 810, 36);
+                    AddClueLine(resumeContent, a.special, a.specialEvidence, UiKit.StampInk, 45, 992, 810, 100);
+                }
+            }
+            else
+            {
+                UiKit.LabelAt(resumeContent, "<b>특이사항 (인사팀 메모)</b>", 24, UiKit.StampInk, 45, 640, 810, 36);
+                AddClueLine(resumeContent, a.special, a.specialEvidence, UiKit.StampInk, 45, 682, 810, 100);
+            }
             // 아래 여백 = 도장 찍는 자리
         }
 
@@ -590,6 +865,13 @@ namespace MawangHR
 
             yield return new WaitForSeconds(0.8f);
 
+            if (IsInterview)
+            {
+                HideMonsterBubble();
+                // 퇴장을 끝까지 본 뒤에 다음으로 — 병렬로 돌리면 퇴장 코루틴이 다음 몬스터를 소멸시키는 버그 + 반응 연출이 잘림
+                yield return StartCoroutine(rig.MonsterExit(pass));
+            }
+
             // 종이를 완료 더미로 — 들려 있던 자리에서 바로 날아간다
             holding = false;
             SyncHeldUi();
@@ -602,6 +884,18 @@ namespace MawangHR
             if (index < lineup.Count)
             {
                 ShowApplicantOnDesk();
+            }
+            else if (IsInterview)
+            {
+                // 면접 끝 → 바로 퇴근 결산 (스케줄링은 서류 심사 날 전용)
+                // 몬스터는 MonsterExit 코루틴이 마법 포프로 정리 중 — 여기서 즉시 파괴하지 않는다
+                screeningActive = false;
+                DestroyCards();
+                HideMonsterBubble();
+                DestroyHud();
+                yield return new WaitForSeconds(0.4f);
+                revealIndex = 0;
+                ShowReveal();
             }
             else
             {
@@ -744,9 +1038,11 @@ namespace MawangHR
 
             UiKit.LabelAt(card, body, 27, UiKit.Text, 60, 50, 980, 470, TextAlignmentOptions.TopLeft, true);
 
-            var btn = UiKit.MakeButton(s, "처음부터 다시", UiKit.Accent, UiKit.Ink, 28,
-                () => Run(data, canvas, rig));
-            UiKit.Place((RectTransform)btn.transform, 810, 840, 300, 70);
+            // 승진했으면 면접으로 출근, 미달이면 새 서류로 재도전 (풀 뽑기가 새 얼굴 보장)
+            bool canInterview = lastPromoted && data.days.Length > 1 && data.interviewees.Length > 0;
+            var btn = UiKit.MakeButton(s, canInterview ? "Day 2 출근 — 1차 면접" : "Day 1 재도전 (새 서류)",
+                UiKit.Accent, UiKit.Ink, 28, () => StartDay(canInterview ? 1 : 0));
+            UiKit.Place((RectTransform)btn.transform, 785, 840, 350, 70);
         }
 
         private IEnumerator PaperSlideIn()
@@ -886,8 +1182,9 @@ namespace MawangHR
             int merit = correctCount * 2 + hitCount;
             int meritScaled = Mathf.Min(100, Mathf.RoundToInt(merit * 100f / Mathf.Max(1, day.meritGoal)));
             bool promoted = meritScaled >= 100;
+            lastPromoted = promoted; // 다음날 분기 (승진 → 면접 / 미달 → 재도전)
 
-            UiKit.LabelAt(s, "Day 1 종료 — 인사 평가", 46, UiKit.Accent, 0, 80, 1920, 70, TextAlignmentOptions.Center);
+            UiKit.LabelAt(s, $"Day {day.day} 종료 — 인사 평가", 46, UiKit.Accent, 0, 80, 1920, 70, TextAlignmentOptions.Center);
 
             var card = UiKit.PanelRect(s, "Summary", UiKit.Panel);
             UiKit.Place(card, 510, 190, 900, 620);
@@ -915,16 +1212,35 @@ namespace MawangHR
             resultTag.fontStyle = FontStyles.Bold;
             resultTag.gameObject.SetActive(false);
 
-            string verdictText = promoted
-                ? "<color=#3E7D4E><b>승진 예고!</b></color>\n\n“제법이군. 내일부터 자네가 1차 면접을 맡게.\n서류는 이제 스켈레톤 인턴이 볼 걸세.”\n\n<size=22><color=#A6947C>— 면접 루프는 다음 빌드에서 열립니다 —</color></size>"
-                : "<color=#9E3B32><b>수습 연장의 위기…</b></color>\n\n“서류 보는 눈이 아직 멀었군.\n내일 다시 해보게. 이번엔 공문을 '읽고' 찍으라고.”";
+            string verdictText;
+            if (IsInterview)
+                verdictText = promoted
+                    ? "<color=#3E7D4E><b>2차 면접관 승진 예고!</b></color>\n\n“면접 보는 눈이 제법이야. 위층에서 자넬 찾더군.”\n\n<size=22><color=#A6947C>— S2b 데모는 여기까지. 3일 구조·가젯은 S3에서 —</color></size>"
+                    : "<color=#9E3B32><b>1차 면접관 유지…</b></color>\n\n“질문은 던졌는데 답을 못 들었군.\n내일은 카드를 좀 더 아프게 골라보게.”";
+            else
+                verdictText = promoted
+                    ? "<color=#3E7D4E><b>승진 예고!</b></color>\n\n“제법이군. 내일부터 자네가 1차 면접을 맡게.\n서류는 이제 스켈레톤 인턴이 볼 걸세.”"
+                    : "<color=#9E3B32><b>수습 연장의 위기…</b></color>\n\n“서류 보는 눈이 아직 멀었군.\n내일 다시 해보게. 이번엔 공문을 '읽고' 찍으라고.”";
             var verdictLabel = UiKit.LabelAt(card, verdictText, 28, UiKit.Text, 60, 358, 780, 230, TextAlignmentOptions.Top, true);
             verdictLabel.gameObject.SetActive(false);
 
             StartCoroutine(MeritGaugeRoutine(fill, counter, resultTag.gameObject, verdictLabel.gameObject, meritScaled, promoted));
 
-            var btn = UiKit.MakeButton(s, "다음날 아침 →", UiKit.Accent, UiKit.Ink, 28, ShowMorningReport);
+            var btn = UiKit.MakeButton(s, IsInterview ? "데모 마무리 →" : "다음날 아침 →", UiKit.Accent, UiKit.Ink, 28,
+                () => { if (IsInterview) ShowDemoEnd(); else ShowMorningReport(); });
             UiKit.Place((RectTransform)btn.transform, 810, 860, 300, 70);
+        }
+
+        /// S2b 데모 엔딩 — 하루 업무 전체(서류→일정→면접)가 열린 상태
+        private void ShowDemoEnd()
+        {
+            var s = NewScreen();
+            UiKit.LabelAt(s, "— 여기까지가 S2b 데모입니다 —", 46, UiKit.Accent, 0, 320, 1920, 70, TextAlignmentOptions.Center);
+            UiKit.LabelAt(s,
+                "서류 심사 → 면접 일정 잡기 → 1차 면접까지, 인사팀의 하루가 전부 열렸습니다.\n3일 구조 · 승진 가젯(촛불/돋보기) · Day 3 이중반전은 S3에서 이어집니다.",
+                26, UiKit.Text, 0, 420, 1920, 100, TextAlignmentOptions.Center, true);
+            var btn = UiKit.MakeButton(s, "처음부터 다시 (Day 1)", UiKit.Accent, UiKit.Ink, 28, () => StartDay(0));
+            UiKit.Place((RectTransform)btn.transform, 785, 580, 350, 70);
         }
 
         /// 공적 게이지 연출 — 바가 0부터 차오르고 중앙 카운터가 함께 뛴다.

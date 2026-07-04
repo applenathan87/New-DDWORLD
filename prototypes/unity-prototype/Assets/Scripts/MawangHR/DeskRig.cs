@@ -468,6 +468,97 @@ namespace MawangHR
             Cam.transform.position = basePos;
         }
 
+        // ─── 면접 몬스터 (그레이박스 — 복셀 교체는 4단계) ───
+
+        public Transform Monster { get; private set; }
+        public Transform MonsterHead { get; private set; }
+        private Coroutine monsterReactCo;
+
+        /// 책상 너머에 지원 몬스터 등장 (프리미티브 + 마법 버스트)
+        public void SpawnMonster(Color skin)
+        {
+            DespawnMonster();
+            var root = new GameObject("Monster");
+            root.transform.SetParent(transform, false);
+            root.transform.localPosition = new Vector3(0f, 0f, 1.02f);
+
+            // 카메라(데스크 뷰) 가시 창: z≈1.0에서 y 0.58~1.10 — 머리 상단이 1.06을 넘으면 프레임에 잘린다
+            Prim(PrimitiveType.Capsule, "Body", new Vector3(0, 0.62f, 0),
+                new Vector3(0.55f, 0.34f, 0.45f), skin, root.transform);
+            var head = Prim(PrimitiveType.Cube, "Head", new Vector3(0, 0.92f, 0),
+                new Vector3(0.28f, 0.26f, 0.26f), skin, root.transform);
+            Prim(PrimitiveType.Cube, "EyeL", new Vector3(-0.07f, 0.94f, -0.145f),
+                Vector3.one * 0.05f, new Color(0.95f, 0.9f, 0.7f), root.transform);
+            Prim(PrimitiveType.Cube, "EyeR", new Vector3(0.07f, 0.94f, -0.145f),
+                Vector3.one * 0.05f, new Color(0.95f, 0.9f, 0.7f), root.transform);
+
+            // 던진 물건이 맞고 튕기는 몸통 콜라이더 — 레이어 2(포인터 레이캐스트 제외)라
+            // "허공 클릭 = 내려놓기" 판정은 유지되고, 물리 충돌만 받는다
+            root.layer = 2;
+            var col = root.AddComponent<CapsuleCollider>();
+            col.center = new Vector3(0, 0.60f, 0);
+            col.height = 1.15f;
+            col.radius = 0.26f;
+            col.material = BouncyMat;
+            root.AddComponent<MonsterHitReact>().Init(this);
+
+            Monster = root.transform;
+            MonsterHead = head.transform;
+            MagicBurst(root.transform.position + Vector3.up * 0.55f);
+            Sfx.Shimmer();
+        }
+
+        public void DespawnMonster()
+        {
+            if (monsterReactCo != null) { StopCoroutine(monsterReactCo); monsterReactCo = null; }
+            if (Monster != null) Destroy(Monster.gameObject);
+            Monster = null;
+            MonsterHead = null;
+        }
+
+        /// 리액션 2종 — nervous = 움찔움찔(긴장) / 아니면 = 안도의 들썩임
+        public void MonsterReact(bool nervous)
+        {
+            if (Monster == null) return;
+            if (monsterReactCo != null) StopCoroutine(monsterReactCo);
+            monsterReactCo = StartCoroutine(MonsterReactCo(nervous));
+        }
+
+        private IEnumerator MonsterReactCo(bool nervous)
+        {
+            var m = Monster;
+            Vector3 basePos = m.localPosition;
+            float t = 0f;
+            const float dur = 0.45f;
+            while (t < dur)
+            {
+                t += Time.deltaTime;
+                if (m == null) yield break;
+                if (nervous)
+                    m.localPosition = basePos + new Vector3(Mathf.Sin(t * 55f) * 0.02f * (1f - t / dur), 0, 0);
+                else
+                    m.localPosition = basePos + Vector3.up * (Mathf.Abs(Mathf.Sin(t / dur * Mathf.PI)) * 0.06f);
+                yield return null;
+            }
+            if (m != null) m.localPosition = basePos;
+            monsterReactCo = null;
+        }
+
+        /// 판정 후 퇴장 — 반응(합격 = 신남 / 탈락 = 움찔) 후 마법 소멸.
+        /// ⚠️ 시작 시점의 몬스터만 만진다 — 대기 중 다음 지원자가 등장해도 새 몬스터는 건드리지 않음
+        public IEnumerator MonsterExit(bool pass)
+        {
+            var m = Monster;
+            if (m == null) yield break;
+            MonsterReact(!pass);
+            yield return new WaitForSeconds(0.55f);
+            if (m == null) yield break; // 그 사이 이미 정리됨 (파괴된 오브젝트 = fake null)
+            MagicBurst(m.position + Vector3.up * 0.55f);
+            Sfx.Poof();
+            if (Monster == m) DespawnMonster();     // 아직 현역이면 전역 참조까지 정리
+            else Destroy(m.gameObject);             // 새 몬스터가 등장했으면 옛 몸만 제거
+        }
+
         // ─── 도장 ───
 
         public StampDraggable3D MakeStamp(bool pass, string label, Color color, Vector3 home,
@@ -499,6 +590,23 @@ namespace MawangHR
             var drag = root.AddComponent<StampDraggable3D>();
             drag.Init(pass, Cam, this, ResumeCanvas, DeskTop, canStamp, onSlam, onBlocked);
             return drag;
+        }
+    }
+
+    /// 면접 몬스터 피격 반응 — 던진 소품에 맞으면 움찔 (튕김 자체는 콜라이더+반발 재질이 처리)
+    public class MonsterHitReact : MonoBehaviour
+    {
+        private DeskRig rig;
+        private float lastHit;
+
+        public void Init(DeskRig deskRig) { rig = deskRig; }
+
+        private void OnCollisionEnter(Collision c)
+        {
+            if (Time.time - lastHit < 0.6f) return;          // 연타 방지
+            if (c.relativeVelocity.magnitude < 0.6f) return; // 스치는 접촉은 무시
+            lastHit = Time.time;
+            rig.MonsterReact(true); // 맞으면 움찔 — "면접자에게 던지기" 코미디
         }
     }
 }
