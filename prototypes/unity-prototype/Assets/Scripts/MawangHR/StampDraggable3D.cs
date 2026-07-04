@@ -43,6 +43,9 @@ namespace MawangHR
         /// 종이 앞면 법선 (캔버스 front = -forward)
         private Vector3 PaperNormal => -paper.forward;
 
+        /// 도장이 찍히는 대상 종이 교체 (심사 = 이력서 / 스케줄링 = 캘린더)
+        public void SetTarget(RectTransform paperRect) => paper = paperRect;
+
         public void OnPointerDown(PointerEventData e)
         {
             if (anim != null) { StopCoroutine(anim); anim = null; }

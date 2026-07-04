@@ -12,6 +12,36 @@ namespace MawangHR
         public Jd[] jds;
         public Applicant[] applicants;
         public DayConfig[] days;
+        public SchedulingData scheduling; // Day 1 후반 업무 — 면접 일정 잡기 (단계 독립 지원자 세트)
+    }
+
+    [Serializable]
+    public class SchedulingData
+    {
+        public string intro;            // 인턴의 업무 인계 대사
+        public SchedSlot[] slots;       // 캘린더 슬롯 (2일 × 오전/오후/밤)
+        public SchedCandidate[] candidates; // 통과자 명단 (서류 단계와 독립)
+    }
+
+    [Serializable]
+    public class SchedSlot
+    {
+        public string label;   // 예: "내일 오전"
+        public string warn;    // 슬롯 경고 표시 (예: "비 예보", "보름달") — 없으면 ""
+        public string[] tags;  // 판정용 태그 (day2/day3, am/pm/night, rain/fullmoon …)
+    }
+
+    [Serializable]
+    public class SchedCandidate
+    {
+        public string id;
+        public string name;
+        public string species;
+        public string hint;          // 사진 카드에 적힌 힌트 (이력서 특이사항급 — 일부만 누설)
+        public string callLine;      // 통화 대사 (제약의 진짜 출처 + 코미디)
+        public string requiredTag;   // 이 태그가 있는 슬롯에만 가능 ("" = 없음)
+        public string bannedTag;     // 이 태그가 있는 슬롯 금지 ("" = 없음)
+        public string violationLine; // 위반 시 다음날 아침 사고 보고서 문구
     }
 
     [Serializable]

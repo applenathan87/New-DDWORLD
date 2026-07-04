@@ -145,5 +145,68 @@
       "quotaMin": 3,
       "applicantIds": ["grblin", "mulkeong", "vlad3", "dolsoe", "ppyeodagu", "kimyongsa", "buljangnan"]
     }
-  ]
+  ],
+  "scheduling": {
+    "intro": "스켈레톤 인턴: “오늘 인사팀 전체에서 서류 통과된 지원자 명단입니다.\n수정구로 연락해서 가능한 시간을 들은 다음, 일정표에 사진을 붙여 주세요.\n\n참고로 선배님이 심사하신 서류는 다른 팀 면접으로 배정됐습니다.\n(규정이래요. 심사한 사람이 면접까지 보면 정이 든다나…)\n\n아, 그리고 — 지원자 사정을 안 듣고 대충 꽂으면\n내일 아침에 꼭 무슨 일이 생기더라고요.”",
+    "slots": [
+      { "label": "내일 오전", "warn": "", "tags": ["day2", "am"] },
+      { "label": "내일 오후", "warn": "비 예보", "tags": ["day2", "pm", "rain"] },
+      { "label": "내일 밤", "warn": "", "tags": ["day2", "night"] },
+      { "label": "모레 오전", "warn": "", "tags": ["day3", "am"] },
+      { "label": "모레 오후", "warn": "", "tags": ["day3", "pm"] },
+      { "label": "모레 밤", "warn": "보름달", "tags": ["day3", "night", "fullmoon"] }
+    ],
+    "candidates": [
+      {
+        "id": "vladi",
+        "name": "불라디",
+        "species": "뱀파이어 남작",
+        "hint": "낮에는 전화를 안 받는다고 함",
+        "callLine": "햇빛 알레르기가… 심각하게 치명적입니다. 반드시 밤으로 부탁드립니다.",
+        "requiredTag": "night",
+        "bannedTag": "",
+        "violationLine": "낮 면접에 오신 불라디 님은 입장 3초 만에 재가 되셨습니다. 유족(박쥐 12마리)에게 위로금을 지급했습니다."
+      },
+      {
+        "id": "mulleong",
+        "name": "물렁공",
+        "species": "슬라임",
+        "hint": "우천 시 형태 불안정 (본인 기재)",
+        "callLine": "비 오는 날엔 제가 빗물이랑 섞여서… 어디까지가 저인지 모르게 됩니다.",
+        "requiredTag": "",
+        "bannedTag": "rain",
+        "violationLine": "우천 면접일, 물렁공 님이 배수구로 유실되었습니다. 현재 하수도에서 수색 중입니다."
+      },
+      {
+        "id": "dalgrak",
+        "name": "달그락",
+        "species": "스켈레톤",
+        "hint": "언제든 가능 (뼈)",
+        "callLine": "뼈는 스케줄이 없습니다. 아무 때나 좋습니다. 잠도 안 자거든요.",
+        "requiredTag": "",
+        "bannedTag": "",
+        "violationLine": ""
+      },
+      {
+        "id": "doljumeok",
+        "name": "돌주먹",
+        "species": "오크",
+        "hint": "월 1회 컨디션 난조",
+        "callLine": "보름달만 피해 주십쇼. 그날은… 제가 좀, 다른 제가 됩니다.",
+        "requiredTag": "",
+        "bannedTag": "fullmoon",
+        "violationLine": "보름달 면접에서 돌주먹 님이 면접장 문짝을 뜯고 울부짖었습니다. 수리비 300G가 청구되었습니다."
+      },
+      {
+        "id": "gamasot",
+        "name": "가마솥",
+        "species": "마녀",
+        "hint": "오전엔 통화 연결이 안 됨",
+        "callLine": "오전엔 가마솥이 끓어서 자리를 못 비워요. 오후로 부탁해요. 밤엔… 밤엔 다른 일이 있어요. (웃음)",
+        "requiredTag": "pm",
+        "bannedTag": "",
+        "violationLine": "오전 면접에 억지로 오신 가마솥 님의 솥이 끓어넘쳐 인사팀 1층이 정체불명의 수프가 되었습니다. (맛은 좋았다는 평입니다)"
+      }
+    ]
+  }
 }

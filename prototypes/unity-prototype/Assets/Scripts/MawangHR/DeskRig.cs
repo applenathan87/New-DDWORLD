@@ -17,6 +17,7 @@ namespace MawangHR
         public Quaternion ResumeHomeRot { get; private set; }
         public Vector3 JdHome { get; private set; }
         public Quaternion JdHomeRot { get; private set; }
+        public Transform Orb { get; private set; } // 수정구 (스케줄링 통화)
 
         // 카메라 포즈 (그레이박스 튜닝값 — 여기 숫자만 만지면 됨)
         private static readonly Vector3 DeskCamPos = new Vector3(0f, 1.60f, -1.25f);
@@ -123,6 +124,23 @@ namespace MawangHR
             doneRoot = new GameObject("Done").transform;
             doneRoot.SetParent(transform, false);
             doneRoot.localPosition = new Vector3(0.62f, DeskTop, 0.30f);
+
+            // 수정구 (마왕성의 전화 — 스케줄링 통화용, 평소엔 책상 소품)
+            var orb = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            orb.name = "CrystalOrb";
+            orb.transform.SetParent(transform, false);
+            orb.transform.localPosition = new Vector3(-0.62f, DeskTop + 0.09f, -0.18f);
+            orb.transform.localScale = Vector3.one * 0.14f;
+            orb.GetComponent<Renderer>().material = Mat(new Color(0.45f, 0.20f, 0.62f));
+            Destroy(orb.GetComponent<Collider>());
+            Orb = orb.transform;
+            var orbBase = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            orbBase.name = "OrbBase";
+            orbBase.transform.SetParent(transform, false);
+            orbBase.transform.localPosition = new Vector3(-0.62f, DeskTop + 0.015f, -0.18f);
+            orbBase.transform.localScale = new Vector3(0.10f, 0.015f, 0.10f);
+            orbBase.GetComponent<Renderer>().material = Mat(new Color(0.16f, 0.12f, 0.10f));
+            Destroy(orbBase.GetComponent<Collider>());
 
             // 깃펜 (마킹 도구 — 종이를 들면 손 위치로 날아옴)
             var quillRoot = new GameObject("Quill");

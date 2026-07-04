@@ -51,7 +51,15 @@ namespace MawangHR
         private GameObject zoomOverlayResume, zoomOverlayJd;
         private RectTransform resumeContent, jdContent;
         private bool stampsCreated;
+        private readonly List<StampDraggable3D> stamps = new List<StampDraggable3D>();
         private Coroutine warnCo, resumeTweenCo, jdTweenCo;
+        private string currentDefaultHint = DefaultHint;
+
+        // 스케줄링 페이즈 (Day 1 후반 업무)
+        private SchedulingFlow scheduling;
+        private bool schedulingActive;
+        private Button schedConfirmBtn;
+        private List<string> schedulingViolations = new List<string>();
 
         private static readonly Color MarkPosBg = new Color(0.24f, 0.49f, 0.30f, 0.22f); // V 합격 신호
         private static readonly Color MarkNegBg = new Color(0.69f, 0.23f, 0.18f, 0.22f); // X 탈락 신호
@@ -75,8 +83,13 @@ namespace MawangHR
             index = 0;
             revealIndex = 0;
             screeningActive = false;
+            schedulingActive = false;
             stamping = false;
             holding = false;
+            schedulingViolations.Clear();
+            if (scheduling != null) { scheduling.Cleanup(); scheduling = null; }
+            rig.ResumeCanvas.gameObject.SetActive(true);
+            rig.JdCanvas.gameObject.SetActive(true);
             rig.ClearDone();
             rig.SetPending(lineup.Count);
             DestroyHud();
@@ -96,6 +109,16 @@ namespace MawangHR
                 EventSystem.current != null && !EventSystem.current.IsPointerOverGameObject())
                 PutDown();
 #endif
+        }
+
+        private void LateUpdate()
+        {
+            // 스케줄링 진행 상태 폴링 — 확정 버튼 활성화 + 진행 표시
+            if (!schedulingActive || scheduling == null) return;
+            if (schedConfirmBtn != null)
+                schedConfirmBtn.interactable = scheduling.AllPlaced && !stamping;
+            if (progressLabel != null)
+                progressLabel.text = $"배치 {scheduling.PlacedCount} / {scheduling.Total}    ·    통화로 사정을 들어보세요";
         }
 
         private RectTransform NewScreen()
@@ -164,46 +187,70 @@ namespace MawangHR
             ClearScreen();
             screeningActive = true;
             holding = false;
-            BuildHud();
+            BuildHud("마왕성 인사팀 — " + day.title, DefaultHint, "근거 메모", MemoDefault);
 
             if (!stampsCreated)
             {
-                rig.MakeStamp(true, "통 과", UiKit.Approve, new Vector3(0.40f, DeskRig.DeskTop, -0.36f),
-                    CanStampNow, OnSlam, OnStampBlocked);
-                rig.MakeStamp(false, "탈 락", UiKit.Reject, new Vector3(0.58f, DeskRig.DeskTop, -0.36f),
-                    CanStampNow, OnSlam, OnStampBlocked);
+                stamps.Add(rig.MakeStamp(true, "통 과", UiKit.Approve, new Vector3(0.40f, DeskRig.DeskTop, -0.36f),
+                    CanStampNow, OnSlam, OnStampBlocked));
+                stamps.Add(rig.MakeStamp(false, "탈 락", UiKit.Reject, new Vector3(0.58f, DeskRig.DeskTop, -0.36f),
+                    CanStampNow, OnSlam, OnStampBlocked));
                 stampsCreated = true;
             }
+            foreach (var s2 in stamps) s2.SetTarget(rig.ResumeCanvas); // 심사 = 이력서가 도장 대상
 
             ShowApplicantOnDesk();
         }
 
-        private bool CanStampNow() => screeningActive && !stamping && marks.Count > 0;
+        private bool CanStampNow()
+        {
+            if (stamping || schedulingActive) return false; // 스케줄링 확정은 버튼으로
+            return screeningActive && marks.Count > 0;
+        }
 
         private void OnStampBlocked()
         {
-            if (!screeningActive || stamping || marks.Count > 0) return;
-            if (warnCo != null) StopCoroutine(warnCo);
-            warnCo = StartCoroutine(WarnNoEvidence());
+            if (stamping || schedulingActive) return;
+            if (!screeningActive || marks.Count > 0) return;
+            ShowHint("근거를 최소 1개 표시해야 도장을 찍을 수 있습니다!", 1.4f, true);
         }
 
-        private void BuildHud()
+        /// 힌트 라벨에 잠깐 메시지 표시 후 기본 안내로 복귀
+        private void ShowHint(string msg, float duration, bool warn = false)
+        {
+            if (hintLabel == null) return;
+            if (warnCo != null) StopCoroutine(warnCo);
+            warnCo = StartCoroutine(HintRoutine(msg, duration, warn));
+        }
+
+        private IEnumerator HintRoutine(string msg, float duration, bool warn)
+        {
+            hintLabel.text = msg;
+            hintLabel.color = warn ? new Color(1f, 0.45f, 0.38f) : UiKit.Text;
+            yield return new WaitForSeconds(duration);
+            if (hintLabel == null) yield break;
+            hintLabel.text = currentDefaultHint;
+            hintLabel.color = UiKit.TextDim;
+        }
+
+        private void BuildHud(string title, string hint, string padTitle, string padDefault)
         {
             DestroyHud();
+            currentDefaultHint = hint;
             hud = UiKit.Rect("HUD", canvas.transform);
             UiKit.Fill(hud);
 
             var top = UiKit.PanelRect(hud, "TopBar", UiKit.Panel);
             UiKit.Place(top, 0, 0, 1920, 56);
-            UiKit.LabelAt(top, "마왕성 인사팀 — " + day.title, 24, UiKit.Accent, 25, 13, 800, 36, TextAlignmentOptions.TopLeft, true);
+            UiKit.LabelAt(top, title, 24, UiKit.Accent, 25, 13, 800, 36, TextAlignmentOptions.TopLeft, true);
             progressLabel = UiKit.LabelAt(top, "", 22, UiKit.TextDim, 900, 15, 995, 36, TextAlignmentOptions.TopRight, true);
 
-            hintLabel = UiKit.LabelAt(hud, DefaultHint, 22, UiKit.TextDim, 0, 66, 1920, 36, TextAlignmentOptions.Center, true);
+            hintLabel = UiKit.LabelAt(hud, hint, 22, UiKit.TextDim, 0, 66, 1920, 36, TextAlignmentOptions.Center, true);
 
             var memo = UiKit.PanelRect(hud, "MemoPad", new Color(0.23f, 0.17f, 0.13f, 0.92f));
             UiKit.Place(memo, 1540, 120, 360, 330);
-            UiKit.LabelAt(memo, "<b>근거 메모</b>", 22, UiKit.Accent, 20, 12, 320, 30);
-            memoContent = UiKit.LabelAt(memo, MemoDefault, 19, UiKit.Text,
+            UiKit.LabelAt(memo, "<b>" + padTitle + "</b>", 22, UiKit.Accent, 20, 12, 320, 30);
+            memoContent = UiKit.LabelAt(memo, padDefault, 19, UiKit.Text,
                 20, 48, 320, 268, TextAlignmentOptions.TopLeft, true);
 
             var back = UiKit.MakeButton(hud, "종이 내려놓기 (ESC)", UiKit.Panel, UiKit.Text, 20, PutDown);
@@ -462,22 +509,11 @@ namespace MawangHR
         private static bool PolarityMatches(bool positive, string evidence)
             => positive ? evidence == "PASS" : evidence == "FAIL";
 
-        private IEnumerator WarnNoEvidence()
-        {
-            if (hintLabel == null) yield break;
-            hintLabel.text = "근거를 최소 1개 표시해야 도장을 찍을 수 있습니다!";
-            hintLabel.color = new Color(1f, 0.45f, 0.38f);
-            yield return new WaitForSeconds(1.4f);
-            if (hintLabel == null) yield break;
-            hintLabel.text = DefaultHint;
-            hintLabel.color = UiKit.TextDim;
-        }
-
         // ─── 도장 낙하 ───
 
         private void OnSlam(bool pass, Vector2 screenPos)
         {
-            if (stamping) return;
+            if (stamping || schedulingActive) return;
             stamping = true;
             var a = lineup[index];
             verdicts.Add(pass);
@@ -498,28 +534,8 @@ namespace MawangHR
 
             Sfx.Thunk();
             StartCoroutine(rig.CamShake());
-
-            // 잉크 자국 — 도장이 떨어진 바로 그 지점 (스크린 광선 ↔ 종이 면 교차점)
-            Vector2 lp;
-            RectTransformUtility.ScreenPointToLocalPointInRectangle(rig.ResumeCanvas, screenPos, rig.Cam, out lp);
-            var imprint = UiKit.Rect("Imprint", resumeContent);
-            imprint.anchorMin = imprint.anchorMax = new Vector2(0.5f, 0.5f);
-            imprint.pivot = new Vector2(0.5f, 0.5f);
-            imprint.anchoredPosition = lp;
-            imprint.sizeDelta = new Vector2(430, 170);
-            imprint.localRotation = Quaternion.Euler(0, 0, Random.Range(-14f, -4f));
-
-            var frame = UiKit.PanelRect(imprint, "Frame", new Color(0, 0, 0, 0));
-            UiKit.Fill(frame);
-            var outline = frame.gameObject.AddComponent<Outline>();
-            outline.effectColor = pass ? UiKit.Approve : UiKit.StampInk;
-            outline.effectDistance = new Vector2(5, 5);
-            frame.GetComponent<Image>().raycastTarget = false;
-
-            var label = UiKit.Label(imprint, pass ? "통  과" : "탈  락", 100,
-                pass ? UiKit.Approve : UiKit.StampInk, TextAlignmentOptions.Center);
-            UiKit.Fill((RectTransform)label.transform);
-            label.raycastTarget = false;
+            SpawnImprint(rig.ResumeCanvas, resumeContent, screenPos,
+                pass ? "통  과" : "탈  락", pass ? UiKit.Approve : UiKit.StampInk);
 
             yield return new WaitForSeconds(0.8f);
 
@@ -538,12 +554,142 @@ namespace MawangHR
             }
             else
             {
+                // 심사 끝 → 오후 업무 (면접 일정 잡기)
                 screeningActive = false;
                 DestroyHud();
                 yield return new WaitForSeconds(0.4f);
+                ShowSchedulingIntro();
+            }
+        }
+
+        /// 도장 잉크 자국 — 스크린 광선 ↔ 종이 면 교차점에 찍기
+        private void SpawnImprint(RectTransform refCanvas, Transform parent, Vector2 screenPos, string text, Color color)
+        {
+            Vector2 lp;
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(refCanvas, screenPos, rig.Cam, out lp);
+            var imprint = UiKit.Rect("Imprint", parent);
+            imprint.anchorMin = imprint.anchorMax = new Vector2(0.5f, 0.5f);
+            imprint.pivot = new Vector2(0.5f, 0.5f);
+            imprint.anchoredPosition = lp;
+            imprint.sizeDelta = new Vector2(430, 170);
+            imprint.localRotation = Quaternion.Euler(0, 0, Random.Range(-14f, -4f));
+
+            var frame = UiKit.PanelRect(imprint, "Frame", new Color(0, 0, 0, 0));
+            UiKit.Fill(frame);
+            var outline = frame.gameObject.AddComponent<Outline>();
+            outline.effectColor = color;
+            outline.effectDistance = new Vector2(5, 5);
+            frame.GetComponent<Image>().raycastTarget = false;
+
+            var label = UiKit.Label(imprint, text, 100, color, TextAlignmentOptions.Center);
+            UiKit.Fill((RectTransform)label.transform);
+            label.raycastTarget = false;
+        }
+
+        // ─── 스케줄링 페이즈 (오후 업무 — 면접 일정 잡기) ─────────────────────────────
+
+        private void ShowSchedulingIntro()
+        {
+            // 스케줄링 데이터 없으면 바로 퇴근 결산으로
+            if (data.scheduling == null || data.scheduling.candidates == null || data.scheduling.candidates.Length == 0)
+            {
                 revealIndex = 0;
                 ShowReveal();
+                return;
             }
+
+            var s = NewScreen();
+
+            UiKit.LabelAt(s, "오후 업무 — 면접 일정 잡기", 52, UiKit.Accent, 0, 130, 1920, 80, TextAlignmentOptions.Center);
+
+            var paper = UiKit.PanelRect(s, "IntroPaper", UiKit.Paper);
+            UiKit.Place(paper, 460, 260, 1000, 440);
+            UiKit.LabelAt(paper, data.scheduling != null ? data.scheduling.intro : "(scheduling 데이터 없음)",
+                27, UiKit.Ink, 50, 40, 900, 360, TextAlignmentOptions.TopLeft, true);
+
+            var btn = UiKit.MakeButton(s, "연락 시작", UiKit.Accent, UiKit.Ink, 32, StartSchedulingPhase);
+            UiKit.Place((RectTransform)btn.transform, 810, 760, 300, 70);
+        }
+
+        private void StartSchedulingPhase()
+        {
+            ClearScreen();
+            schedulingActive = true;
+            stamping = false; // 마지막 서류의 도장 연출에서 넘어온 플래그 해제 (확정 버튼 조건)
+            BuildHud("마왕성 인사팀 — 면접 일정 잡기",
+                "사진을 수정구에 대면 통화 · 캘린더에 끌어다 배치 · 전원 배치하면 확정 버튼이 켜집니다",
+                "통화 기록", "(사진을 수정구로 끌어가면 통화 내용이 기록됩니다)");
+
+            // 책상 종이는 치우기 (수정구 가림 방지 — 이 업무엔 지침서 불필요)
+            rig.ResumeCanvas.gameObject.SetActive(false);
+            rig.JdCanvas.gameObject.SetActive(false);
+
+            rig.TweenToHold();
+            scheduling = new GameObject("SchedulingFlow").AddComponent<SchedulingFlow>();
+            scheduling.Begin(data.scheduling, rig, memoContent, (msg, dur) => ShowHint(msg, dur));
+            foreach (var s2 in stamps) s2.SetTarget(null); // 스케줄링 중 도장은 휴식
+
+            // 확정 버튼 — 전원 배치 전까지 비활성 (LateUpdate에서 폴링)
+            schedConfirmBtn = UiKit.MakeButton(hud, "일정 확정", UiKit.Accent, UiKit.Ink, 28, OnSchedConfirmClicked);
+            UiKit.Place((RectTransform)schedConfirmBtn.transform, 1580, 980, 320, 72);
+            schedConfirmBtn.interactable = false;
+        }
+
+        private void OnSchedConfirmClicked()
+        {
+            if (stamping || scheduling == null || !scheduling.AllPlaced) return;
+            stamping = true;
+            StartCoroutine(SchedConfirmRoutine());
+        }
+
+        private IEnumerator SchedConfirmRoutine()
+        {
+            scheduling.Lock();
+            yield return new WaitForSeconds(0.06f);
+
+            Sfx.Thunk();
+            StartCoroutine(rig.CamShake());
+            Vector2 centerScreen = rig.Cam.WorldToScreenPoint(scheduling.CalendarCanvas.position);
+            SpawnImprint(scheduling.CalendarCanvas, scheduling.CalendarCanvas, centerScreen, "확  정", UiKit.Approve);
+
+            schedulingViolations = scheduling.GetViolations();
+            yield return new WaitForSeconds(1.0f);
+
+            schedulingActive = false;
+            stamping = false;
+            foreach (var s2 in stamps) s2.SetTarget(rig.ResumeCanvas);
+            scheduling.Cleanup();
+            scheduling = null;
+            rig.ResumeCanvas.gameObject.SetActive(true); // 치웠던 종이 복귀
+            rig.JdCanvas.gameObject.SetActive(true);
+            rig.TweenToDesk();
+            DestroyHud();
+            yield return new WaitForSeconds(0.4f);
+
+            revealIndex = 0;
+            ShowReveal();
+        }
+
+        /// 다음날 아침 — 스케줄 위반의 대가 (지연 사고 시스템의 미리보기)
+        private void ShowMorningReport()
+        {
+            var s = NewScreen();
+
+            UiKit.LabelAt(s, "다음날 아침 — 사건 보고서", 48, UiKit.Accent, 0, 100, 1920, 70, TextAlignmentOptions.Center);
+
+            var card = UiKit.PanelRect(s, "Report", UiKit.Panel);
+            UiKit.Place(card, 410, 210, 1100, 580);
+
+            string body = schedulingViolations.Count == 0
+                ? "보고할 사고 없음.\n\n인사팀장: “일정에서 사고가 하나도 없다니…\n신입치고는 수상할 정도로 완벽하군.”"
+                : string.Join("\n\n", schedulingViolations)
+                  + "\n\n<color=#A6947C>인사팀장: “…내일부터는 통화 내용을 좀 듣고 일정을 잡게.”</color>";
+
+            UiKit.LabelAt(card, body, 27, UiKit.Text, 60, 50, 980, 470, TextAlignmentOptions.TopLeft, true);
+
+            var btn = UiKit.MakeButton(s, "처음부터 다시", UiKit.Accent, UiKit.Ink, 28,
+                () => Run(data, canvas, rig));
+            UiKit.Place((RectTransform)btn.transform, 810, 840, 300, 70);
         }
 
         private IEnumerator PaperSlideIn()
@@ -700,8 +846,7 @@ namespace MawangHR
 
             UiKit.LabelAt(card, verdictText, 28, UiKit.Text, 60, 290, 780, 280, TextAlignmentOptions.Top, true);
 
-            var btn = UiKit.MakeButton(s, "처음부터 다시", UiKit.Accent, UiKit.Ink, 28,
-                () => Run(data, canvas, rig));
+            var btn = UiKit.MakeButton(s, "다음날 아침 →", UiKit.Accent, UiKit.Ink, 28, ShowMorningReport);
             UiKit.Place((RectTransform)btn.transform, 810, 860, 300, 70);
         }
     }
