@@ -12,6 +12,7 @@
 **스크립트**: `Assets/Scripts/MawangHR/` (네임스페이스 `MawangHR`) · **씬**: `Assets/mawanghr.unity`
 **콘텐츠 데이터**: `Assets/StreamingAssets/MawangHR/gamedata.json` — 지원자·JD·공문 전부 여기 (코드 수정 없이 편집 가능)
 **케이스 저작(시트) 가이드**: [tools/case-sheet-guide.md](tools/case-sheet-guide.md) — 구글 시트 왕복 워크플로 + 비주얼(모델·초상화) 분류 설계. 변환기 = [tools/cases_sheet.py](tools/cases_sheet.py)
+**아트 파이프라인 가이드**: [tools/template-layout-guide.md](tools/template-layout-guide.md)(종이 템플릿 좌표 명세) · [tools/crystal-orb-guide.md](tools/crystal-orb-guide.md)(수정구 연출·에셋 명세) · [../../Origin/docs/blender-lowpoly-desk-guide.md](../../Origin/docs/blender-lowpoly-desk-guide.md)(블렌더 가구 제작)
 **작업 명령서**: [docs/mawang-hr-proto-brief.md](../../docs/mawang-hr-proto-brief.md) · 기획: [ideation/mvp-design.md](../../ideation/mvp-design.md)
 
 **가설**: ① 판단축 반전("착함=결격")이 플레이 3건 안에 "오?"를 만든다 ② 도장 판정이 계속 찍고 싶은 손맛이 된다.
