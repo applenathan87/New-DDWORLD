@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
@@ -88,8 +89,21 @@ namespace MawangHR
     public class SchedulingData
     {
         public string intro;            // 인턴의 업무 인계 대사
-        public SchedSlot[] slots;       // 캘린더 슬롯 (2일 × 오전/오후/밤)
-        public SchedCandidate[] candidates; // 통과자 명단 (서류 단계와 독립)
+        public SchedSlot[] slots;       // 캘린더 기본 프레임 (2일 × 오전/오후/밤 — 환경 태그는 매판 Roll이 얹음)
+        public SchedEnv[] envs;         // 판마다 랜덤 배치되는 환경 요인 (비 예보·보름달)
+        public SchedCandidate[] candidates; // 지원자 풀 — 매판 drawCount명 뽑기 (서류 단계와 독립)
+        public int drawCount;           // 판당 등장 인원 (0 = 기본 5)
+        public int minConstrained;      // 판당 최소 제약 보유자 수 (0 = 기본 3) — 전원 무제약 심심한 판 방지
+    }
+
+    /// 슬롯에 랜덤으로 얹히는 환경 요인. 해당 태그를 요구/기피하는 지원자와 얽혀 퍼즐이 된다.
+    [Serializable]
+    public class SchedEnv
+    {
+        public string tag;       // 판정 태그 (rain / fullmoon)
+        public string warn;      // 슬롯 경고 표기 (예: "비 예보")
+        public string[] allowed; // 붙을 수 있는 시간대 태그 (am/pm/night)
+        public int maxCount;     // 판당 최대 배치 슬롯 수
     }
 
     [Serializable]
@@ -277,14 +291,39 @@ namespace MawangHR
             // scheduling은 선택 블록 — 있으면 내부 배열만 정규화
             if (d.scheduling != null && d.scheduling.candidates != null && d.scheduling.candidates.Length > 0)
             {
-                if (d.scheduling.slots == null || d.scheduling.slots.Length == 0)
+                var sch = d.scheduling;
+                if (sch.slots == null || sch.slots.Length == 0)
                     return "scheduling.slots가 비었습니다 (candidates만 있고 슬롯이 없음)";
-                foreach (var s in d.scheduling.slots)
+                foreach (var s in sch.slots)
                     if (s.tags == null) s.tags = new string[0];
-                foreach (var c in d.scheduling.candidates)
+                if (sch.envs == null) sch.envs = new SchedEnv[0];
+                foreach (var e in sch.envs)
+                    if (e.allowed == null) e.allowed = new string[0];
+
+                int draw = sch.drawCount > 0 ? sch.drawCount : 5;
+                if (draw > sch.slots.Length)
+                    return $"scheduling: drawCount({draw})가 슬롯 수({sch.slots.Length})보다 큼 — 전원 배치 불가능";
+                if (draw > sch.candidates.Length)
+                    return $"scheduling: drawCount({draw})가 지원자 풀({sch.candidates.Length}명)보다 큼";
+
+                // 존재하지 않는 태그를 요구/기피하면 그 지원자가 낀 판은 솔버가 전부 걸러
+                // 조용히 등장하지 못하게 된다 — 데이터 오타를 로드 시점에 잡는다.
+                var known = new HashSet<string>();
+                foreach (var s in sch.slots) foreach (var t in s.tags) known.Add(t);
+                foreach (var e in sch.envs) known.Add(e.tag);
+
+                foreach (var c in sch.candidates)
                 {
                     if (c.requiredTag == null) c.requiredTag = "";
                     if (c.bannedTag == null) c.bannedTag = "";
+                    if (c.requiredTag != "" && !known.Contains(c.requiredTag))
+                        Debug.LogWarning($"[MawangHR] scheduling '{c.id}': requiredTag '{c.requiredTag}'가 어떤 슬롯/환경에도 없음 — 이 지원자는 등장 불가");
+                    if (c.bannedTag != "" && !known.Contains(c.bannedTag))
+                        Debug.LogWarning($"[MawangHR] scheduling '{c.id}': bannedTag '{c.bannedTag}'가 어떤 슬롯/환경에도 없음 — 제약이 무의미");
+                    if (c.requiredTag != "" && c.bannedTag != "")
+                        Debug.LogWarning($"[MawangHR] scheduling '{c.id}': requiredTag·bannedTag 동시 보유 — 통화 문구는 required만 표기됩니다");
+                    if ((c.requiredTag != "" || c.bannedTag != "") && string.IsNullOrEmpty(c.violationLine))
+                        Debug.LogWarning($"[MawangHR] scheduling '{c.id}': 제약이 있는데 violationLine이 없음 — 위반 보고서가 비어 보입니다");
                 }
             }
             return null;

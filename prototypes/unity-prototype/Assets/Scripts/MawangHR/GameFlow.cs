@@ -545,11 +545,16 @@ namespace MawangHR
 
             hintLabel = UiKit.LabelAt(hud, hint, 22, UiKit.TextDim, 0, 66, 1920, 36, TextAlignmentOptions.Center, true);
 
-            var memo = UiKit.PanelRect(hud, "MemoPad", new Color(0.23f, 0.17f, 0.13f, 0.92f));
-            UiKit.Place(memo, 1540, 120, 360, 330);
-            UiKit.LabelAt(memo, "<b>" + padTitle + "</b>", 22, UiKit.Accent, 20, 12, 320, 30);
-            memoContent = UiKit.LabelAt(memo, padDefault, 19, UiKit.Text,
-                20, 48, 320, 268, TextAlignmentOptions.TopLeft, true);
+            // padTitle이 비어 있으면 메모 패드 생략 (스케줄링은 책상 위 통화 기록 노트가 대신함)
+            if (!string.IsNullOrEmpty(padTitle))
+            {
+                var memo = UiKit.PanelRect(hud, "MemoPad", new Color(0.23f, 0.17f, 0.13f, 0.92f));
+                UiKit.Place(memo, 1540, 120, 360, 330);
+                UiKit.LabelAt(memo, "<b>" + padTitle + "</b>", 22, UiKit.Accent, 20, 12, 320, 30);
+                memoContent = UiKit.LabelAt(memo, padDefault, 19, UiKit.Text,
+                    20, 48, 320, 268, TextAlignmentOptions.TopLeft, true);
+            }
+            else memoContent = null;
 
             var back = UiKit.MakeButton(hud, "종이 내려놓기 (ESC)", UiKit.Panel, UiKit.Text, 20, PutDown);
             UiKit.Place((RectTransform)back.transform, 20, 76, 240, 50);
@@ -1018,9 +1023,10 @@ namespace MawangHR
             ClearScreen();
             schedulingActive = true;
             stamping = false; // 마지막 서류의 도장 연출에서 넘어온 플래그 해제 (확정 버튼 조건)
+            // 통화 기록은 HUD 메모 대신 수정구 옆 책상 노트가 담당 (물성)
             BuildHud("마왕성 인사팀 — 면접 일정 잡기",
-                "사진을 수정구에 대면 통화 · 캘린더에 끌어다 배치 · 전원 배치하면 확정 버튼이 켜집니다",
-                "통화 기록", "(사진을 수정구로 끌어가면 통화 내용이 기록됩니다)");
+                "사진을 수정구에 대면 통화 · 일정표에 끌어다 배치 · 전원 배치하면 확정 버튼이 켜집니다",
+                "", "");
 
             // 책상 종이는 치우기 (수정구 가림 방지 — 이 업무엔 지침서 불필요)
             rig.ResumeCanvas.gameObject.SetActive(false);
@@ -1029,7 +1035,8 @@ namespace MawangHR
 
             rig.TweenToHold();
             scheduling = new GameObject("SchedulingFlow").AddComponent<SchedulingFlow>();
-            scheduling.Begin(data.scheduling, rig, memoContent, (msg, dur) => ShowHint(msg, dur));
+            // 매판 뽑기 — 풀에서 환경·지원자를 뽑되 솔버가 해 존재를 보장한 시나리오만 출제
+            scheduling.Begin(SchedulingFlow.Roll(data.scheduling), rig, (msg, dur) => ShowHint(msg, dur));
             foreach (var s2 in stamps) s2.SetTarget(null); // 스케줄링 중 도장은 휴식
 
             // 확정 버튼 — 전원 배치 전까지 비활성 (LateUpdate에서 폴링)

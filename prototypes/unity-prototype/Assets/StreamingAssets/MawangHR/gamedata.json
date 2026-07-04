@@ -1,5 +1,5 @@
 {
-  "version": "S2d-content-2026-07-04 (서류34·면접16·JD3)",
+  "version": "S2e-scheduling-2026-07-05 (일정표 목업형·시나리오 뽑기+솔버·풀 14명)",
   "cards": [
     { "id": "basic",  "label": "기본 질문", "prompt": "자기소개를 해보시죠.", "cost": 1 },
     { "id": "terms",  "label": "근무 조건", "prompt": "야근과 밤샘 근무, 가능합니까?", "cost": 1 },
@@ -1016,13 +1016,19 @@
   "scheduling": {
     "intro": "스켈레톤 인턴: “오늘 인사팀 전체에서 서류 통과된 지원자 명단입니다.\n수정구로 연락해서 가능한 시간을 들은 다음, 일정표에 사진을 붙여 주세요.\n\n참고로 선배님이 심사하신 서류는 다른 팀 면접으로 배정됐습니다.\n(규정이래요. 심사한 사람이 면접까지 보면 정이 든다나…)\n\n아, 그리고 — 지원자 사정을 안 듣고 대충 꽂으면\n내일 아침에 꼭 무슨 일이 생기더라고요.”",
     "slots": [
-      { "label": "내일 오전", "warn": "", "tags": ["day2", "am"] },
-      { "label": "내일 오후", "warn": "비 예보", "tags": ["day2", "pm", "rain"] },
-      { "label": "내일 밤", "warn": "", "tags": ["day2", "night"] },
-      { "label": "모레 오전", "warn": "", "tags": ["day3", "am"] },
-      { "label": "모레 오후", "warn": "", "tags": ["day3", "pm"] },
-      { "label": "모레 밤", "warn": "보름달", "tags": ["day3", "night", "fullmoon"] }
+      {"label": "내일 오전", "warn": "", "tags": ["day2", "am"]},
+      {"label": "내일 오후", "warn": "", "tags": ["day2", "pm"]},
+      {"label": "내일 밤", "warn": "", "tags": ["day2", "night"]},
+      {"label": "모레 오전", "warn": "", "tags": ["day3", "am"]},
+      {"label": "모레 오후", "warn": "", "tags": ["day3", "pm"]},
+      {"label": "모레 밤", "warn": "", "tags": ["day3", "night"]}
     ],
+    "envs": [
+      {"tag": "rain", "warn": "비 예보", "allowed": ["am", "pm", "night"], "maxCount": 2},
+      {"tag": "fullmoon", "warn": "보름달", "allowed": ["night"], "maxCount": 1}
+    ],
+    "drawCount": 5,
+    "minConstrained": 3,
     "candidates": [
       {
         "id": "vladi",
@@ -1073,6 +1079,96 @@
         "requiredTag": "pm",
         "bannedTag": "",
         "violationLine": "오전 면접에 억지로 오신 가마솥 님의 솥이 끓어넘쳐 인사팀 1층이 정체불명의 수프가 되었습니다. (맛은 좋았다는 평입니다)"
+      },
+      {
+        "id": "chokchok",
+        "name": "촉촉",
+        "species": "운디네",
+        "hint": "맑은 날 컨디션 저조 (본인 기재: ‘증발 위험’)",
+        "callLine": "꼭 비 오는 날로 잡아 주세요. 맑으면 면접 중에 제가… 줄어듭니다. 지난번엔 반쯤 증발한 채로 귀가했어요.",
+        "requiredTag": "rain",
+        "bannedTag": "",
+        "violationLine": "맑은 날 면접에 오신 촉촉 님이 답변 도중 수증기가 되셨습니다. 천장에 맺힌 것을 인턴이 컵에 받아 귀가시켜 드렸습니다."
+      },
+      {
+        "id": "teolbok",
+        "name": "털복숭",
+        "species": "늑대인간",
+        "hint": "‘보름달 컨디션 최상’ (달력 동봉)",
+        "callLine": "꼭 보름달 밤으로 부탁드립니다! 그때가 제일 힘세고, 제일 똑똑하고, 털에 윤기가 돕니다. 평소의 저는… 그냥 큰 개예요.",
+        "requiredTag": "fullmoon",
+        "bannedTag": "",
+        "violationLine": "평일에 면접 온 털복숭 님은 면접 내내 공을 물어오고 배를 보여줬습니다. 채용 판단이 불가능해 재면접이 필요합니다."
+      },
+      {
+        "id": "heuneul",
+        "name": "흐늘",
+        "species": "유령",
+        "hint": "오전 면접 불가 사유 有 (자세한 언급 회피)",
+        "callLine": "동트고 나면 몸이… 흐려져서요. 오전엔 제가 왔는지 안 왔는지 면접관님도 저도 확신할 수 없습니다.",
+        "requiredTag": "",
+        "bannedTag": "am",
+        "violationLine": "오전 면접의 흐늘 님은 출석 여부가 끝내 확인되지 않았습니다. 의자만 잠깐 차가웠다는 증언이 있어 노쇼 처리도 못 하고 있습니다."
+      },
+      {
+        "id": "bulti",
+        "name": "불티",
+        "species": "임프",
+        "hint": "빠른 일정 희망 (매우 급함)",
+        "callLine": "내일이요, 꼭 내일! 모레부터 지옥 이사철 성수기라 저 불려갑니다. 3천 년에 한 번 오는 대목이란 말입니다.",
+        "requiredTag": "day2",
+        "bannedTag": "",
+        "violationLine": "모레로 배정된 불티 님은 이사철에 끌려가 결국 오지 못했습니다. 대신 이사 견적서만 도착했습니다. (견적은 꽤 합리적이었습니다)"
+      },
+      {
+        "id": "darimit",
+        "name": "다리밑",
+        "species": "트롤",
+        "hint": "내일은 선약 있음 (다리 관련)",
+        "callLine": "내일은 다리 밑 임대 재계약 날입니다. 이거 놓치면 노숙 트롤 됩니다. 모레로 부탁드립니다.",
+        "requiredTag": "day3",
+        "bannedTag": "",
+        "violationLine": "내일 면접에 억지로 오신 다리밑 님은 재계약을 놓쳐 다리를 잃었습니다. 현재 인사팀 로비 소파 밑에서 서식 중입니다."
+      },
+      {
+        "id": "banjjak",
+        "name": "반짝",
+        "species": "픽시",
+        "hint": "야간 불가 (통금)",
+        "callLine": "밤엔 안 돼요! 요정 여왕님이 통금 어기면 날개를 압수하세요. 지난달에 이미 한 번 걸렸단 말이에요.",
+        "requiredTag": "",
+        "bannedTag": "night",
+        "violationLine": "밤 면접에 온 반짝 님은 귀가 직후 날개를 압수당해 한 달간 도보 출퇴근이 확정되었습니다. 원망의 편지가 매일 도착하고 있습니다."
+      },
+      {
+        "id": "goldwing",
+        "name": "골드윙",
+        "species": "드래곤",
+        "hint": "오후 일정 불가 (체온 문제)",
+        "callLine": "오전으로 부탁드립니다. 오후엔 체온이 올라서… 지난번 오후 미팅에선 계약서가 저절로 발화했습니다.",
+        "requiredTag": "am",
+        "bannedTag": "",
+        "violationLine": "오후 면접의 골드윙 님 체온으로 면접 서류와 책상 절반이 발화했습니다. 소화비 및 책상값 450G가 청구되었습니다."
+      },
+      {
+        "id": "gwejjak",
+        "name": "궤짝",
+        "species": "미믹",
+        "hint": "아무 데나 놓아 주세요 (본인 기재)",
+        "callLine": "저는 상자라서요. 아무 시간이나 갖다 놓으시면 됩니다. 단, 면접 전에 발로 차지만 말아 주세요.",
+        "requiredTag": "",
+        "bannedTag": "",
+        "violationLine": ""
+      },
+      {
+        "id": "hoeori",
+        "name": "회오리",
+        "species": "하피",
+        "hint": "우천 시 비행 불가",
+        "callLine": "비 오는 날은 깃털이 젖어서 이륙이 안 됩니다. 걸어오라고요? 하피한테요? …그건 좀 모욕적이네요.",
+        "requiredTag": "",
+        "bannedTag": "rain",
+        "violationLine": "우천 면접일에 젖은 채 걸어오신 회오리 님이 면접 내내 원망의 눈빛을 보냈습니다. 사무실 사기가 떨어졌고, 어쩐지 우리가 미안해졌습니다."
       }
     ]
   }
