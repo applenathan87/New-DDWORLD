@@ -312,7 +312,7 @@
       "day": 1,
       "title": "Day 1 — 서류 심사 (수습)",
       "directive": "마왕성 인사팀 공문 제666-05호\n\n1. 금일 배정된 서류를 전부 심사할 것.\n2. 경고: 최근 용사 측의 위장 지원 시도가 늘고 있음. 수상한 자는 통과 금지.\n3. 마왕성 인재상: '악행에 진심인 자'. 훈훈한 인재는 정중히 거절할 것.\n\n— 인사팀장 카우즈",
-      "promoteMin": 5,
+      "meritGoal": 12,
       "drawCount": 7,
       "firstId": "mulkeong",
       "applicantIds": [

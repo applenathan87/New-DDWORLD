@@ -134,8 +134,9 @@ def import_csv(path):
     day = d["days"][0]
     if day.get("firstId") and day["firstId"] not in day1_ids:
         print(f"⚠️  firstId '{day['firstId']}'가 day1 풀에 없습니다 — 첫 슬롯 고정이 무시됩니다")
-    if day.get("promoteMin", 0) > min(day.get("drawCount") or len(day1_ids), len(day1_ids)):
-        print("⚠️  promoteMin이 등장 서류 수보다 큽니다 — 승진 불가능 (게임 시작 시 에러)")
+    lineup_size = min(day.get("drawCount") or len(day1_ids), len(day1_ids))
+    if day.get("meritGoal", 0) > lineup_size * 3:
+        print("⚠️  meritGoal이 하루 최대 공적(등장 수 ×3)보다 큽니다 — 승진 불가능 (게임 시작 시 에러)")
 
     shutil.copy(JSON_PATH, JSON_PATH + ".bak")  # 실수 대비 직전본 백업
     d["applicants"] = apps

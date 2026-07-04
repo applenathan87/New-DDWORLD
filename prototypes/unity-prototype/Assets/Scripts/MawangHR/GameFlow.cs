@@ -881,7 +881,11 @@ namespace MawangHR
             int correctCount = lineup.Where((a, i) => verdicts[i] == a.CorrectIsPass).Count();
             int hitCount = evidenceHits.Count(h => h);
             int passCount = verdicts.Count(v => v);
-            bool promoted = correctCount >= day.promoteMin; // 쿼터 제거 (2026-07-04) — 승진 = 정확도 단독
+            // 공적 = 승진 게이지 (보상 경제 #13 — 표시·판정만, 저장·누적은 S3).
+            // 원점수(정확 ×2 + 근거 적중 ×1)를 meritGoal 기준 100점으로 환산 — 게이지 100 도달 = 승진.
+            int merit = correctCount * 2 + hitCount;
+            int meritScaled = Mathf.Min(100, Mathf.RoundToInt(merit * 100f / Mathf.Max(1, day.meritGoal)));
+            bool promoted = meritScaled >= 100;
 
             UiKit.LabelAt(s, "Day 1 종료 — 인사 평가", 46, UiKit.Accent, 0, 80, 1920, 70, TextAlignmentOptions.Center);
 
@@ -889,17 +893,88 @@ namespace MawangHR
             UiKit.Place(card, 510, 190, 900, 620);
 
             UiKit.LabelAt(card,
-                $"판정 정확도:  <b>{correctCount} / {lineup.Count}</b>\n근거 적중 (방향 포함):  <b>{hitCount} / {lineup.Count}</b>\n\n서류 통과: {passCount}명",
-                30, UiKit.Text, 60, 50, 780, 220, TextAlignmentOptions.TopLeft, true);
+                $"판정 정확도:  <b>{correctCount} / {lineup.Count}</b>\n근거 적중 (방향 포함):  <b>{hitCount} / {lineup.Count}</b>\n서류 통과: {passCount}명",
+                30, UiKit.Text, 60, 50, 780, 150, TextAlignmentOptions.TopLeft, true);
+
+            // ─ 공적 게이지: 0→100 차오르고, 중앙 숫자가 같이 뛰고, 만땅 순간 승진 ─
+            UiKit.LabelAt(card, "<b>인사기록 카드 — 공적</b>", 24, UiKit.Accent, 60, 214, 420, 34);
+            UiKit.LabelAt(card, "정확 ×2 + 근거 적중 ×1 → 100점 환산", 19, UiKit.TextDim, 480, 220, 360, 30, TextAlignmentOptions.TopRight, true);
+
+            var track = UiKit.PanelRect(card, "MeritTrack", new Color(0.12f, 0.09f, 0.07f));
+            UiKit.Place(track, 60, 256, 780, 46);
+            var fill = UiKit.PanelRect(track, "MeritFill", UiKit.Accent);
+            UiKit.Place(fill, 0, 0, 0, 46);
+            fill.GetComponent<Image>().raycastTarget = false;
+            var counter = UiKit.Label(track, "0 / 100", 27, UiKit.Text, TextAlignmentOptions.Center);
+            UiKit.Fill((RectTransform)counter.transform);
+            counter.fontStyle = FontStyles.Bold;
+            counter.raycastTarget = false;
+
+            var resultTag = UiKit.LabelAt(card, promoted ? "승진 심사 통과!" : "공적 미달 — 수습 연장",
+                26, promoted ? UiKit.Approve : UiKit.Reject, 60, 312, 780, 36, TextAlignmentOptions.Center);
+            resultTag.fontStyle = FontStyles.Bold;
+            resultTag.gameObject.SetActive(false);
 
             string verdictText = promoted
                 ? "<color=#3E7D4E><b>승진 예고!</b></color>\n\n“제법이군. 내일부터 자네가 1차 면접을 맡게.\n서류는 이제 스켈레톤 인턴이 볼 걸세.”\n\n<size=22><color=#A6947C>— 면접 루프는 다음 빌드에서 열립니다 —</color></size>"
                 : "<color=#9E3B32><b>수습 연장의 위기…</b></color>\n\n“서류 보는 눈이 아직 멀었군.\n내일 다시 해보게. 이번엔 공문을 '읽고' 찍으라고.”";
+            var verdictLabel = UiKit.LabelAt(card, verdictText, 28, UiKit.Text, 60, 358, 780, 230, TextAlignmentOptions.Top, true);
+            verdictLabel.gameObject.SetActive(false);
 
-            UiKit.LabelAt(card, verdictText, 28, UiKit.Text, 60, 290, 780, 280, TextAlignmentOptions.Top, true);
+            StartCoroutine(MeritGaugeRoutine(fill, counter, resultTag.gameObject, verdictLabel.gameObject, meritScaled, promoted));
 
             var btn = UiKit.MakeButton(s, "다음날 아침 →", UiKit.Accent, UiKit.Ink, 28, ShowMorningReport);
             UiKit.Place((RectTransform)btn.transform, 810, 860, 300, 70);
+        }
+
+        /// 공적 게이지 연출 — 바가 0부터 차오르고 중앙 카운터가 함께 뛴다.
+        /// 100 도달(승진)이면 번쩍+샤라랑, 미달이면 멈춤 → 결과 태그·총평 순차 공개.
+        private IEnumerator MeritGaugeRoutine(RectTransform fill, TextMeshProUGUI counter,
+            GameObject resultTag, GameObject verdictObj, int target, bool promoted)
+        {
+            yield return new WaitForSeconds(0.35f);
+            Sfx.Swish();
+            const float trackW = 780f;
+            float dur = Mathf.Lerp(0.7f, 1.6f, target / 100f); // 많이 찰수록 오래 — 빌드업
+            float t = 0f;
+            int shown = -1;
+            while (t < dur)
+            {
+                t += Time.deltaTime;
+                if (fill == null || counter == null) yield break; // 화면이 넘어갔으면 중단
+                float k = Mathf.SmoothStep(0f, 1f, t / dur);
+                fill.sizeDelta = new Vector2(trackW * target * k / 100f, 46f);
+                int cur = Mathf.RoundToInt(target * k);
+                if (cur != shown) { shown = cur; counter.text = cur + " / 100"; }
+                yield return null;
+            }
+            if (fill == null || counter == null) yield break;
+            fill.sizeDelta = new Vector2(trackW * target / 100f, 46f);
+            counter.text = target + " / 100";
+
+            if (promoted)
+            {
+                Sfx.Shimmer(); // 레벨업(승진) 순간
+                var img = fill.GetComponent<Image>();
+                float p = 0f;
+                const float flashDur = 0.55f;
+                while (p < flashDur)
+                {
+                    p += Time.deltaTime;
+                    if (img == null) yield break;
+                    float pulse = Mathf.Abs(Mathf.Sin(p / flashDur * Mathf.PI * 3f));
+                    img.color = Color.Lerp(UiKit.Accent, new Color(1f, 0.95f, 0.72f), pulse);
+                    yield return null;
+                }
+                img.color = UiKit.Accent;
+            }
+            else
+            {
+                Sfx.Pick(); // 미달 — 짧게 멈추는 딸깍
+            }
+            if (resultTag != null) resultTag.SetActive(true);
+            yield return new WaitForSeconds(0.25f);
+            if (verdictObj != null) verdictObj.SetActive(true);
         }
     }
 }
