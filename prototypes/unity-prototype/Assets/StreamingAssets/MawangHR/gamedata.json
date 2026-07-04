@@ -1,5 +1,5 @@
 {
-  "version": "S1.5-2026-07-04",
+  "version": "S2c-pool-2026-07-04",
   "jds": [
     {
       "id": "adm",
@@ -114,7 +114,7 @@
         { "text": "소지품: 물병 1개 — 본인은 '그냥 음료수'라 주장 (라벨: 聖水)", "evidence": "FAIL" },
         { "text": "희망 급여: 무급 가능 — '돈은 중요하지 않습니다'", "evidence": "FAIL" }
       ],
-      "special": "공문 3항 참조 — 최근 용사 측 위장 지원 증가. 무급으로 일하겠다는 지원자를 믿지 말 것.",
+      "special": "공문 2항 참조 — 최근 용사 측 위장 지원 증가. 무급으로 일하겠다는 지원자를 믿지 말 것.",
       "specialEvidence": "FAIL",
       "correct": "FAIL",
       "reveal": "공문의 경고 + 성수 + 말실수 + 무급 가능. 용사 측 위장 지원이다. 탈락(및 경비대 신고)이 정답. 그는 정중한 저주 편지를 받고 성문 앞에서 연행되었다."
@@ -135,16 +135,191 @@
       "specialEvidence": "FAIL",
       "correct": "FAIL",
       "reveal": "훌륭한 악당이지만 '행정' JD엔 결격(방화 충동)이다. 탈락이 정답. — 방화부서 오프닝이었다면 즉시 합격감. 직무가 다르면 정답도 다르다."
+    },
+    {
+      "id": "wagujak",
+      "name": "와그작",
+      "species": "미믹 ♂",
+      "jdId": "guard",
+      "salary": "연 2,600 G + 광택제",
+      "quote": "저는 상자가 아닙니다. 아, 근무 중에는 상자입니다.",
+      "resumeLines": [
+        { "text": "전 직장: 폐던전 3층 보물방 (용사 17명 격퇴)", "evidence": "PASS" },
+        { "text": "특기: 잠복, 기습, 자물쇠 연기 (관객 평: 진짜 같음)", "evidence": "PASS" },
+        { "text": "주의사항: 서류를 주면 가끔 먹음 (본인 기재)", "evidence": "" }
+      ],
+      "special": "접수처 깃펜 3자루 분실. 와그작 씨 입가에 잉크 자국.",
+      "specialEvidence": "",
+      "correct": "PASS",
+      "reveal": "용사 17명 격퇴 — 경비 최상급 경력이다. 성문 앞에 두면 존재 자체가 함정. 합격이 정답. 인사팀은 이날부터 서류에 코팅을 입혔다."
+    },
+    {
+      "id": "meongmeong",
+      "name": "멍멍멍",
+      "species": "켈베로스 ♂",
+      "jdId": "guard",
+      "salary": "연 3,000 G (간식 3인분 별도)",
+      "quote": "머리가 셋이라 3교대가 필요 없습니다.",
+      "resumeLines": [
+        { "text": "전 직장: 지옥문 정문 (탈주자 검거율 100%)", "evidence": "PASS" },
+        { "text": "특기: 3방향 동시 감시, 수면 중에도 머리 1개 근무", "evidence": "PASS" },
+        { "text": "요구 사항: 간식은 반드시 3인분", "evidence": "" }
+      ],
+      "special": "면접 순서를 머리끼리 가위바위보로 정하는 중. 세 판째 무승부.",
+      "specialEvidence": "",
+      "correct": "PASS",
+      "reveal": "검거율 100% + 자체 3교대. 던전 경비의 완성형이다. 합격이 정답. 간식 예산 3인분은 이례적으로 즉시 결재되었다."
+    },
+    {
+      "id": "kukihalmi",
+      "name": "쿠키할멈",
+      "species": "마녀 ♀",
+      "jdId": "guard",
+      "salary": "연 2,800 G + 오븐 사용권",
+      "quote": "우리 아가들(용사) 오면 할미가 잘 대접해줄게.",
+      "resumeLines": [
+        { "text": "경력: 숲속 과자집 운영 40년 (방문 용사 재방문율 0%)", "evidence": "PASS" },
+        { "text": "표창: 마녀협회 '올해의 함정' 대상 (과자집 특허 보유)", "evidence": "PASS" },
+        { "text": "취미: 아이들에게 과자 나눠주기", "evidence": "" }
+      ],
+      "special": "동봉된 쿠키를 시식한 인턴이 3시간째 '할머니 최고'만 반복함 (성분 조사 중).",
+      "specialEvidence": "PASS",
+      "correct": "PASS",
+      "reveal": "훈훈한 겉면은 미끼, 실체는 특허급 함정 설계자다. 합격이 정답. — '착해 보임'과 '착함'은 다르다. 겉면만 보고 찍었다면 그게 오판."
+    },
+    {
+      "id": "harong",
+      "name": "하롱",
+      "species": "타락천사 (지망) ♀",
+      "jdId": "guard",
+      "salary": "연 1,500 G (십일조 공제 희망)",
+      "quote": "저 이제 나쁜 애예요. 진짜예요.",
+      "resumeLines": [
+        { "text": "악행 경력: 무단횡단 2회 (좌우 확인 후 건넘)", "evidence": "FAIL" },
+        { "text": "도서관 책 3일 연체 — '심장이 터질 뻔했다'", "evidence": "FAIL" },
+        { "text": "후광 제거 수술 대기 중 (대기번호 666번)", "evidence": "" }
+      ],
+      "special": "이력서에서 은은한 빛이 남. 어두운 데서 독서등으로 쓸 수 있는 수준.",
+      "specialEvidence": "FAIL",
+      "correct": "FAIL",
+      "reveal": "악행에 '진심'인 건 맞는데 스케일이 유치원이다. 침입자를 배웅할 인상. 탈락이 정답. 후광은 성문 조명용으로 탐났다는 후문."
+    },
+    {
+      "id": "beolbeori",
+      "name": "벌벌이",
+      "species": "오우거 ♂",
+      "jdId": "guard",
+      "salary": "연 2,500 G (야간 수당… 야간은 좀…)",
+      "quote": "덩치는 제가 제일 큽니다… 어, 방금 뒤에서 소리 났어요?",
+      "resumeLines": [
+        { "text": "신장 3.2m — 성문 앞 존재감 보장 (본인 기재)", "evidence": "" },
+        { "text": "전 고용주 평가: '천둥 치던 날 침대 밑에서 발견됨'", "evidence": "FAIL" },
+        { "text": "퇴사 사유: 다람쥐가 자꾸 노려봐서", "evidence": "FAIL" }
+      ],
+      "special": "면접 대기 중 본인 그림자에 놀라 의자에서 두 번 떨어짐.",
+      "specialEvidence": "FAIL",
+      "correct": "FAIL",
+      "reveal": "위협적인 건 덩치뿐 — '겁 없음' 요구 자질 정면 결격. 탈락이 정답. 다람쥐 이야기를 하는 동안 실제로 떨고 있었다."
+    },
+    {
+      "id": "seureureuk",
+      "name": "스르륵",
+      "species": "유령 ♀",
+      "jdId": "guard",
+      "salary": "연 0 G (통장이 관 속에 있음)",
+      "quote": "제 냉기에 얼어붙지 않은 침입자가 없어요.",
+      "resumeLines": [
+        { "text": "특기: 소름 돋는 냉기, 한밤 흐느낌 (반경 50m)", "evidence": "" },
+        { "text": "신체 특성: 벽·문·사람 통과 가능", "evidence": "" },
+        { "text": "전 직장 평가: '무서웠는데… 도둑이 그냥 지나가더라고요'", "evidence": "FAIL" }
+      ],
+      "special": "악수 세 번 시도, 세 번 다 손이 통과함.",
+      "specialEvidence": "FAIL",
+      "correct": "FAIL",
+      "reveal": "무섭기만 하고 못 막는다 — 경비의 본질은 저지력이다. 탈락이 정답. 대신 원격 흐느낌 경보 알바를 제안받고 수락했다."
+    },
+    {
+      "id": "paswaegi",
+      "name": "파쇄기",
+      "species": "종이 골렘 ⚧",
+      "jdId": "adm",
+      "salary": "연 2,300 G (물·불·풀칠 취급 수당 요구)",
+      "quote": "저는 서류로 만들어졌습니다. 서류의 마음을 압니다.",
+      "resumeLines": [
+        { "text": "몸의 재질: 미납 독촉장 1,200장 (접착제는 원한)", "evidence": "PASS" },
+        { "text": "특기: 문서 분류(본능), 위조 감지 — 가짜 서류가 닿으면 몸이 가려움", "evidence": "PASS" },
+        { "text": "약점: 물, 불, 풀칠", "evidence": "" }
+      ],
+      "special": "악수하자 손에서 독촉장이 한 장 떨어짐. 본인 명함이라고 함.",
+      "specialEvidence": "",
+      "correct": "PASS",
+      "reveal": "위조를 피부로 감지하는 행정 인재다. 합격이 정답. 단, 임프 '불장난' 씨와의 같은 층 배치는 영구 금지되었다."
+    },
+    {
+      "id": "ppeongbolin",
+      "name": "뻥볼린",
+      "species": "고블린 ♂",
+      "jdId": "adm",
+      "salary": "연 8,000 G (총사령관 예우)",
+      "quote": "내가 왕년에 마왕군 전체를 지휘했지.",
+      "resumeLines": [
+        { "text": "경력: 마왕군 총사령관 30년 (증명서 자필 첨부)", "evidence": "FAIL" },
+        { "text": "증명서 직인이 감자 도장임 (육안으로 확인됨)", "evidence": "FAIL" },
+        { "text": "특기: 통솔력, 카리스마, 감자 조각", "evidence": "" }
+      ],
+      "special": "직인의 감자에서 싹이 자라는 중. 최근에 판 도장이라는 뜻.",
+      "specialEvidence": "FAIL",
+      "correct": "FAIL",
+      "reveal": "허풍은 악당의 미덕이나 감자 도장 위조는 행정 결격(서류 위조)이다. 탈락이 정답. 감자 조각 솜씨만은 아깝다는 평가가 있었다."
+    },
+    {
+      "id": "nayana",
+      "name": "나야나",
+      "species": "도플갱어 ⚧",
+      "jdId": "adm",
+      "salary": "희망 연봉: 당신과 같게",
+      "quote": "저는 귀 팀에 꼭 맞는 인재입니다. 문자 그대로요.",
+      "resumeLines": [
+        { "text": "경력: 마왕성 인사팀장 30년 (어디서 많이 본 경력)", "evidence": "FAIL" },
+        { "text": "자기소개서가 인사팀장 카우즈 님 것과 토씨까지 동일", "evidence": "FAIL" },
+        { "text": "특기: 적응력, 융화력, 얼굴 바꾸기", "evidence": "" }
+      ],
+      "special": "증명사진이 보는 각도마다 다른 얼굴임. 지금은 당신 얼굴.",
+      "specialEvidence": "FAIL",
+      "correct": "FAIL",
+      "reveal": "남의 서류 위조는 재능이지만 '본인 이력서 위조'는 결격 1항이다. 탈락이 정답. 카우즈 팀장은 이날 밤 자기 경력서를 금고에 넣었다."
+    },
+    {
+      "id": "neugeut",
+      "name": "느긋",
+      "species": "나태 악마 ♂",
+      "jdId": "adm",
+      "salary": "연봉 협상은 나중에…",
+      "quote": "일은… 내일의 제가 할 겁니다.",
+      "resumeLines": [
+        { "text": "경력: 7대 죄악 공단 나태부 (출근 기록 없음)", "evidence": "FAIL" },
+        { "text": "특기: 미루기, 반차, 반반차, 반반반차", "evidence": "FAIL" },
+        { "text": "이력서 작성 기간: 4년 (아직 미완성)", "evidence": "" }
+      ],
+      "special": "이력서 마지막 줄: '나머지는 나중에 쓰겠' (여기서 끊김)",
+      "specialEvidence": "FAIL",
+      "correct": "FAIL",
+      "reveal": "악마력은 진퉁이나 '야근 내성' 정면 결격이다. 탈락이 정답. 본인은 탈락 통보 개봉을 다음 달로 미뤄 아직 결과를 모른다."
     }
   ],
   "days": [
     {
       "day": 1,
       "title": "Day 1 — 서류 심사 (수습)",
-      "directive": "마왕성 인사팀 공문 제666-05호\n\n1. 금일 접수된 서류 7건을 전부 심사할 것.\n2. 내일 면접 일정 확보를 위해 최소 3명을 서류 통과시킬 것.\n3. 경고: 최근 용사 측의 위장 지원 시도가 늘고 있음. 수상한 자는 통과 금지.\n4. 마왕성 인재상: '악행에 진심인 자'. 훈훈한 인재는 정중히 거절할 것.\n\n— 인사팀장 카우즈",
-      "quotaMin": 3,
+      "directive": "마왕성 인사팀 공문 제666-05호\n\n1. 금일 배정된 서류를 전부 심사할 것.\n2. 경고: 최근 용사 측의 위장 지원 시도가 늘고 있음. 수상한 자는 통과 금지.\n3. 마왕성 인재상: '악행에 진심인 자'. 훈훈한 인재는 정중히 거절할 것.\n\n— 인사팀장 카우즈",
       "promoteMin": 5,
-      "applicantIds": ["grblin", "mulkeong", "vlad3", "dolsoe", "ppyeodagu", "kimyongsa", "buljangnan"]
+      "drawCount": 7,
+      "firstId": "mulkeong",
+      "applicantIds": [
+        "grblin", "mulkeong", "vlad3", "dolsoe", "ppyeodagu", "kimyongsa", "buljangnan",
+        "wagujak", "meongmeong", "kukihalmi", "harong", "beolbeori", "seureureuk",
+        "paswaegi", "ppeongbolin", "nayana", "neugeut"
+      ]
     }
   ],
   "scheduling": {

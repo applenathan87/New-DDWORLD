@@ -72,10 +72,11 @@ namespace MawangHR
             canvas = mainCanvas;
             rig = deskRig;
             day = data.days[0];
-            lineup = day.applicantIds
+            var pool = day.applicantIds
                 .Select(id => data.applicants.FirstOrDefault(a => a.id == id))
                 .Where(a => a != null)
                 .ToList();
+            lineup = DrawLineup(pool);
             verdicts.Clear();
             evidenceHits.Clear();
             keyMisreads.Clear();
@@ -119,6 +120,56 @@ namespace MawangHR
                 schedConfirmBtn.interactable = scheduling.AllPlaced && !stamping;
             if (progressLabel != null)
                 progressLabel.text = $"배치 {scheduling.PlacedCount} / {scheduling.Total}    ·    통화로 사정을 들어보세요";
+        }
+
+        // ─── 풀 뽑기 (mvp-design §10a 프로토 선적용, 2026-07-04) ───
+
+        // 재시작해도 유지 — 이미 나온 케이스는 뒤 순위로 밀려 새 얼굴이 먼저 나온다 (셔플백)
+        private readonly HashSet<string> seenIds = new HashSet<string>();
+
+        /// applicantIds = 풀 전체. 매 판 drawCount건을 뽑는다 (0 = 뽑기 없이 명단 순서 그대로).
+        /// firstId 케이스는 아직 안 봤을 때만 첫 슬롯 고정 (반전 튜토리얼 케이스 보장용).
+        private List<Applicant> DrawLineup(List<Applicant> pool)
+        {
+            if (day.drawCount <= 0) return pool;
+            int count = Mathf.Min(day.drawCount, pool.Count);
+
+            int seed = System.Environment.TickCount; // 시드 로그 = 버그 재현용
+            var rng = new System.Random(seed);
+            Debug.Log($"[MawangHR] 서류 뽑기 — 풀 {pool.Count}건 중 {count}건, 시드 {seed}");
+
+            var rest = new List<Applicant>(pool);
+            var result = new List<Applicant>();
+
+            var first = rest.FirstOrDefault(a => a.id == day.firstId);
+            if (first != null && !seenIds.Contains(first.id))
+            {
+                result.Add(first);
+                rest.Remove(first);
+            }
+
+            // 미출현 우선 (그룹 내 랜덤) → 필요 수만큼
+            var picked = rest.Where(a => !seenIds.Contains(a.id)).OrderBy(_ => rng.Next())
+                .Concat(rest.Where(a => seenIds.Contains(a.id)).OrderBy(_ => rng.Next()))
+                .Take(count - result.Count)
+                .ToList();
+
+            // 뽑은 뒤 순서 셔플 — 새/헌 케이스가 섞여 나오게 (고정 첫 슬롯은 제외)
+            for (int i = picked.Count - 1; i > 0; i--)
+            {
+                int j = rng.Next(i + 1);
+                (picked[i], picked[j]) = (picked[j], picked[i]);
+            }
+            result.AddRange(picked);
+
+            foreach (var a in result) seenIds.Add(a.id);
+            if (pool.All(a => seenIds.Contains(a.id)))
+            {
+                // 풀 소진 → 가방 리셋 (방금 판만 기억해 직후 재등장은 방지)
+                seenIds.Clear();
+                foreach (var a in result) seenIds.Add(a.id);
+            }
+            return result;
         }
 
         private RectTransform NewScreen()
@@ -268,7 +319,7 @@ namespace MawangHR
         {
             int passCount = verdicts.Count(v => v);
             if (progressLabel != null)
-                progressLabel.text = $"서류 {index + 1} / {lineup.Count}    ·    통과 {passCount}명 (최소 {day.quotaMin}명)";
+                progressLabel.text = $"서류 {index + 1} / {lineup.Count}    ·    통과 {passCount}명";
         }
 
         // ─── 종이 들어올리기 / 내려놓기 ───
@@ -830,20 +881,15 @@ namespace MawangHR
             int correctCount = lineup.Where((a, i) => verdicts[i] == a.CorrectIsPass).Count();
             int hitCount = evidenceHits.Count(h => h);
             int passCount = verdicts.Count(v => v);
-            bool quotaOk = passCount >= day.quotaMin;
-            bool promoted = correctCount >= day.promoteMin && quotaOk;
+            bool promoted = correctCount >= day.promoteMin; // 쿼터 제거 (2026-07-04) — 승진 = 정확도 단독
 
             UiKit.LabelAt(s, "Day 1 종료 — 인사 평가", 46, UiKit.Accent, 0, 80, 1920, 70, TextAlignmentOptions.Center);
 
             var card = UiKit.PanelRect(s, "Summary", UiKit.Panel);
             UiKit.Place(card, 510, 190, 900, 620);
 
-            string quotaLine = quotaOk
-                ? $"서류 통과: {passCount}명  (지침 {day.quotaMin}명 이상 — 충족)"
-                : $"<color=#9E3B32>서류 통과: {passCount}명 — 지침 미달! 텅 빈 면접 대기석을 마왕님이 보셨습니다…</color>";
-
             UiKit.LabelAt(card,
-                $"판정 정확도:  <b>{correctCount} / {lineup.Count}</b>\n근거 적중 (방향 포함):  <b>{hitCount} / {lineup.Count}</b>\n\n{quotaLine}",
+                $"판정 정확도:  <b>{correctCount} / {lineup.Count}</b>\n근거 적중 (방향 포함):  <b>{hitCount} / {lineup.Count}</b>\n\n서류 통과: {passCount}명",
                 30, UiKit.Text, 60, 50, 780, 220, TextAlignmentOptions.TopLeft, true);
 
             string verdictText = promoted

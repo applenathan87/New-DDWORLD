@@ -11,6 +11,7 @@
 
 **스크립트**: `Assets/Scripts/MawangHR/` (네임스페이스 `MawangHR`) · **씬**: `Assets/mawanghr.unity`
 **콘텐츠 데이터**: `Assets/StreamingAssets/MawangHR/gamedata.json` — 지원자·JD·공문 전부 여기 (코드 수정 없이 편집 가능)
+**케이스 저작(시트) 가이드**: [tools/case-sheet-guide.md](tools/case-sheet-guide.md) — 구글 시트 왕복 워크플로 + 비주얼(모델·초상화) 분류 설계. 변환기 = [tools/cases_sheet.py](tools/cases_sheet.py)
 **작업 명령서**: [docs/mawang-hr-proto-brief.md](../../docs/mawang-hr-proto-brief.md) · 기획: [ideation/mvp-design.md](../../ideation/mvp-design.md)
 
 **가설**: ① 판단축 반전("착함=결격")이 플레이 3건 안에 "오?"를 만든다 ② 도장 판정이 계속 찍고 싶은 손맛이 된다.
@@ -41,6 +42,7 @@
   ⑤ **승진 기준 데이터화**: 하드코딩 `>= 5` → `days[].promoteMin` (quotaMin과 동일하게 JSON 주도)
   ⑥ **이력서 줄 수 한계 명시**: 최대 3줄 (4줄부터 특이사항과 겹침) — Models.cs 주석 + 검증기 경고
   ⑦ **16:10 우측 잘림 해소**: CanvasScaler match를 0.5→0(폭 고정) — 16:10(맥북 내장 화면 포함)에서 "일정 확정" 버튼·진행 라벨·메모 패드가 화면 밖으로 나가던 문제
+- **S2c (2026-07-04)**: ⭐ **케이스 풀 + 뽑기** — 지원자 **7→17건** (신규 10: 미믹 와그작·켈베로스 멍멍멍·쿠키할멈(착해 보이는데 극악 — 역반전)·타락천사 지망 하롱·겁쟁이 오우거 벌벌이·유령 스르륵·종이 골렘 파쇄기·허풍 고블린 뻥볼린·도플갱어 나야나·나태 악마 느긋). **풀 뽑기 구현** (mvp-design §10a 선적용): 매 판 7건 뽑기 + 순서 셔플, **미출현 우선 셔플백**(재시작해도 유지, 풀 소진 시 직전 판만 기억하고 리셋), 첫 슬롯 = 물컹이 고정(미출현일 때만 — 반전 튜토리얼 보장), 뽑기 시드 콘솔 로그(재현용). **쿼터(최소 통과 인원) 폐지** — 공문 문구·HUD 표시·결산 지침 판정 삭제, 승진 = 정확도 단독(promoteMin). 스키마: `quotaMin` 삭제, `drawCount`/`firstId` 추가 (drawCount 0 = 기존 고정 명단 동작).
 
 **상태**: in-progress · **발견**: (플레이 후 기록)
 

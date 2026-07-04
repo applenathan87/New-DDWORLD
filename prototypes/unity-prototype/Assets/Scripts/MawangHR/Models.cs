@@ -88,9 +88,10 @@ namespace MawangHR
         public int day;
         public string title;       // 예: "Day 1 — 서류 심사 (수습)"
         public string directive;   // 오늘의 공문 전문
-        public int quotaMin;       // 최소 서류통과 인원
         public int promoteMin;     // 승진(면접 루프 해금)에 필요한 최소 정답 수
-        public string[] applicantIds;
+        public int drawCount;      // 풀에서 매 판 뽑을 서류 수 (0 = 뽑기 없이 명단 순서 그대로)
+        public string firstId;     // 첫 슬롯 고정 케이스 — 미출현일 때만 고정 (반전 튜토리얼 보장)
+        public string[] applicantIds; // 케이스 풀 전체 (drawCount > 0이면 여기서 뽑는다)
     }
 
     /// 로드 직후 데이터 무결성 검사 + null 정규화.
@@ -132,6 +133,14 @@ namespace MawangHR
                     return $"Day {day.day}: applicantIds가 비었습니다";
                 if (day.promoteMin < 1)
                     return $"Day {day.day}: promoteMin(승진 필요 정답 수)이 없거나 0입니다";
+                if (day.firstId == null) day.firstId = "";
+                if (day.drawCount > day.applicantIds.Length)
+                    Debug.LogWarning($"[MawangHR] Day {day.day}: drawCount({day.drawCount})가 풀({day.applicantIds.Length}건)보다 큼 — 전원 등장");
+                if (!string.IsNullOrEmpty(day.firstId) && Array.IndexOf(day.applicantIds, day.firstId) < 0)
+                    Debug.LogWarning($"[MawangHR] Day {day.day}: firstId '{day.firstId}'가 풀에 없음 — 고정 슬롯 무시됨");
+                int lineupSize = day.drawCount > 0 ? Math.Min(day.drawCount, day.applicantIds.Length) : day.applicantIds.Length;
+                if (day.promoteMin > lineupSize)
+                    return $"Day {day.day}: promoteMin({day.promoteMin})이 등장 서류 수({lineupSize})보다 큼 — 승진 불가능";
             }
 
             // scheduling은 선택 블록 — 있으면 내부 배열만 정규화
