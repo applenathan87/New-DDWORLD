@@ -31,14 +31,16 @@ namespace MawangHR
 
         // 판정 기록
         private readonly List<bool> verdicts = new List<bool>();
-        private readonly List<bool> evidenceHits = new List<bool>();
+        private readonly List<bool> evidenceHits = new List<bool>();   // 결정적 단서를 올바른 방향으로 짚었는가
+        private readonly List<bool> keyMisreads = new List<bool>();    // 결정적 단서를 반대 방향으로 읽었는가
         private readonly List<List<string>> markedRecords = new List<List<string>>();
 
-        // 현재 지원자의 단서 마킹 상태
-        private readonly HashSet<int> marks = new HashSet<int>();
+        // 현재 지원자의 단서 마킹 상태 — 인덱스 → 방향 (true = V 합격 신호, false = X 탈락 신호)
+        private readonly Dictionary<int, bool> marks = new Dictionary<int, bool>();
         private readonly List<string> clueTexts = new List<string>();
         private readonly List<string> clueEvidence = new List<string>();
         private readonly List<Image> clueBgs = new List<Image>();
+        private readonly List<TextMeshProUGUI> clueGlyphs = new List<TextMeshProUGUI>();
 
         // 3D 페이즈 UI
         private RectTransform hud;
@@ -51,8 +53,10 @@ namespace MawangHR
         private bool stampsCreated;
         private Coroutine warnCo, resumeTweenCo, jdTweenCo;
 
-        private static readonly Color MarkBg = new Color(0.69f, 0.23f, 0.18f, 0.22f);
-        private const string DefaultHint = "서류 클릭 = 들기 · 끌기 = 재배치 · 빈 곳 클릭 = 내려놓기 · 단서 표시 후 도장을 서류에 쾅";
+        private static readonly Color MarkPosBg = new Color(0.24f, 0.49f, 0.30f, 0.22f); // V 합격 신호
+        private static readonly Color MarkNegBg = new Color(0.69f, 0.23f, 0.18f, 0.22f); // X 탈락 신호
+        private const string DefaultHint = "종이 클릭 = 들기 · 단서에 좌클릭 = V(합격 신호) / 우클릭 = X(탈락 신호) · 도장을 서류에 쾅";
+        private const string MemoDefault = "(깃펜: 단서에 좌클릭 V = 합격 신호\n우클릭 X = 탈락 신호)";
 
         public void Run(GameData gameData, Canvas mainCanvas, DeskRig deskRig)
         {
@@ -66,6 +70,7 @@ namespace MawangHR
                 .ToList();
             verdicts.Clear();
             evidenceHits.Clear();
+            keyMisreads.Clear();
             markedRecords.Clear();
             index = 0;
             revealIndex = 0;
@@ -198,7 +203,7 @@ namespace MawangHR
             var memo = UiKit.PanelRect(hud, "MemoPad", new Color(0.23f, 0.17f, 0.13f, 0.92f));
             UiKit.Place(memo, 1540, 120, 360, 330);
             UiKit.LabelAt(memo, "<b>근거 메모</b>", 22, UiKit.Accent, 20, 12, 320, 30);
-            memoContent = UiKit.LabelAt(memo, "(표시한 단서가 여기 쌓입니다)", 19, UiKit.Text,
+            memoContent = UiKit.LabelAt(memo, MemoDefault, 19, UiKit.Text,
                 20, 48, 320, 268, TextAlignmentOptions.TopLeft, true);
 
             var back = UiKit.MakeButton(hud, "종이 내려놓기 (ESC)", UiKit.Panel, UiKit.Text, 20, PutDown);
@@ -227,6 +232,7 @@ namespace MawangHR
             if (!screeningActive || stamping || holding) return;
             holding = true;
             rig.TweenToHold();
+            rig.SetQuillHeld(true);
             Sfx.Swish();
 
             Vector3 pos; Quaternion rot;
@@ -242,6 +248,7 @@ namespace MawangHR
             if (!screeningActive || stamping || !holding) return;
             holding = false;
             rig.TweenToDesk();
+            rig.SetQuillHeld(false);
             Sfx.Swish();
             StartPaperTween(true, rig.ResumeHome, rig.ResumeHomeRot);
             StartPaperTween(false, rig.JdHome, rig.JdHomeRot);
@@ -289,7 +296,8 @@ namespace MawangHR
             clueTexts.Clear();
             clueEvidence.Clear();
             clueBgs.Clear();
-            if (memoContent != null) memoContent.text = "(표시한 단서가 여기 쌓입니다)";
+            clueGlyphs.Clear();
+            if (memoContent != null) memoContent.text = MemoDefault;
 
             var a = lineup[index];
             rig.SetPending(lineup.Count - index - 1);
@@ -403,9 +411,16 @@ namespace MawangHR
             var img = bg.GetComponent<Image>();
             clueBgs.Add(img);
 
-            var btn = bg.gameObject.AddComponent<Button>();
-            btn.transition = Selectable.Transition.None;
-            btn.onClick.AddListener(() => ToggleMark(clueIndex));
+            bg.gameObject.AddComponent<ClueLine>().Init(clueIndex, ToggleMark);
+
+            // 왼쪽 여백의 V/X 글리프 (깃펜 자국)
+            var glyph = UiKit.Label(bg, "", 34, UiKit.Ink, TextAlignmentOptions.Center);
+            var grt = (RectTransform)glyph.transform;
+            UiKit.Place(grt, -38, 2, 36, 46);
+            grt.localRotation = Quaternion.Euler(0, 0, -6f);
+            glyph.fontStyle = FontStyles.Bold;
+            glyph.raycastTarget = false;
+            clueGlyphs.Add(glyph);
 
             var label = UiKit.Label(bg, text, 25, inkColor, TextAlignmentOptions.TopLeft, true);
             var lrt = (RectTransform)label.transform;
@@ -414,23 +429,38 @@ namespace MawangHR
             lrt.offsetMax = new Vector2(-8, -2);
         }
 
-        private void ToggleMark(int clueIndex)
+        /// 깃펜 마킹 — positive: true = V(합격 신호) / false = X(탈락 신호). 같은 방향 재클릭 = 해제.
+        private void ToggleMark(int clueIndex, bool positive)
         {
             if (stamping || !holding || ClickSuppressed) return; // 들고 있을 때만 마킹 (드래그 직후 클릭 무시)
-            bool nowMarked = marks.Add(clueIndex);
-            if (!nowMarked) marks.Remove(clueIndex);
 
+            if (marks.TryGetValue(clueIndex, out bool current) && current == positive)
+                marks.Remove(clueIndex);
+            else
+                marks[clueIndex] = positive;
+
+            bool marked = marks.TryGetValue(clueIndex, out bool pol);
             var bg = clueBgs[clueIndex];
-            bg.color = nowMarked ? MarkBg : Color.clear;
-            bg.transform.localRotation = nowMarked
+            bg.color = !marked ? Color.clear : (pol ? MarkPosBg : MarkNegBg);
+            bg.transform.localRotation = marked
                 ? Quaternion.Euler(0, 0, Random.Range(-1.2f, 1.2f))
                 : Quaternion.identity;
+            clueGlyphs[clueIndex].text = !marked ? "" : (pol ? "V" : "X");
+            clueGlyphs[clueIndex].color = pol ? UiKit.Approve : UiKit.StampInk;
+
             Sfx.Scratch();
+            rig.QuillTwitch();
 
             memoContent.text = marks.Count == 0
-                ? "(표시한 단서가 여기 쌓입니다)"
-                : string.Join("\n", marks.OrderBy(i => i).Select(i => "<color=#D98F3E>›</color> " + clueTexts[i]));
+                ? MemoDefault
+                : string.Join("\n", marks.OrderBy(kv => kv.Key).Select(kv =>
+                    (kv.Value ? "<color=#3E7D4E><b>V</b></color> " : "<color=#B03A2E><b>X</b></color> ")
+                    + clueTexts[kv.Key]));
         }
+
+        /// 이 방향 표시가 단서의 실제 방향과 일치하는가
+        private static bool PolarityMatches(bool positive, string evidence)
+            => positive ? evidence == "PASS" : evidence == "FAIL";
 
         private IEnumerator WarnNoEvidence()
         {
@@ -451,8 +481,13 @@ namespace MawangHR
             stamping = true;
             var a = lineup[index];
             verdicts.Add(pass);
-            evidenceHits.Add(marks.Any(i => clueEvidence[i] == a.correct));
-            markedRecords.Add(marks.OrderBy(i => i).Select(i => clueTexts[i]).ToList());
+            // 근거 적중 = 결정적 단서를 "올바른 방향(V/X)"으로 표시했는가
+            evidenceHits.Add(marks.Any(kv =>
+                clueEvidence[kv.Key] == a.correct && PolarityMatches(kv.Value, clueEvidence[kv.Key])));
+            keyMisreads.Add(marks.Any(kv =>
+                clueEvidence[kv.Key] == a.correct && !PolarityMatches(kv.Value, clueEvidence[kv.Key])));
+            markedRecords.Add(marks.OrderBy(kv => kv.Key).Select(kv =>
+                (kv.Value ? "<color=#3E7D4E>[V]</color> " : "<color=#B03A2E>[X]</color> ") + clueTexts[kv.Key]).ToList());
             UpdateHudProgress();
             StartCoroutine(SlamRoutine(pass, screenPos));
         }
@@ -492,6 +527,7 @@ namespace MawangHR
             holding = false;
             SyncHeldUi();
             rig.TweenToDesk();
+            rig.SetQuillHeld(false);
             yield return StartCoroutine(PaperFlyToDone());
             rig.AddDone();
             index++;
@@ -588,10 +624,18 @@ namespace MawangHR
             string evidenceText;
             Color evidenceColor;
             string keyClue = FirstEvidenceText(a);
+            bool keyMis = keyMisreads[revealIndex];
             if (right && hit)
             {
-                evidenceText = "근거 적중 — 결정적 단서를 정확히 짚었다.";
+                evidenceText = "근거·방향 적중 — 단서가 어느 쪽 신호인지까지 정확히 읽었다.";
                 evidenceColor = UiKit.Accent;
+            }
+            else if (keyMis)
+            {
+                evidenceText = keyClue != null
+                    ? $"단서는 짚었지만 <b>방향을 반대로</b> 읽었다 — 여긴 마왕성이다:  “{keyClue}”"
+                    : "단서는 짚었지만 방향을 반대로 읽었다.";
+                evidenceColor = new Color(0.85f, 0.55f, 0.35f);
             }
             else if (right)
             {
@@ -647,7 +691,7 @@ namespace MawangHR
                 : $"<color=#9E3B32>서류 통과: {passCount}명 — 지침 미달! 텅 빈 면접 대기석을 마왕님이 보셨습니다…</color>";
 
             UiKit.LabelAt(card,
-                $"판정 정확도:  <b>{correctCount} / {lineup.Count}</b>\n근거 적중:  <b>{hitCount} / {lineup.Count}</b>\n\n{quotaLine}",
+                $"판정 정확도:  <b>{correctCount} / {lineup.Count}</b>\n근거 적중 (방향 포함):  <b>{hitCount} / {lineup.Count}</b>\n\n{quotaLine}",
                 30, UiKit.Text, 60, 50, 780, 220, TextAlignmentOptions.TopLeft, true);
 
             string verdictText = promoted

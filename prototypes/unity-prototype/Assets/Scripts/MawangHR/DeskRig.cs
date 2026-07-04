@@ -30,6 +30,10 @@ namespace MawangHR
         private Transform pendingRoot, doneRoot;
         private int doneCount;
         private Coroutine camCo;
+        private Transform quill, quillFeather;
+        private Vector3 quillHome;
+        private Quaternion featherBaseRot;
+        private Coroutine quillCo, twitchCo;
 
         private static Material Mat(Color c)
         {
@@ -120,10 +124,105 @@ namespace MawangHR
             doneRoot.SetParent(transform, false);
             doneRoot.localPosition = new Vector3(0.62f, DeskTop, 0.30f);
 
+            // 깃펜 (마킹 도구 — 종이를 들면 손 위치로 날아옴)
+            var quillRoot = new GameObject("Quill");
+            quillRoot.transform.SetParent(transform, false);
+            quillHome = new Vector3(0.74f, DeskTop, -0.16f);
+            quillRoot.transform.localPosition = quillHome;
+            quill = quillRoot.transform;
+
+            var inkpot = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            inkpot.name = "Inkpot";
+            inkpot.transform.SetParent(quill, false);
+            inkpot.transform.localPosition = new Vector3(0, 0.03f, 0);
+            inkpot.transform.localScale = new Vector3(0.05f, 0.03f, 0.05f);
+            inkpot.GetComponent<Renderer>().material = Mat(new Color(0.12f, 0.10f, 0.09f));
+            Destroy(inkpot.GetComponent<Collider>());
+
+            var feather = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            feather.name = "Feather";
+            feather.transform.SetParent(quill, false);
+            feather.transform.localPosition = new Vector3(0, 0.15f, 0);
+            featherBaseRot = Quaternion.Euler(18f, 0f, -12f);
+            feather.transform.localRotation = featherBaseRot;
+            feather.transform.localScale = new Vector3(0.02f, 0.18f, 0.045f);
+            feather.GetComponent<Renderer>().material = Mat(new Color(0.92f, 0.92f, 0.88f));
+            Destroy(feather.GetComponent<Collider>());
+            quillFeather = feather.transform;
+
             // 카메라 초기 상태
             cam.fieldOfView = DeskFov;
             cam.transform.position = DeskCamPos;
             cam.transform.rotation = Quaternion.LookRotation(DeskCamTarget - DeskCamPos);
+        }
+
+        /// 종이를 들면 깃펜이 손 위치(화면 우하단)로 날아와 대기
+        public void SetQuillHeld(bool held)
+        {
+            if (quill == null) return;
+            if (quillCo != null) StopCoroutine(quillCo);
+            Vector3 pos;
+            Quaternion rot;
+            if (held)
+            {
+                Vector3 camPos = DeskCamPos + DeskFwd * 0.09f;
+                Quaternion camRot = Quaternion.LookRotation(DeskCamTarget - DeskCamPos);
+                pos = camPos + camRot * new Vector3(0.30f, -0.24f, 0.55f);
+                rot = camRot * Quaternion.Euler(40f, 0f, -35f); // 필기 각도
+            }
+            else
+            {
+                pos = quillHome;
+                rot = Quaternion.identity;
+            }
+            quillCo = StartCoroutine(TweenQuill(pos, rot, 0.25f));
+        }
+
+        private IEnumerator TweenQuill(Vector3 pos, Quaternion rot, float dur)
+        {
+            Vector3 fromP = quill.position;
+            Quaternion fromR = quill.rotation;
+            float t = 0f;
+            while (t < dur)
+            {
+                t += Time.deltaTime;
+                float k = Mathf.SmoothStep(0f, 1f, t / dur);
+                quill.position = Vector3.Lerp(fromP, pos, k);
+                quill.rotation = Quaternion.Slerp(fromR, rot, k);
+                yield return null;
+            }
+            quill.position = pos;
+            quill.rotation = rot;
+            quillCo = null;
+        }
+
+        /// 마킹 순간 깃털이 사각 긋는 트윗치
+        public void QuillTwitch()
+        {
+            if (quillFeather == null) return;
+            if (twitchCo != null) StopCoroutine(twitchCo);
+            twitchCo = StartCoroutine(TwitchCo());
+        }
+
+        private IEnumerator TwitchCo()
+        {
+            Quaternion strokeRot = featherBaseRot * Quaternion.Euler(0f, 0f, -16f);
+            float t = 0f;
+            while (t < 0.05f)
+            {
+                t += Time.deltaTime;
+                quillFeather.localRotation = Quaternion.Slerp(featherBaseRot, strokeRot, t / 0.05f);
+                yield return null;
+            }
+            t = 0f;
+            while (t < 0.08f)
+            {
+                t += Time.deltaTime;
+                quillFeather.localRotation = Quaternion.Slerp(strokeRot, featherBaseRot, t / 0.08f);
+                yield return null;
+            }
+            quillFeather.localRotation = featherBaseRot;
+            twitchCo = null;
         }
 
         private IEnumerator Flicker()

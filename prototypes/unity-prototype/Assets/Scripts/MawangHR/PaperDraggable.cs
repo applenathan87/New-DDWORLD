@@ -25,6 +25,7 @@ namespace MawangHR
         public void OnPointerDown(PointerEventData e)
         {
             draggedInGesture = false;
+            if (e.button != PointerEventData.InputButton.Left) return; // 우클릭은 마킹 전용
             if (canDrag == null || !canDrag()) return;
             if (RayToPlane(e.position, out var hit))
             {
