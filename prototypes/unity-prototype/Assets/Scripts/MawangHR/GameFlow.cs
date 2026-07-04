@@ -831,7 +831,7 @@ namespace MawangHR
             int hitCount = evidenceHits.Count(h => h);
             int passCount = verdicts.Count(v => v);
             bool quotaOk = passCount >= day.quotaMin;
-            bool promoted = correctCount >= 5 && quotaOk;
+            bool promoted = correctCount >= day.promoteMin && quotaOk;
 
             UiKit.LabelAt(s, "Day 1 종료 — 인사 평가", 46, UiKit.Accent, 0, 80, 1920, 70, TextAlignmentOptions.Center);
 

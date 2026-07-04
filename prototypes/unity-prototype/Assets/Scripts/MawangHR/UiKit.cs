@@ -41,7 +41,10 @@ namespace MawangHR
             var scaler = go.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1920, 1080);
-            scaler.matchWidthOrHeight = 0.5f;
+            // 폭 고정(match=width): 이 코드베이스는 좌상단 절대 배치(Place)라 폭이 줄면 우측 UI가 잘린다.
+            // 0.5(타협값)였을 땐 16:10에서 폭이 1920→약 1821로 줄어 확정 버튼·메모 패드 우측이 화면 밖으로 나갔음.
+            // 폭을 1920으로 고정하면 16:10에선 세로 여백만 늘어남. (21:9 등 초광폭은 미지원 — 하단 잘림)
+            scaler.matchWidthOrHeight = 0f;
             go.AddComponent<GraphicRaycaster>();
             return canvas;
         }

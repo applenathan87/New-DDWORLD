@@ -278,9 +278,17 @@ namespace MawangHR
 
         private string RuleText(SchedCandidate c)
         {
-            if (!string.IsNullOrEmpty(c.requiredTag)) return $"<b>{TagKo[c.requiredTag]}만 가능</b>";
-            if (!string.IsNullOrEmpty(c.bannedTag)) return $"<b>{TagKo[c.bannedTag]} 불가</b>";
+            if (!string.IsNullOrEmpty(c.requiredTag)) return $"<b>{TagLabel(c.requiredTag)}만 가능</b>";
+            if (!string.IsNullOrEmpty(c.bannedTag)) return $"<b>{TagLabel(c.bannedTag)} 불가</b>";
             return "<color=#3E7D4E><b>아무 때나 가능</b></color>";
+        }
+
+        /// 사전에 없는 태그(콘텐츠 확장·오타)여도 크래시 대신 원문 표기 + 경고
+        private static string TagLabel(string tag)
+        {
+            if (TagKo.TryGetValue(tag, out string ko)) return ko;
+            Debug.LogWarning($"[MawangHR] 태그 '{tag}'의 한글 표기가 TagKo 사전에 없습니다 — 원문으로 표시");
+            return tag;
         }
 
         private void RefreshCallPad()

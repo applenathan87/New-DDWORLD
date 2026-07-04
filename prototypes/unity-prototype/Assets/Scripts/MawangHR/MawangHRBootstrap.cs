@@ -34,9 +34,11 @@ namespace MawangHR
                 ShowFatal(canvas, "데이터 로드 실패:\n" + path + "\n\n" + e.Message);
                 return;
             }
-            if (data == null || data.days == null || data.days.Length == 0)
+            // 누락된 배열/필드는 여기서 한 번에 잡는다 (진행 중 NRE 소프트락 예방)
+            string dataError = GameDataValidator.Validate(data);
+            if (dataError != null)
             {
-                ShowFatal(canvas, "gamedata.json 파싱 결과가 비었습니다:\n" + path);
+                ShowFatal(canvas, "gamedata.json 오류:\n" + path + "\n\n" + dataError);
                 return;
             }
 
@@ -65,7 +67,10 @@ namespace MawangHR
             var es = new GameObject("EventSystem");
             es.AddComponent<EventSystem>();
 #if ENABLE_INPUT_SYSTEM
-            es.AddComponent<InputSystemUIInputModule>(); // 이 프로젝트는 Input System 전용 (legacy Input 금지)
+            var uiModule = es.AddComponent<InputSystemUIInputModule>(); // 이 프로젝트는 Input System 전용 (legacy Input 금지)
+            // 런타임 AddComponent는 Reset()이 호출되지 않아 (특히 빌드에서) 기본 액션이 비어
+            // 클릭/드래그가 전혀 안 먹을 수 있다 → 기본 UI 액션을 명시적으로 할당
+            uiModule.AssignDefaultActions();
 #else
             es.AddComponent<StandaloneInputModule>();
 #endif
