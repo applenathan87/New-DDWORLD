@@ -1,0 +1,22 @@
+{
+  "templateW": 1054,
+  "templateH": 1492,
+  "title":    { "x": 0,   "y": 150, "w": 1054, "h": 72 },
+  "portrait": { "x": 152, "y": 294, "w": 270,  "h": 314 },
+  "infoRowYs": [342, 412, 488, 565],
+  "infoLabelX": 528,
+  "infoValueX": 660,
+  "infoRightX": 930,
+  "quote":    { "x": 475, "y": 582, "w": 465, "h": 66 },
+  "banner1":  { "x": 132, "y": 680, "w": 204, "h": 49 },
+  "banner2":  { "x": 115, "y": 983, "w": 266, "h": 49 },
+  "hintX": 356,
+  "rowX": 150,
+  "rowW": 760,
+  "rowH": 56,
+  "clueLineYs": [798, 858, 942],
+  "special":  { "x": 150, "y": 1000, "w": 760, "h": 94 },
+  "stmtStartY": 1040,
+  "stmtStep": 108,
+  "stmtRowH": 96
+}

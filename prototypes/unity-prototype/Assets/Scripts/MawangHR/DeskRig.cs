@@ -88,6 +88,19 @@ namespace MawangHR
             return go;
         }
 
+        /// 월드 캔버스 종이에 두께 슬랩을 붙인다 — 치수는 캔버스 픽셀 단위 (두께 9px ≈ 4mm).
+        /// 캔버스 앞면(-z) 뒤로 1px 띄워 UI와 z-파이팅 방지. 콜라이더 없음 (클릭 판정 무관).
+        private void AddPaperBody(RectTransform paper, float wPx, float hPx, Color edge)
+        {
+            var body = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            body.name = "PaperBody";
+            Destroy(body.GetComponent<Collider>());
+            body.transform.SetParent(paper, false);
+            body.transform.localScale = new Vector3(wPx, hPx, 9f);
+            body.transform.localPosition = new Vector3(0, 0, 5.5f);
+            body.GetComponent<Renderer>().material = Mat(edge);
+        }
+
         /// 집어 던질 수 있는 소품 루트 생성 (자식으로 형태를 채운 뒤 Init 호출)
         private ThrowableProp MakeProp(string name, Vector3 home, Vector3 colCenter, Vector3 colSize,
             bool sphereCollider = false)
@@ -150,13 +163,17 @@ namespace MawangHR
             candleProp.Init(cam, this);
 
             // 서류: 이력서 (중앙) + 공문/JD (왼쪽)
-            ResumeCanvas = UiKit.MakeWorldCanvas("ResumePaper", 900, 1240, 0.000444f, cam);
+            // 캔버스 1274px = 이력서 템플릿(1054×1492) 비율에 맞춤
+            ResumeCanvas = UiKit.MakeWorldCanvas("ResumePaper", 900, 1274, 0.000444f, cam);
             ResumeCanvas.SetParent(transform, false);
             ResumeHomeRot = Quaternion.Euler(90, 0, -2f);
             ResumeCanvas.localRotation = ResumeHomeRot;
             ResumeHome = new Vector3(0.14f, DeskTop + 0.004f, 0.0f);
             ResumeCanvas.localPosition = ResumeHome;
-            ResumeCanvas.gameObject.AddComponent<Image>().color = UiKit.Paper;
+            var resumeBg = ResumeCanvas.gameObject.AddComponent<Image>();
+            var resumeTmpl = UiKit.LoadSprite("MawangHR/resume_template.png");
+            if (resumeTmpl != null) { resumeBg.sprite = resumeTmpl; resumeBg.color = Color.white; }
+            else resumeBg.color = UiKit.Paper; // 템플릿 파일이 없으면 단색 폴백
 
             JdCanvas = UiKit.MakeWorldCanvas("JdPaper", 620, 900, 0.000419f, cam);
             JdCanvas.SetParent(transform, false);
@@ -165,6 +182,10 @@ namespace MawangHR
             JdHome = new Vector3(-0.36f, DeskTop + 0.003f, 0.02f);
             JdCanvas.localPosition = JdHome;
             JdCanvas.gameObject.AddComponent<Image>().color = UiKit.PaperShade;
+
+            // 종이 두께 — 평면 캔버스 뒤에 얇은 슬랩 (들거나 기울었을 때 실물 종이처럼 보이게)
+            AddPaperBody(ResumeCanvas, 860, 1230, new Color(0.84f, 0.77f, 0.62f)); // 찢어진 가장자리 안쪽으로 살짝 작게
+            AddPaperBody(JdCanvas, 606, 886, new Color(0.79f, 0.70f, 0.53f));
 
             // 서류 더미 (대기/완료)
             pendingRoot = new GameObject("Pending").transform;
@@ -356,6 +377,19 @@ namespace MawangHR
 
         /// 종이를 들었을 때: 살짝만 밀어 들어가는 푸시인 (몬스터·책상은 프레임 유지)
         public void TweenToHold() => TweenCam(DeskCamPos + DeskFwd * 0.09f, DeskCamTarget, 44f, 0.3f);
+
+        /// 데스크 뷰 카메라 기준의 고정 포즈 — 손패(질문 카드)처럼 화면에 붙어 보이는 월드 오브젝트용.
+        /// 카메라 푸시인과 무관하게 기본 데스크 카메라 기준으로 계산.
+        public void GetFrontPose(float distance, float upOffset, float rightOffset, float yaw,
+            out Vector3 pos, out Quaternion rot)
+        {
+            Quaternion camRot = Quaternion.LookRotation(DeskCamTarget - DeskCamPos);
+            Vector3 f = camRot * Vector3.forward;
+            Vector3 u = camRot * Vector3.up;
+            Vector3 r = camRot * Vector3.right;
+            pos = DeskCamPos + f * distance + u * upOffset + r * rightOffset;
+            rot = Quaternion.LookRotation(f, u) * Quaternion.Euler(-8f, yaw, 0f);
+        }
 
         /// 들어 올린 종이의 목표 포즈 — 푸시인 완료 시점의 카메라 기준으로 계산 (결정적).
         /// rightOffset: 화면 좌우 슬롯 / yaw: 안쪽으로 트는 각도 (두 장 나란히 들기용)

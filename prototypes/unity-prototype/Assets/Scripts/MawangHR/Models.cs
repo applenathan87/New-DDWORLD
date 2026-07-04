@@ -1,8 +1,54 @@
 using System;
+using System.IO;
 using UnityEngine;
 
 namespace MawangHR
 {
+    [Serializable]
+    public class LayoutRect { public float x, y, w, h; }
+
+    /// 이력서 템플릿 레이아웃 명세 — 좌표는 전부 **템플릿 PNG 픽셀 기준** (눈대중 금지 원칙).
+    /// 픽셀 분석으로 측정한 값을 resume_template.layout.json에 저장하고, 코드는 배율만 곱해 쓴다.
+    /// 템플릿 교체 = 이미지 + 이 JSON만 갱신 (코드 무수정). 파일이 없으면 아래 기본값 사용.
+    [Serializable]
+    public class ResumeLayout
+    {
+        public float templateW = 1054f;
+        public float templateH = 1492f;
+        public LayoutRect title = new LayoutRect { x = 0, y = 150, w = 1054, h = 72 };
+        public LayoutRect portrait = new LayoutRect { x = 152, y = 294, w = 270, h = 314 };
+        public float[] infoRowYs = { 342, 412, 488, 565 }; // 정보란 점선 y (이름/종족/직무/연봉)
+        public float infoLabelX = 528;
+        public float infoValueX = 660;
+        public float infoRightX = 930;
+        public LayoutRect quote = new LayoutRect { x = 475, y = 582, w = 465, h = 66 };
+        public LayoutRect banner1 = new LayoutRect { x = 132, y = 680, w = 204, h = 49 };
+        public LayoutRect banner2 = new LayoutRect { x = 115, y = 983, w = 266, h = 49 };
+        public float hintX = 356;
+        public float rowX = 150, rowW = 760, rowH = 56;        // 이력 줄 상자
+        public float[] clueLineYs = { 798, 858, 942 };          // 이력 상자의 점선 y (글자가 그 위에 앉음)
+        public LayoutRect special = new LayoutRect { x = 150, y = 1000, w = 760, h = 94 }; // 하단 정렬 → 점선(1096) 위에 앉음
+        public float stmtStartY = 1040, stmtStep = 108, stmtRowH = 96; // 면접 진술 기록 흐름
+
+        public static ResumeLayout LoadOrDefault()
+        {
+            try
+            {
+                string p = Path.Combine(Application.streamingAssetsPath, "MawangHR/resume_template.layout.json");
+                if (File.Exists(p))
+                {
+                    var l = JsonUtility.FromJson<ResumeLayout>(File.ReadAllText(p));
+                    if (l != null) return l;
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[MawangHR] 레이아웃 파일 로드 실패 — 기본값 사용: " + e.Message);
+            }
+            return new ResumeLayout();
+        }
+    }
+
     // 콘텐츠는 전부 StreamingAssets/MawangHR/gamedata.json 에서 로드 (JsonUtility 규격).
     // 지원자·JD·일일지침을 여기서 늘리면 코드 수정 없이 콘텐츠가 는다.
 

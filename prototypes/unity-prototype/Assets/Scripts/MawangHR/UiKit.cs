@@ -1,3 +1,4 @@
+using System.IO;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
@@ -26,6 +27,18 @@ namespace MawangHR
         public static readonly Color StampInk = Hex("#B03A2E");   // 도장 잉크(빨강)
 
         public static void Init(TMP_FontAsset font) { Font = font; }
+
+        /// StreamingAssets에서 이미지를 직접 읽어 스프라이트로 —
+        /// 유니티 임포트 설정(스프라이트 타입·NPOT 스케일링)을 우회해서 원본 그대로 쓴다. 없으면 null.
+        public static Sprite LoadSprite(string relPath)
+        {
+            string p = Path.Combine(Application.streamingAssetsPath, relPath);
+            if (!File.Exists(p)) return null;
+            var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+            if (!tex.LoadImage(File.ReadAllBytes(p))) return null;
+            tex.wrapMode = TextureWrapMode.Clamp;
+            return Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 100f);
+        }
 
         public static Color Hex(string hex)
         {

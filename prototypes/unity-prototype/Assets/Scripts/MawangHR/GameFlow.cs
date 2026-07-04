@@ -65,7 +65,8 @@ namespace MawangHR
         private int dayIndex;
         private bool lastPromoted;               // 직전 결산의 승진 여부 (다음날 분기)
         private int pointsLeft;                  // 이번 면접의 남은 질문 포인트
-        private float stmtY;                     // 진술 기록이 붙을 다음 y (이력서 좌표)
+        private ResumeLayout resumeLayout;       // 템플릿 픽셀 명세 (layout.json — 눈대중 좌표 금지)
+        private float stmtY, stmtX, stmtW, stmtStep, stmtH; // 진술 기록 흐름 (캔버스 좌표, 레이아웃에서 환산)
         private readonly List<RectTransform> cardRts = new List<RectTransform>();
         private readonly List<Vector3> cardHomes = new List<Vector3>();
         private readonly List<Quaternion> cardHomeRots = new List<Quaternion>();
@@ -86,6 +87,7 @@ namespace MawangHR
             data = gameData;
             canvas = mainCanvas;
             rig = deskRig;
+            resumeLayout = ResumeLayout.LoadOrDefault();
             StartDay(0);
         }
 
@@ -334,8 +336,12 @@ namespace MawangHR
                 var c = data.cards[i];
                 var rt = UiKit.MakeWorldCanvas("Card_" + c.id, 320, 200, CardScale, rig.Cam);
                 rt.SetParent(rig.transform, false);
-                rt.localPosition = new Vector3(-0.90f + i * 0.28f, DeskRig.DeskTop + 0.003f, -0.42f);
-                rt.localRotation = Quaternion.Euler(90, 0, Random.Range(-4f, 4f));
+                // 카메라 앞 하단 '손패' 포즈 — 책상 위 종이와 공간이 분리돼 겹치지 않고, 항상 세워져 읽힌다.
+                // (화면 UI가 아니라 월드 카드라 잡아 던지는 물성은 그대로)
+                rig.GetFrontPose(0.62f, -0.20f, -0.30f + i * 0.20f, (i - 1.5f) * 3f, out var pos, out var rot);
+                rt.position = pos;
+                rt.rotation = rot * Quaternion.Euler(0, 0, Random.Range(-2f, 2f));
+                rt.GetComponent<Canvas>().sortingOrder = 2 + i; // 손패 좌→우로 살짝 겹치는 카드게임 느낌
                 rt.gameObject.AddComponent<Image>().color = UiKit.Paper;
 
                 string stars = new string('★', Mathf.Max(1, c.cost));
@@ -466,8 +472,8 @@ namespace MawangHR
             string text = $"<color=#6B5A42>[{def.label}]</color> “{ans.text}”";
             if (!string.IsNullOrEmpty(ans.tell))
                 text += $"\n<size=19><color=#6B5A42><i>{ans.tell}</i></color></size>";
-            AddClueLine(resumeContent, text, ans.evidence, UiKit.Ink, 45, stmtY, 810, 86);
-            stmtY += 96;
+            AddClueLine(resumeContent, text, ans.evidence, UiKit.Ink, stmtX, stmtY, stmtW, stmtH);
+            stmtY += stmtStep;
         }
 
         // ─ 지원자 대사 자막 (HUD) ─
@@ -630,6 +636,12 @@ namespace MawangHR
             if (zoomOverlayResume != null) zoomOverlayResume.SetActive(!holding);
             if (zoomOverlayJd != null) zoomOverlayJd.SetActive(!holding);
             if (backBtn != null) backBtn.SetActive(holding);
+
+            // 면접 손패: 종이를 든 동안엔 숨김 — 들린 이력서 하단(진술 기록 마킹 영역)을 가리지 않게.
+            // 읽을 땐 마킹, 내려놓으면 카드가 다시 올라오는 리듬.
+            if (IsInterview && cardUsed != null)
+                for (int i = 0; i < cardRts.Count; i++)
+                    if (cardRts[i] != null) cardRts[i].gameObject.SetActive(!holding && !cardUsed[i]);
         }
 
         /// 현재 지원자의 서류를 책상에 올린다
@@ -674,6 +686,9 @@ namespace MawangHR
             UiKit.LabelAt(jdContent, JdBlock(FindJd(a.jdId)), 22, UiKit.Ink, 40, 532, 540, 340, TextAlignmentOptions.TopLeft, true);
         }
 
+        /// 이력서 내용 — 좌표는 전부 resume_template.layout.json(템플릿 픽셀 명세) × 배율.
+        /// 템플릿 구역: 상단 타이틀 / 좌측 초상화 액자 / 우측 정보 4행(점선) / 인용구 상자 /
+        /// 이력 배너+3줄 상자 / 특이사항(면접 = 진술 기록) 배너+상자 / 하단 상자 = 도장 자리.
         private void BuildResumeContent(Applicant a)
         {
             if (resumeContent != null) Destroy(resumeContent.gameObject);
@@ -681,51 +696,78 @@ namespace MawangHR
             UiKit.Fill(resumeContent);
             var jd = FindJd(a.jdId);
 
-            UiKit.LabelAt(resumeContent, $"지원자 서류  ·  MHR-{day.day:00}-{index + 1:000}", 20, UiKit.InkDim, 45, 30, 810, 32);
-            UiKit.LabelAt(resumeContent, a.name, 48, UiKit.Ink, 45, 68, 810, 66, TextAlignmentOptions.TopLeft, true);
-            UiKit.LabelAt(resumeContent,
-                $"종족: {a.species}\n지원 직무: {(jd != null ? jd.title : a.jdId)}      희망 연봉: {a.salary}",
-                24, UiKit.Ink, 45, 144, 810, 78, TextAlignmentOptions.TopLeft, true);
-            UiKit.LabelAt(resumeContent, "“" + a.quote + "”", 23, UiKit.InkDim, 45, 230, 810, 56, TextAlignmentOptions.TopLeft, true);
+            var L = resumeLayout;
+            float S = rig.ResumeCanvas.sizeDelta.x / Mathf.Max(1f, L.templateW); // PNG px → 캔버스 px 배율
+            void PlaceR(RectTransform rt, LayoutRect r) => UiKit.Place(rt, r.x * S, r.y * S, r.w * S, r.h * S);
 
-            var divider = UiKit.PanelRect(resumeContent, "Divider", UiKit.PaperShade);
-            UiKit.Place(divider, 45, 292, 810, 4);
+            // 상단 타이틀 (중앙)
+            var title = UiKit.Label(resumeContent, $"<b>지원자 서류</b>  ·  MHR-{day.day:00}-{index + 1:000}",
+                36, UiKit.Ink, TextAlignmentOptions.Center, true);
+            PlaceR((RectTransform)title.transform, L.title);
 
-            UiKit.LabelAt(resumeContent,
-                IsInterview
-                    ? "<b>서류 요약 (스켈레톤 인턴 작성)</b>  <size=19><color=#6B5A42>(줄 클릭 = 근거 표시)</color></size>"
-                    : "<b>이력</b>  <size=19><color=#6B5A42>(줄을 클릭해 판정 근거를 표시)</color></size>",
-                26, UiKit.Ink, 45, 312, 810, 38);
+            // 초상화 (액자 안) — 규약: StreamingAssets/MawangHR/Portraits/{id}.png, 없으면 종족색
+            var portrait = UiKit.PanelRect(resumeContent, "Portrait", SchedulingFlow.SpeciesColor(a.species));
+            PlaceR(portrait, L.portrait);
+            var portraitImg = portrait.GetComponent<Image>();
+            portraitImg.raycastTarget = false;
+            var pSprite = UiKit.LoadSprite("MawangHR/Portraits/" + a.id + ".png");
+            if (pSprite != null) { portraitImg.sprite = pSprite; portraitImg.color = Color.white; }
 
-            float y = 360;
-            foreach (var line in a.resumeLines)
+            // 정보 4행 — 점선(lineY) 위에 라벨/값이 앉게
+            void InfoRow(string label, string value, float lineY)
             {
-                AddClueLine(resumeContent, "· " + line.text, line.evidence, UiKit.Ink, 45, y, 810, 66);
-                y += 74;
+                UiKit.LabelAt(resumeContent, label, 20, UiKit.InkDim,
+                    L.infoLabelX * S, lineY * S - 36, (L.infoValueX - L.infoLabelX) * S, 34, TextAlignmentOptions.BottomLeft);
+                UiKit.LabelAt(resumeContent, value, 28, UiKit.Ink,
+                    L.infoValueX * S, lineY * S - 42, (L.infoRightX - L.infoValueX) * S, 40, TextAlignmentOptions.BottomLeft, true);
             }
+            InfoRow("이름:", "<b>" + a.name + "</b>", L.infoRowYs[0]);
+            InfoRow("종족:", a.species, L.infoRowYs[1]);
+            InfoRow("지원 직무:", jd != null ? jd.title : a.jdId, L.infoRowYs[2]);
+            InfoRow("희망 연봉:", a.salary, L.infoRowYs[3]);
 
+            // 인용구 상자 (테두리 안쪽으로 인셋)
+            var quote = UiKit.Label(resumeContent, "“" + a.quote + "”", 21, UiKit.Ink, TextAlignmentOptions.Left, true);
+            UiKit.Place((RectTransform)quote.transform,
+                (L.quote.x + 26) * S, (L.quote.y + 6) * S, (L.quote.w - 52) * S, (L.quote.h - 12) * S);
+
+            // 배너 1 (그림은 템플릿에 — 글자만 얹는다)
+            var b1 = UiKit.Label(resumeContent, IsInterview ? "<b>서류 요약</b>" : "<b>이력</b>",
+                26, UiKit.Text, TextAlignmentOptions.Center);
+            PlaceR((RectTransform)b1.transform, L.banner1);
+            UiKit.LabelAt(resumeContent,
+                IsInterview ? "(인턴 작성 · 줄 클릭 = V/X)" : "(줄을 클릭해 판정 근거를 표시)",
+                18, UiKit.InkDim, L.hintX * S, (L.banner1.y + 12) * S, 400, 30);
+
+            // 이력 줄 — 상자의 점선 위에 한 줄씩
+            for (int i = 0; i < a.resumeLines.Length && i < L.clueLineYs.Length; i++)
+                AddClueLine(resumeContent, "· " + a.resumeLines[i].text, a.resumeLines[i].evidence, UiKit.Ink,
+                    L.rowX * S, (L.clueLineYs[i] - L.rowH - 2) * S, L.rowW * S, L.rowH * S);
+
+            // 배너 2 + 하단 내용
+            var b2 = UiKit.Label(resumeContent, IsInterview ? "<b>진술 기록</b>" : "<b>특이사항</b>",
+                26, UiKit.Text, TextAlignmentOptions.Center);
+            PlaceR((RectTransform)b2.transform, L.banner2);
+            UiKit.LabelAt(resumeContent,
+                IsInterview ? "(카드를 던져 질문 — 답변도 단서다)" : "(인사팀 메모)",
+                18, UiKit.InkDim, L.hintX * S, (L.banner2.y + 12) * S, 400, 30);
+
+            stmtX = L.rowX * S; stmtW = L.rowW * S; stmtStep = L.stmtStep * S; stmtH = L.stmtRowH * S;
             if (IsInterview)
             {
-                // 면접: 진술 기록 섹션 — 답변이 도착할 때마다 stmtY에 단서 줄로 쌓인다
-                var divider2 = UiKit.PanelRect(resumeContent, "Divider2", UiKit.PaperShade);
-                UiKit.Place(divider2, 45, y + 6, 810, 4);
-                UiKit.LabelAt(resumeContent,
-                    "<b>진술 기록</b>  <size=19><color=#6B5A42>(카드를 던져 질문 — 답변도 단서다)</color></size>",
-                    26, UiKit.StampInk, 45, y + 26, 810, 38);
-                stmtY = y + 78;
-
+                stmtY = L.stmtStartY * S;
                 if (!string.IsNullOrEmpty(a.special))
                 {
-                    UiKit.LabelAt(resumeContent, "<b>특이사항 (인사팀 메모)</b>", 24, UiKit.StampInk, 45, 950, 810, 36);
-                    AddClueLine(resumeContent, a.special, a.specialEvidence, UiKit.StampInk, 45, 992, 810, 100);
+                    AddClueLine(resumeContent, a.special, a.specialEvidence, UiKit.StampInk, stmtX, stmtY, stmtW, stmtH * 0.8f);
+                    stmtY += stmtStep;
                 }
             }
             else
             {
-                UiKit.LabelAt(resumeContent, "<b>특이사항 (인사팀 메모)</b>", 24, UiKit.StampInk, 45, 640, 810, 36);
-                AddClueLine(resumeContent, a.special, a.specialEvidence, UiKit.StampInk, 45, 682, 810, 100);
+                AddClueLine(resumeContent, a.special, a.specialEvidence, UiKit.StampInk,
+                    L.special.x * S, L.special.y * S, L.special.w * S, L.special.h * S);
             }
-            // 아래 여백 = 도장 찍는 자리
+            // 하단 상자 = 도장 찍는 자리
         }
 
         private void EnsureZoomOverlays()
@@ -781,24 +823,35 @@ namespace MawangHR
 
             var bg = UiKit.PanelRect(parent, "Clue" + clueIndex, Color.clear);
             UiKit.Place(bg, x - 8, y - 4, w + 16, h + 4);
-            var img = bg.GetComponent<Image>();
-            clueBgs.Add(img);
+
+            // 마킹 잉크 스트로크 — 글자와 분리된 레이어 (마킹 시 이것만 칠해지고 기울어짐, 글자는 고정)
+            var fx = UiKit.Rect("MarkFx", bg);
+            fx.anchorMin = Vector2.zero;
+            fx.anchorMax = new Vector2(1, 0);
+            fx.pivot = new Vector2(0.5f, 0);
+            fx.anchoredPosition = new Vector2(0, 2);
+            fx.sizeDelta = new Vector2(-12, Mathf.Min(46f, h * 0.8f));
+            var fxImg = fx.gameObject.AddComponent<Image>();
+            fxImg.color = Color.clear;
+            fxImg.raycastTarget = false;
+            clueBgs.Add(fxImg);
 
             bg.gameObject.AddComponent<ClueLine>().Init(clueIndex, ToggleMark);
 
-            // 왼쪽 여백의 V/X 글리프 (깃펜 자국)
+            // 왼쪽 여백의 V/X 글리프 (깃펜 자국) — 줄(하단)에 맞춰 배치
             var glyph = UiKit.Label(bg, "", 34, UiKit.Ink, TextAlignmentOptions.Center);
             var grt = (RectTransform)glyph.transform;
-            UiKit.Place(grt, -38, 2, 36, 46);
+            UiKit.Place(grt, -38, h - 44, 36, 46);
             grt.localRotation = Quaternion.Euler(0, 0, -6f);
             glyph.fontStyle = FontStyles.Bold;
             glyph.raycastTarget = false;
             clueGlyphs.Add(glyph);
 
-            var label = UiKit.Label(bg, text, 25, inkColor, TextAlignmentOptions.TopLeft, true);
+            // 글자는 하단 정렬 — 종이의 점선 위에 '앉게' (상단 정렬이면 반 칸 떠 보인다)
+            var label = UiKit.Label(bg, text, 25, inkColor, TextAlignmentOptions.BottomLeft, true);
             var lrt = (RectTransform)label.transform;
             UiKit.Fill(lrt);
-            lrt.offsetMin = new Vector2(8, 2);
+            lrt.offsetMin = new Vector2(8, 4);
             lrt.offsetMax = new Vector2(-8, -2);
         }
 
@@ -813,9 +866,9 @@ namespace MawangHR
                 marks[clueIndex] = positive;
 
             bool marked = marks.TryGetValue(clueIndex, out bool pol);
-            var bg = clueBgs[clueIndex];
-            bg.color = !marked ? Color.clear : (pol ? MarkPosBg : MarkNegBg);
-            bg.transform.localRotation = marked
+            var fx = clueBgs[clueIndex]; // 잉크 스트로크 레이어만 칠하고 기울인다 — 글자는 움직이지 않음
+            fx.color = !marked ? Color.clear : (pol ? MarkPosBg : MarkNegBg);
+            fx.transform.localRotation = marked
                 ? Quaternion.Euler(0, 0, Random.Range(-1.2f, 1.2f))
                 : Quaternion.identity;
             clueGlyphs[clueIndex].text = !marked ? "" : (pol ? "V" : "X");
