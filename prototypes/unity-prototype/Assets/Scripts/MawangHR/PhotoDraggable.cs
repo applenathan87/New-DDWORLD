@@ -11,16 +11,19 @@ namespace MawangHR
         private Func<bool> canUse;
         private Action onCall;                 // 클릭 (드래그 없이 놓음)
         private Action<Vector2> onDrop;        // 드래그 후 놓음 (스크린 좌표)
+        private Action onGrab;                 // 잡는 순간 (끌면서 읽기용 확대 등)
         private Vector3 grabOffset;
         private bool dragging;
         private bool draggedInGesture;
 
-        public void Init(Camera camera, Func<bool> canUseFn, Action onCallFn, Action<Vector2> onDropFn)
+        public void Init(Camera camera, Func<bool> canUseFn, Action onCallFn, Action<Vector2> onDropFn,
+            Action onGrabFn = null)
         {
             cam = camera;
             canUse = canUseFn;
             onCall = onCallFn;
             onDrop = onDropFn;
+            onGrab = onGrabFn;
         }
 
         public void OnPointerDown(PointerEventData e)
@@ -33,6 +36,7 @@ namespace MawangHR
                 grabOffset = transform.position - hit;
                 dragging = true;
                 transform.localScale *= 1.06f;
+                onGrab?.Invoke(); // 절대 스케일을 덮어써도 됨 — 놓을 때 onCall/onDrop이 최종 스케일을 다시 정한다
             }
         }
 

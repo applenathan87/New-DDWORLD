@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace MawangHR
@@ -29,15 +30,21 @@ namespace MawangHR
             public TextMeshProUGUI ruleLabel;
         }
 
-        private const float BaseScale = 0.00040f;  // 수정구 통화 중 사진 크기
-        private const float TrayScale = 0.00028f;  // 명단 트레이에 놓였을 때
-        private const float SlotScale = 0.00025f;  // 일정표 칸에 꽂혔을 때 (칸 안에 정확히 들어가는 크기)
+        private const float InspectScale = 0.00075f; // 클릭해서 눈앞으로 가져왔을 때
+        private const float DragScale = 0.00070f;    // 잡고 끄는 동안 (끌면서 읽을 수 있는 크기)
+        private const float TrayScale = 0.00028f;    // 명단 트레이에 놓였을 때
+        private const float SlotScale = 0.00025f;    // 일정표 칸에 꽂혔을 때 (칸 안에 정확히 들어가는 크기)
+        private const float PadScale = 0.00042f;     // 통화 기록 노트 — 책상 위
+        private const float PadUpScale = 0.00050f;   // 통화 기록 노트 — 세워서 볼 때
 
         private SchedulingData data;
         private DeskRig rig;
         private TextMeshProUGUI callPad;              // 수정구 옆 "통화 기록" 노트
         private RectTransform tray;                   // 지원자 명단 트레이 (사진들의 홈)
         private RectTransform notepad;                // 통화 기록 노트 캔버스
+        private Vector3 padHomePos;                   // 노트가 놓여 있던 책상 위 자리
+        private Quaternion padHomeRot;
+        private bool notepadUp;                       // 노트를 세워서 보는 중인가
         private Action<string, float> showHint;
         private readonly List<Photo> photos = new List<Photo>();
         private readonly List<RectTransform> slotRects = new List<RectTransform>();
@@ -45,8 +52,9 @@ namespace MawangHR
         private readonly List<TextMeshProUGUI> slotOccupants = new List<TextMeshProUGUI>();
         private readonly List<TextMeshProUGUI> slotWarns = new List<TextMeshProUGUI>();  // 환경 경고 (빈 칸=중앙 크게, 점유=구석 작게)
         private readonly List<Image> slotInners = new List<Image>();
-        private int dockedIndex = -1;                 // 수정구에 붙어 있는 사진
-        private RectTransform bubble;                 // 수정구 위 말풍선
+        private int inspectIndex = -1;                // 눈앞으로 가져온 사진
+        private int inspectPrevSlot = -1;             // 확대 전에 꽂혀 있던 슬롯 (해제 시 복귀용)
+        private RectTransform bubble;                 // 통화 말풍선 (화면 하단 중앙)
         private TextMeshProUGUI bubbleText;
         private Coroutine bubbleCo;
         private bool locked;
@@ -159,6 +167,62 @@ namespace MawangHR
             if (c != null) c.sortingOrder = order;
         }
 
+        /// GetHeldPose에서 목업풍 젖힘(-8° 피치 + 2° 롤)을 제거한 정면 직립 포즈 —
+        /// 일정표·트레이·카드가 삐뚤어져 보이지 않게 한다.
+        private void GetStraightPose(float distance, float upOffset, float rightOffset,
+            out Vector3 pos, out Quaternion rot)
+        {
+            rig.GetHeldPose(distance, upOffset, rightOffset, 0f, out pos, out rot);
+            rot *= Quaternion.Inverse(Quaternion.Euler(-8f, 0f, 2f));
+        }
+
+        /// 클릭 = 콜백 / 드래그 = 지정 평면 위 이동 (통화 기록 노트용 — 직립이면 카메라면, 눕힘이면 책상면 슬라이드)
+        private class DragCatcher : MonoBehaviour, IPointerDownHandler, IDragHandler, IPointerUpHandler
+        {
+            public Camera cam;
+            public Func<bool> canUse;
+            public Action onClick;      // 드래그 없이 놓았을 때
+            public Func<Plane> plane;   // 드래그 평면 공급자
+            private Vector3 grabOffset;
+            private bool dragging;
+            private bool moved;
+
+            public void OnPointerDown(PointerEventData e)
+            {
+                moved = false;
+                if (e.button != PointerEventData.InputButton.Left) return;
+                if (canUse == null || !canUse()) return;
+                if (Ray(e.position, out var hit))
+                {
+                    grabOffset = transform.position - hit;
+                    dragging = true;
+                }
+            }
+
+            public void OnDrag(PointerEventData e)
+            {
+                if (!dragging || !canUse()) return;
+                moved = true;
+                if (Ray(e.position, out var hit)) transform.position = hit + grabOffset;
+            }
+
+            public void OnPointerUp(PointerEventData e)
+            {
+                if (!dragging) return;
+                dragging = false;
+                if (!moved) onClick?.Invoke();
+            }
+
+            private bool Ray(Vector2 screenPos, out Vector3 hit)
+            {
+                var p = plane();
+                var ray = cam.ScreenPointToRay(screenPos);
+                if (p.Raycast(ray, out float d)) { hit = ray.GetPoint(d); return true; }
+                hit = default;
+                return false;
+            }
+        }
+
         // ─── 캘린더 (목업형: 내일/모레 2열 × 오전/오후/밤 3행) ───
 
         private const float GridX = 175f, GridY = 150f, CellW = 396f, CellH = 252f, CellGap = 10f;
@@ -174,7 +238,7 @@ namespace MawangHR
             CalendarCanvas = UiKit.MakeWorldCanvas("Calendar", 1000, 960, 0.00044f, rig.Cam);
             CalendarCanvas.SetParent(rig.transform, false);
             Vector3 pos; Quaternion rot;
-            rig.GetHeldPose(0.76f, 0.03f, 0.045f, 0f, out pos, out rot);
+            GetStraightPose(0.76f, 0.03f, 0.045f, out pos, out rot);
             CalendarCanvas.position = pos;
             CalendarCanvas.rotation = rot;
             CalendarCanvas.gameObject.AddComponent<Image>().color = UiKit.Paper;
@@ -252,14 +316,14 @@ namespace MawangHR
             tray = UiKit.MakeWorldCanvas("Tray", 400, 850, 0.00042f, rig.Cam);
             tray.SetParent(rig.transform, false);
             Vector3 pos; Quaternion rot;
-            rig.GetHeldPose(0.765f, 0.045f, 0.365f, 0f, out pos, out rot);
+            GetStraightPose(0.765f, 0.045f, 0.365f, out pos, out rot);
             tray.position = pos;
             tray.rotation = rot;
             tray.gameObject.AddComponent<Image>().color = UiKit.Panel;
             SetSorting(tray, 0);
 
             UiKit.LabelAt(tray, "<b>지원자 명단</b>", 30, UiKit.Accent, 0, 18, 400, 40, TextAlignmentOptions.Center, true);
-            UiKit.LabelAt(tray, "끌어서 배치 · 수정구에 대면 통화", 17, UiKit.TextDim, 0, 58, 400, 26, TextAlignmentOptions.Center, true);
+            UiKit.LabelAt(tray, "클릭 = 확대 · 끌면 배치 · 수정구 = 통화", 17, UiKit.TextDim, 0, 58, 400, 26, TextAlignmentOptions.Center, true);
         }
 
         // ─── 사진 카드들 ───
@@ -278,7 +342,7 @@ namespace MawangHR
                 // 트레이 안 2열 격자 (트레이 = 0.765/0.045/0.365, 사진은 살짝 앞)
                 float x = 0.321f + (i % 2) * 0.088f;
                 float y = 0.135f - (i / 2) * 0.102f;
-                rig.GetHeldPose(0.75f, y, x, 0f, out pos, out rot);
+                GetStraightPose(0.75f, y, x, out pos, out rot);
                 rt.position = pos;
                 rt.rotation = rot;
                 p.rt = rt;
@@ -302,11 +366,51 @@ namespace MawangHR
                 rt.gameObject.AddComponent<PhotoDraggable>().Init(
                     rig.Cam,
                     () => !locked,
-                    () => showHint?.Invoke("사진을 <b>수정구</b>에 가져다 대면 통화합니다", 2.0f),
-                    dropPos => HandleDrop(idx));
+                    () => ToggleInspect(idx),   // 제자리 클릭 = 눈앞으로 가져와 읽기 (다시 클릭 = 내려놓기)
+                    dropPos => HandleDrop(idx),
+                    () => // 잡는 순간: 끌면서 읽을 크기로 확대 + 다른 카드들 위로 (슬롯 카드 밑에 깔림 방지)
+                    {
+                        photos[idx].rt.localScale = Vector3.one * DragScale;
+                        SetSorting(photos[idx].rt, 8);
+                    });
 
                 photos.Add(p);
             }
+        }
+
+        // ─── 확대 보기 (클릭 = 눈앞으로) ───
+
+        private void ToggleInspect(int i)
+        {
+            if (locked) return;
+            if (inspectIndex == i) { DismissInspect(); return; }
+            DismissInspect(); // 다른 카드를 보고 있었다면 먼저 제자리로
+
+            var p = photos[i];
+            inspectPrevSlot = p.slotIndex;      // 슬롯에서 집어 들었다면 해제 시 그 칸으로 복귀
+            ClearSlotVisual(p.slotIndex);
+            p.slotIndex = -1;
+            inspectIndex = i;
+
+            Vector3 pos; Quaternion rot;
+            GetStraightPose(0.45f, -0.015f, 0f, out pos, out rot);
+            p.rt.position = pos;
+            p.rt.rotation = rot;
+            p.rt.localScale = Vector3.one * InspectScale;
+            SetSorting(p.rt, 8); // 눈앞 카드가 슬롯 카드에 가려지지 않게 맨 위로
+            Sfx.Pick();
+        }
+
+        /// 확대 해제 — 원래 슬롯이 아직 비어 있으면 그 칸으로, 아니면 트레이로
+        private void DismissInspect()
+        {
+            if (inspectIndex < 0) return;
+            var p = photos[inspectIndex];
+            int back = inspectPrevSlot;
+            inspectIndex = -1;
+            inspectPrevSlot = -1;
+            if (back >= 0 && !photos.Any(o => o.slotIndex == back)) PlaceInSlot(p, back);
+            else SendHome(p);
         }
 
         /// 종족 대표색 — 스케줄링 사진 카드 + 면접 몬스터 그레이박스 공용
@@ -339,28 +443,67 @@ namespace MawangHR
 
         private void BuildNotepad()
         {
-            notepad = UiKit.MakeWorldCanvas("CallPad", 460, 620, 0.00042f, rig.Cam);
+            notepad = UiKit.MakeWorldCanvas("CallPad", 460, 620, PadScale, rig.Cam);
             notepad.SetParent(rig.transform, false);
             // 수정구 앞쪽(카메라 쪽) 책상 위에 평평하게 놓인 메모장
-            notepad.position = new Vector3(-0.40f, DeskRig.DeskTop + 0.012f, -0.38f);
-            notepad.rotation = Quaternion.Euler(90f, -6f, 0f);
+            padHomePos = new Vector3(-0.40f, DeskRig.DeskTop + 0.012f, -0.38f);
+            padHomeRot = Quaternion.Euler(90f, -6f, 0f);
+            notepad.position = padHomePos;
+            notepad.rotation = padHomeRot;
             SetSorting(notepad, 2);
             notepad.gameObject.AddComponent<Image>().color = UiKit.Paper;
 
-            UiKit.LabelAt(notepad, "<b>통화 기록</b>", 30, UiKit.Ink, 0, 20, 460, 38, TextAlignmentOptions.Center, true);
+            // 클릭 = 세우기/눕히기 토글, 드래그 = 이동 (직립이면 카메라면, 책상 위면 책상면 슬라이드)
+            var drag = notepad.gameObject.AddComponent<DragCatcher>();
+            drag.cam = rig.Cam;
+            drag.canUse = () => !locked;
+            drag.onClick = ToggleNotepad;
+            drag.plane = () => notepadUp
+                ? new Plane(rig.Cam.transform.forward, notepad.position)
+                : new Plane(Vector3.up, notepad.position);
+
+            UiKit.LabelAt(notepad, "<b>통화 기록</b>  <size=17><color=#6B5A42>(클릭 = 세우기 · 드래그 = 이동)</color></size>",
+                30, UiKit.Ink, 0, 20, 460, 38, TextAlignmentOptions.Center, true);
             callPad = UiKit.LabelAt(notepad, "(사진을 수정구로 끌어가면\n통화 내용이 기록됩니다)", 23, UiKit.InkDim,
                 28, 70, 404, 528, TextAlignmentOptions.TopLeft, true);
             callPad.raycastTarget = false;
         }
 
-        // ─── 말풍선 (수정구 위 대화창) ───
+        /// 통화 기록 노트 토글 — 클릭하면 눈앞에 세워서 읽고, 다시 클릭하면 책상 위 제자리로
+        private void ToggleNotepad()
+        {
+            if (locked) return;
+            notepadUp = !notepadUp;
+            Sfx.Pick();
+            if (notepadUp)
+            {
+                Vector3 pos; Quaternion rot;
+                GetStraightPose(0.50f, 0.0f, -0.16f, out pos, out rot);
+                notepad.position = pos;
+                notepad.rotation = rot;
+                notepad.localScale = Vector3.one * PadUpScale;
+                SetSorting(notepad, 7); // 확대 카드(3)·말풍선(6)보다 위
+            }
+            else
+            {
+                notepad.position = padHomePos;
+                notepad.rotation = padHomeRot;
+                notepad.localScale = Vector3.one * PadScale;
+                SetSorting(notepad, 2);
+            }
+        }
+
+        // ─── 말풍선 (통화 대화창 — 화면 하단 중앙) ───
 
         private void BuildBubble()
         {
             bubble = UiKit.MakeWorldCanvas("CallBubble", 780, 250, 0.0005f, rig.Cam);
             bubble.SetParent(rig.transform, false);
-            bubble.position = rig.Orb.position + Vector3.up * 0.32f;
-            bubble.rotation = Quaternion.LookRotation(rig.Cam.transform.forward, rig.Cam.transform.up);
+            // 수정구 위는 화면 왼쪽 끝이라 글씨가 잘림 — 자막처럼 하단 중앙 고정
+            Vector3 pos; Quaternion rot;
+            GetStraightPose(0.70f, -0.215f, 0f, out pos, out rot);
+            bubble.position = pos;
+            bubble.rotation = rot;
             SetSorting(bubble, 6);
             bubble.gameObject.AddComponent<Image>().color = UiKit.Paper;
             bubbleText = UiKit.LabelAt(bubble, "", 26, UiKit.Ink, 30, 22, 720, 206, TextAlignmentOptions.TopLeft, true);
@@ -388,16 +531,19 @@ namespace MawangHR
         private void HandleDrop(int i)
         {
             var p = photos[i];
-            if (dockedIndex == i) dockedIndex = -1; // 수정구에서 떼어냄
+
+            // 확대 중이던 카드를 직접 끌었다면 확대 상태만 해제 (카드는 드롭 위치가 결정)
+            if (inspectIndex == i) { inspectIndex = -1; inspectPrevSlot = -1; }
+            else DismissInspect(); // 다른 카드를 조작하면 보던 카드는 제자리로
 
             // 판정 기준 = 사진의 중심 (플레이어가 보는 그대로)
             Vector2 photoCenter = rig.Cam.WorldToScreenPoint(p.rt.position);
 
-            // 1) 수정구 위에 놓으면 = 통화 (사진이 수정구에 붙음)
+            // 1) 수정구 위에 놓으면 = 통화 — 카드는 사라지고 원래 자리에 다시 생긴다
             Vector2 orbCenter = rig.Cam.WorldToScreenPoint(rig.Orb.position);
             if (Vector2.Distance(photoCenter, orbCenter) < Screen.height * 0.11f)
             {
-                DockToOrb(i);
+                CallCandidate(i);
                 return;
             }
 
@@ -406,47 +552,39 @@ namespace MawangHR
             {
                 if (!RectTransformUtility.RectangleContainsScreenPoint(slotRects[s], photoCenter, rig.Cam))
                     continue;
-
-                var occupant = photos.FirstOrDefault(o => o.slotIndex == s);
-                if (occupant != null && occupant != p) SendHome(occupant);
-
-                ClearSlotVisual(p.slotIndex);
-                p.slotIndex = s;
-
-                // 칸 안(inner)에 정확히 앉히기
-                var inner = slotInnerRects[s];
-                Vector3 center = inner.TransformPoint(inner.rect.center);
-                p.rt.position = center - CalendarCanvas.forward * 0.02f;
-                p.rt.rotation = CalendarCanvas.rotation;
-                p.rt.localScale = Vector3.one * SlotScale;
-
-                slotOccupants[s].text = "<b>" + p.data.name + "</b>";
-                slotInners[s].color = new Color(0.24f, 0.49f, 0.30f, 0.18f);
-                LayoutWarn(s, true);
-                Sfx.Scratch();
+                PlaceInSlot(p, s);
                 return;
             }
 
             SendHome(p);
         }
 
-        /// 사진이 수정구에 붙고, 말풍선이 수정구 위에 뜬다
-        private void DockToOrb(int i)
+        /// 사진을 일정표 칸 안에 정확히 앉힌다 (기존 점유자는 트레이로)
+        private void PlaceInSlot(Photo p, int s)
         {
-            var p = photos[i];
-
-            // 기존에 붙어 있던 사진은 트레이로
-            if (dockedIndex >= 0 && dockedIndex != i) SendHome(photos[dockedIndex]);
-            dockedIndex = i;
+            var occupant = photos.FirstOrDefault(o => o.slotIndex == s);
+            if (occupant != null && occupant != p) SendHome(occupant);
 
             ClearSlotVisual(p.slotIndex);
-            p.slotIndex = -1;
+            p.slotIndex = s;
 
-            var camT = rig.Cam.transform;
-            p.rt.position = rig.Orb.position + Vector3.up * 0.16f;
-            p.rt.rotation = Quaternion.LookRotation(camT.forward, camT.up);
-            p.rt.localScale = Vector3.one * BaseScale;
+            var inner = slotInnerRects[s];
+            Vector3 center = inner.TransformPoint(inner.rect.center);
+            p.rt.position = center - CalendarCanvas.forward * 0.02f;
+            p.rt.rotation = CalendarCanvas.rotation;
+            p.rt.localScale = Vector3.one * SlotScale;
 
+            slotOccupants[s].text = "<b>" + p.data.name + "</b>";
+            slotInners[s].color = new Color(0.24f, 0.49f, 0.30f, 0.18f);
+            LayoutWarn(s, true);
+            SetSorting(p.rt, 3); // 내려놓으면 기본 순서로 (들고 있는 카드가 항상 위에 오도록)
+            Sfx.Scratch();
+        }
+
+        /// 수정구 통화 — 말풍선(화면 하단 중앙) + 통화 기록 갱신, 카드는 즉시 원래 자리로
+        private void CallCandidate(int i)
+        {
+            var p = photos[i];
             Sfx.Pick();
             ShowBubble($"<b>{p.data.name}</b>  <color=#6B5A42>({p.data.species})</color>\n“{p.data.callLine}”", 4.5f);
 
@@ -456,6 +594,7 @@ namespace MawangHR
                 p.ruleLabel.text = RuleText(p.data);
                 RefreshCallPad();
             }
+            SendHome(p); // 수정구에 붙잡아두지 않는다
         }
 
         private string RuleText(SchedCandidate c)
@@ -485,12 +624,12 @@ namespace MawangHR
 
         private void SendHome(Photo p)
         {
-            if (dockedIndex >= 0 && photos[dockedIndex] == p) dockedIndex = -1;
             ClearSlotVisual(p.slotIndex);
             p.slotIndex = -1;
             p.rt.position = p.home;
             p.rt.rotation = p.homeRot;
             p.rt.localScale = Vector3.one * TrayScale;
+            SetSorting(p.rt, 3); // 내려놓으면 기본 순서로
         }
 
         private void ClearSlotVisual(int s)
@@ -503,7 +642,12 @@ namespace MawangHR
 
         // ─── 확정 & 채점 ───
 
-        public void Lock() => locked = true;
+        public void Lock()
+        {
+            DismissInspect();                    // 확대 중이던 카드는 제자리로
+            if (notepadUp) ToggleNotepad();      // 세워 둔 노트는 책상으로 (locked 전에 호출)
+            locked = true;
+        }
 
         public List<string> GetViolations()
         {

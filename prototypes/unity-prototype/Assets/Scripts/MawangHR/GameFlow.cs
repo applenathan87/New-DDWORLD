@@ -128,6 +128,20 @@ namespace MawangHR
         private void Update()
         {
 #if ENABLE_INPUT_SYSTEM
+            // ─────────────────────────────────────────────────────────────
+            // ⚠️ [개발 치트 — 임시] 페이즈 점프: 1 = 서류 · 2 = 스케줄 · 3 = 면접
+            // 테스트 편의용. S4 리포트/빌드 전에 이 블록 통째로 삭제할 것.
+            // (README "알려진 우려점"에도 제거 예정으로 기록해 둠)
+            // ─────────────────────────────────────────────────────────────
+            if (Keyboard.current != null && !stamping)
+            {
+                if (Keyboard.current.digit1Key.wasPressedThisFrame) { StartDay(0); return; }
+                if (Keyboard.current.digit2Key.wasPressedThisFrame) { CheatGoScheduling(); return; }
+                if (Keyboard.current.digit3Key.wasPressedThisFrame &&
+                    data.days.Length > 1 && data.interviewees.Length > 0) { StartDay(1); return; }
+            }
+            // ───────────────────────────────────────────── [개발 치트 끝]
+
             if (!screeningActive || !holding || stamping) return;
 
             if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
@@ -138,6 +152,14 @@ namespace MawangHR
                 EventSystem.current != null && !EventSystem.current.IsPointerOverGameObject())
                 PutDown();
 #endif
+        }
+
+        /// ⚠️ [개발 치트 — 임시] 스케줄링 페이즈 즉시 점프 — Day 1 상태로 리셋 후 일정 잡기 인트로부터.
+        /// Update()의 치트 블록과 함께 삭제할 것.
+        private void CheatGoScheduling()
+        {
+            StartDay(0);            // 전체 상태 리셋 (서류 인트로 화면이 뜨지만)
+            ShowSchedulingIntro();  // 곧바로 일정 잡기 인트로로 덮어씀 (NewScreen이 이전 화면 파괴)
         }
 
         private void LateUpdate()
@@ -1025,7 +1047,7 @@ namespace MawangHR
             stamping = false; // 마지막 서류의 도장 연출에서 넘어온 플래그 해제 (확정 버튼 조건)
             // 통화 기록은 HUD 메모 대신 수정구 옆 책상 노트가 담당 (물성)
             BuildHud("마왕성 인사팀 — 면접 일정 잡기",
-                "사진을 수정구에 대면 통화 · 일정표에 끌어다 배치 · 전원 배치하면 확정 버튼이 켜집니다",
+                "사진 클릭 = 확대 · 수정구에 끌어다 대면 통화 · 일정표에 배치 — 전원 배치하면 확정 버튼이 켜집니다",
                 "", "");
 
             // 책상 종이는 치우기 (수정구 가림 방지 — 이 업무엔 지침서 불필요)
