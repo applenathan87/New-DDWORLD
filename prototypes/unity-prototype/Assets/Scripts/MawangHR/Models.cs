@@ -63,6 +63,31 @@ namespace MawangHR
         public QuestionCard[] cards;      // 면접 질문 카드
         public DayConfig[] days;
         public SchedulingData scheduling; // Day 1 후반 업무 — 면접 일정 잡기 (단계 독립 지원자 세트)
+        public NightData night;           // 밤 파트 — 내 방 (정산·신문·상점). 없으면 밤 생략 (기존 흐름)
+    }
+
+    /// 밤 파트(내 방) 설정 — 임금 공식·신문 플레이버 기사·까마귀 상점.
+    /// 톤 원칙: 압박 장치 없음 (필수 지출·시간 제한 X) — 경쾌한 정산 + 기분 좋은 소비.
+    [Serializable]
+    public class NightData
+    {
+        public int basePay;             // 일당 기본급
+        public int payPerCorrect;       // 판정 정확 1건당 보너스
+        public int payPerHit;           // 근거 적중 1건당 보너스
+        public int finePerViolation;    // 스케줄 위반 청구서 (명세서 위의 코미디 한 줄)
+        public string[] flavorArticles; // 「마왕성 석간」 플레이버 기사 풀 (매일 밤 1개 뽑기)
+        public NightShopItem[] shop;    // 까마귀 상점 카탈로그 (unlockLevel 이상 직급에 노출)
+    }
+
+    [Serializable]
+    public class NightShopItem
+    {
+        public string id;
+        public string name;
+        public string desc;
+        public int price;
+        public string effect;      // "qp1" = 내일 질문 포인트 +1 / "deco" = 선반 진열 / "pet" = 슬라임 간식
+        public int unlockLevel;    // 이 직급(레벨)부터 카탈로그에 등장
     }
 
     /// 면접 질문 카드 — 책상 위 3D 카드로 잡아 지원자에게 던지면 발동.
@@ -324,6 +349,24 @@ namespace MawangHR
                         Debug.LogWarning($"[MawangHR] scheduling '{c.id}': requiredTag·bannedTag 동시 보유 — 통화 문구는 required만 표기됩니다");
                     if ((c.requiredTag != "" || c.bannedTag != "") && string.IsNullOrEmpty(c.violationLine))
                         Debug.LogWarning($"[MawangHR] scheduling '{c.id}': 제약이 있는데 violationLine이 없음 — 위반 보고서가 비어 보입니다");
+                }
+            }
+
+            // night는 선택 블록 — 있으면 정규화 + 효과 태그 검사
+            if (d.night != null)
+            {
+                var n = d.night;
+                if (n.flavorArticles == null) n.flavorArticles = new string[0];
+                if (n.shop == null) n.shop = new NightShopItem[0];
+                if (n.basePay <= 0)
+                    Debug.LogWarning("[MawangHR] night.basePay가 0 — 월급봉투가 빈 봉투가 됩니다");
+                foreach (var it in n.shop)
+                {
+                    if (it.effect == null) it.effect = "";
+                    if (it.desc == null) it.desc = "";
+                    if (it.unlockLevel < 1) it.unlockLevel = 1;
+                    if (it.effect != "qp1" && it.effect != "deco" && it.effect != "pet")
+                        Debug.LogWarning($"[MawangHR] night.shop '{it.id}': 알 수 없는 effect '{it.effect}' — 구매해도 아무 일이 없습니다");
                 }
             }
             return null;

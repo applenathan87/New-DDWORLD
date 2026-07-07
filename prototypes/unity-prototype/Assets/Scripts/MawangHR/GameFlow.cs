@@ -61,6 +61,16 @@ namespace MawangHR
         private Button schedConfirmBtn;
         private List<string> schedulingViolations = new List<string>();
 
+        // ─ 밤 파트 (내 방 — S3a) ─
+        private NightRoom nightRoom;                                  // 방은 한 번 짓고 세션 동안 유지 (장식·슬라임 지속)
+        private NightFlow night;
+        private bool nightActive;
+        private int gold;                                             // 세션 지속 골드 (밤 상점 소비)
+        private readonly HashSet<string> ownedDeco = new HashSet<string>(); // 산 장식 (재구매 방지)
+        private bool nightQpBuff;                                     // 드링크: 다음날 질문 포인트 +1
+        private int dayQpBonus;                                       // 오늘 낮 적용분 (StartDay에서 소비)
+        private bool crowIntroShown;                                  // 까마귀 상점 첫 등장 안내 1회
+
         // 면접 페이즈 (Day 2 — S2b)
         private int dayIndex;
         private bool lastPromoted;               // 직전 결산의 승진 여부 (다음날 분기)
@@ -114,6 +124,11 @@ namespace MawangHR
             holding = false;
             schedulingViolations.Clear();
             if (scheduling != null) { scheduling.Cleanup(); scheduling = null; }
+            nightActive = false;
+            if (night != null) { night.Cleanup(); night = null; }
+            dayQpBonus = nightQpBuff ? 1 : 0; // 어젯밤 산 드링크는 오늘 소비
+            nightQpBuff = false;
+            rig.TweenToDesk(); // 밤 방에서 넘어와도 카메라 복귀 (책상이면 제자리 트윈)
             DestroyCards();
             HideMonsterBubble();
             rig.DespawnMonster();
@@ -129,7 +144,7 @@ namespace MawangHR
         {
 #if ENABLE_INPUT_SYSTEM
             // ─────────────────────────────────────────────────────────────
-            // ⚠️ [개발 치트 — 임시] 페이즈 점프: 1 = 서류 · 2 = 스케줄 · 3 = 면접
+            // ⚠️ [개발 치트 — 임시] 페이즈 점프: 1 = 서류 · 2 = 스케줄 · 3 = 면접 · 4 = 밤(내 방)
             // 테스트 편의용. S4 리포트/빌드 전에 이 블록 통째로 삭제할 것.
             // (README "알려진 우려점"에도 제거 예정으로 기록해 둠)
             // ─────────────────────────────────────────────────────────────
@@ -139,6 +154,7 @@ namespace MawangHR
                 if (Keyboard.current.digit2Key.wasPressedThisFrame) { CheatGoScheduling(); return; }
                 if (Keyboard.current.digit3Key.wasPressedThisFrame &&
                     data.days.Length > 1 && data.interviewees.Length > 0) { StartDay(1); return; }
+                if (Keyboard.current.digit4Key.wasPressedThisFrame) { CheatGoNight(); return; }
             }
             // ───────────────────────────────────────────── [개발 치트 끝]
 
@@ -160,6 +176,15 @@ namespace MawangHR
         {
             StartDay(0);            // 전체 상태 리셋 (서류 인트로 화면이 뜨지만)
             ShowSchedulingIntro();  // 곧바로 일정 잡기 인트로로 덮어씀 (NewScreen이 이전 화면 파괴)
+        }
+
+        /// ⚠️ [개발 치트 — 임시] 밤 파트 즉시 점프 — 낮 성적이 없으면 기본급만 나온다.
+        /// Update()의 치트 블록과 함께 삭제할 것.
+        private void CheatGoNight()
+        {
+            if (data.night == null) { ShowHint("gamedata에 night 블록이 없습니다", 2f, true); return; }
+            lastPromoted = true; // 상점 언락 상태로 테스트 (레벨 2)
+            StartNightPhase();
         }
 
         private void LateUpdate()
@@ -396,7 +421,7 @@ namespace MawangHR
         /// 새 지원자 — 카드 전부 복귀 + 질문 포인트 리셋
         private void ResetCardsForApplicant()
         {
-            pointsLeft = Mathf.Max(1, day.questionPoints);
+            pointsLeft = Mathf.Max(1, day.questionPoints + dayQpBonus); // 드링크 보너스 (어젯밤 구매분)
             if (cardUsed == null) return;
             for (int i = 0; i < cardRts.Count; i++)
             {
@@ -1103,7 +1128,131 @@ namespace MawangHR
             ShowReveal();
         }
 
+        // ─── 밤 파트 (내 방 — 정산·석간·까마귀 상점, S3a) ─────────────────────────────
+
+        private void StartNightPhase()
+        {
+            ClearScreen();
+            DestroyHud();
+            schedulingActive = false;
+            if (scheduling != null) { scheduling.Cleanup(); scheduling = null; }
+            if (night != null) { night.Cleanup(); night = null; } // 치트로 재진입해도 안전
+            HideMonsterBubble();
+            rig.DespawnMonster();
+            DestroyCards();
+            nightActive = true;
+
+            if (nightRoom == null)
+            {
+                nightRoom = new GameObject("NightRoom").AddComponent<NightRoom>();
+                nightRoom.Build(rig.Cam);
+            }
+            nightRoom.EnterCamera();
+
+            int level = lastPromoted ? 2 : 1;
+            var cfg = data.night;
+
+            // 오늘 낮 성적 → 급여 명세 (톤 원칙: 청구서도 명세서 위의 코미디 한 줄)
+            int correct = 0;
+            for (int i = 0; i < verdicts.Count && i < lineup.Count; i++)
+                if (verdicts[i] == lineup[i].CorrectIsPass) correct++;
+            int hits = evidenceHits.Count(h => h);
+            int vio = schedulingViolations.Count;
+            int wage = Mathf.Max(0, cfg.basePay + correct * cfg.payPerCorrect + hits * cfg.payPerHit
+                - vio * cfg.finePerViolation);
+
+            var payLines = new List<string> { $"기본급   +{cfg.basePay}G" };
+            if (correct > 0) payLines.Add($"판정 정확 {correct}건   +{correct * cfg.payPerCorrect}G");
+            if (hits > 0) payLines.Add($"근거 적중 {hits}건   +{hits * cfg.payPerHit}G");
+            if (vio > 0) payLines.Add($"<color=#B03A2E>사고 청구서 {vio}건   −{vio * cfg.finePerViolation}G</color>");
+            payLines.Add("");
+            payLines.Add($"<b>실수령   {wage}G</b>");
+            if (wage == 0) payLines.Add("<size=19><color=#6B5A42>경리부: “힘내라는 뜻으로 봉투는 드립니다”</color></size>");
+
+            BuildHud("마왕성 기숙사 — 내 방", "신문·월급봉투 클릭 = 확인 · 침대 클릭 = 취침", "", "");
+            UpdateNightGold();
+
+            night = new GameObject("NightFlow").AddComponent<NightFlow>();
+            night.Begin(nightRoom, cfg, level, BuildNightArticles(), payLines, wage, hud,
+                () => gold,
+                delta => { gold += delta; UpdateNightGold(); },
+                NightBuyBlockReason, TryBuyNight,
+                (msg, dur) => ShowHint(msg, dur), OnNightSleep);
+
+            if (level >= 2 && !crowIntroShown)
+            {
+                crowIntroShown = true;
+                ShowHint("승진의 밤 — 창가에 <b>까마귀 상점</b>이 찾아왔습니다", 3.5f);
+            }
+        }
+
+        /// 석간 기사 조립 — 오판(최대 3) + 스케줄 위반(최대 2) + 무사고 미담 + 플레이버 1
+        private List<string> BuildNightArticles()
+        {
+            var arts = new List<string>();
+            int wrong = 0;
+            for (int i = 0; i < verdicts.Count && i < lineup.Count && wrong < 3; i++)
+            {
+                var a = lineup[i];
+                if (verdicts[i] == a.CorrectIsPass) continue;
+                wrong++;
+                arts.Add(verdicts[i]
+                    ? $"<b>「사고」</b> 신입 {a.name}({a.species}), 벌써부터 사고 조짐 — “뽑은 사람 누구냐” 인사팀 책임론"
+                    : $"<b>「이직」</b> 본성이 떨어뜨린 {a.name}, 경쟁 던전 ‘옆동네 지하실’ 입사… 그쪽 사장은 함박웃음");
+            }
+            for (int i = 0; i < schedulingViolations.Count && i < 2; i++)
+                arts.Add("<b>「사건」</b> " + schedulingViolations[i]);
+            if (wrong == 0 && schedulingViolations.Count == 0)
+                arts.Insert(0, "<b>「미담」</b> 오늘 인사팀 무사고 — 팀장 “신입치고 수상할 정도로 완벽하다”");
+            if (data.night.flavorArticles.Length > 0)
+                arts.Add("<b>「성내」</b> " + data.night.flavorArticles[UnityEngine.Random.Range(0, data.night.flavorArticles.Length)]);
+            return arts;
+        }
+
+        /// 구매 불가 사유 (null = 구매 가능) — 상점 UI 표기와 실제 구매 검사가 같은 규칙을 쓴다
+        private string NightBuyBlockReason(NightShopItem item)
+        {
+            if (item.effect == "deco" && ownedDeco.Contains(item.id)) return "진열됨";
+            if (item.effect == "qp1" && nightQpBuff) return "내일 치 충전 완료";
+            if (gold < item.price) return "골드 부족";
+            return null;
+        }
+
+        private string TryBuyNight(NightShopItem item)
+        {
+            string block = NightBuyBlockReason(item);
+            if (block != null) return block;
+            gold -= item.price;
+            UpdateNightGold();
+            switch (item.effect)
+            {
+                case "qp1": nightQpBuff = true; break;
+                case "deco": ownedDeco.Add(item.id); nightRoom.AddShelfDeco(item.id); break;
+                case "pet": nightRoom.FeedSlime(); break;
+            }
+            Sfx.Shimmer();
+            return null;
+        }
+
+        private void UpdateNightGold()
+        {
+            if (nightActive && progressLabel != null)
+                progressLabel.text = $"골드   <b>{gold} G</b>";
+        }
+
+        private void OnNightSleep()
+        {
+            nightActive = false;
+            if (night != null) { night.Cleanup(); night = null; }
+            DestroyHud();
+            rig.TweenToDesk(); // 카메라 복귀 (다음 화면이 2D 전면이라 비행은 안 보임)
+            if (IsInterview) { ShowDemoEnd(); return; }
+            bool canInterview = lastPromoted && data.days.Length > 1 && data.interviewees.Length > 0;
+            StartDay(canInterview ? 1 : 0);
+        }
+
         /// 다음날 아침 — 스케줄 위반의 대가 (지연 사고 시스템의 미리보기)
+        /// ※ night 블록이 있으면 쓰이지 않음 (사고 보고서 = 석간 신문으로 흡수) — 폴백 전용
         private void ShowMorningReport()
         {
             var s = NewScreen();
@@ -1308,8 +1457,16 @@ namespace MawangHR
 
             StartCoroutine(MeritGaugeRoutine(fill, counter, resultTag.gameObject, verdictLabel.gameObject, meritScaled, promoted));
 
-            var btn = UiKit.MakeButton(s, IsInterview ? "데모 마무리 →" : "다음날 아침 →", UiKit.Accent, UiKit.Ink, 28,
-                () => { if (IsInterview) ShowDemoEnd(); else ShowMorningReport(); });
+            // 밤 파트가 있으면 퇴근 → 내 방 (사고 보고서는 석간 신문으로 흡수), 없으면 기존 흐름
+            var btn = UiKit.MakeButton(s,
+                data.night != null ? "퇴근 — 내 방으로 →" : (IsInterview ? "데모 마무리 →" : "다음날 아침 →"),
+                UiKit.Accent, UiKit.Ink, 28,
+                () =>
+                {
+                    if (data.night != null) StartNightPhase();
+                    else if (IsInterview) ShowDemoEnd();
+                    else ShowMorningReport();
+                });
             UiKit.Place((RectTransform)btn.transform, 810, 860, 300, 70);
         }
 
