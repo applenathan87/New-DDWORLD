@@ -16,12 +16,6 @@ namespace MawangHR
         private bool dragging;
         private bool draggedInGesture;
 
-        /// 놓는 순간의 드래그 속도(m/s) — 질문 카드의 톤 판정용 (살살 = 정중 / 휙 = 압박)
-        public float DropSpeed { get; private set; }
-        private Vector3 dragVel;
-        private Vector3 lastDragPos;
-        private float lastDragTime;
-
         public void Init(Camera camera, Func<bool> canUseFn, Action onCallFn, Action<Vector2> onDropFn,
             Action onGrabFn = null)
         {
@@ -41,9 +35,6 @@ namespace MawangHR
             {
                 grabOffset = transform.position - hit;
                 dragging = true;
-                dragVel = Vector3.zero;
-                lastDragPos = transform.position;
-                lastDragTime = Time.time;
                 transform.localScale *= 1.06f;
                 onGrab?.Invoke(); // 절대 스케일을 덮어써도 됨 — 놓을 때 onCall/onDrop이 최종 스케일을 다시 정한다
             }
@@ -55,18 +46,12 @@ namespace MawangHR
             draggedInGesture = true;
             if (RayToPlane(e.position, out var hit))
                 transform.position = hit + grabOffset;
-
-            float dt = Mathf.Max(Time.time - lastDragTime, 0.001f);
-            dragVel = Vector3.Lerp(dragVel, (transform.position - lastDragPos) / dt, 0.5f);
-            lastDragPos = transform.position;
-            lastDragTime = Time.time;
         }
 
         public void OnPointerUp(PointerEventData e)
         {
             if (!dragging) return;
             dragging = false;
-            DropSpeed = dragVel.magnitude;
             transform.localScale /= 1.06f;
             if (draggedInGesture) onDrop?.Invoke(e.position);
             else onCall?.Invoke(); // 제자리 클릭 = 통화

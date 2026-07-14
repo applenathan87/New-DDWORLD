@@ -81,17 +81,6 @@ namespace MawangHR
         private readonly List<Vector3> cardHomes = new List<Vector3>();
         private readonly List<Quaternion> cardHomeRots = new List<Quaternion>();
         private bool[] cardUsed;
-
-        // ─ 긴장 온도계 (S3b — ideation/interview-depth.md v1 스펙) ─
-        // tell은 긴장 ≥ TellLine일 때만 드러난다 · 압박 +30 / 정중 −10 · 발끈선에서 또 압박하면 답변 거부
-        private int tension;                        // 지원자별 리셋 (시작 TensionStart)
-        private const int TensionStart = 25;
-        private const int TensionHard = 30;         // 압박 던지기 상승분
-        private const int TensionSoft = -10;        // 정중히 놓기 하강분
-        private const int TellLine = 50;            // 이 위여야 반응 지시문이 보인다
-        private const int SnapLine = 85;            // 이 위에서 또 압박 = 발끈 (답변 거부)
-        private const float HardThrowSpeed = 1.5f;  // 드롭 속도 경계 (m/s) — 이상이면 압박
-
         private GameObject speechPanel;          // 지원자 대사 자막 (HUD) — 월드 말풍선은 글씨가 안 보여 화면 자막으로 교체
         private TextMeshProUGUI speechText;
         private Coroutine speechCo;
@@ -358,7 +347,7 @@ namespace MawangHR
 
         // ─── 면접 페이즈 (Day 2 — S2b) ─────────────────────────────
 
-        private const string InterviewHint = "카드를 살살 놓으면 정중 · <b>휙 던지면 압박(긴장↑)</b> — 달궈야 반응이 샌다, 과열되면 발끈 · 답변 줄 좌/우클릭 = V/X · 도장 쾅";
+        private const string InterviewHint = "카드를 잡아 지원자에게 던지면 질문 · 답변 줄 좌/우클릭 = V/X · 근거 표시 후 도장 쾅";
 
         private void StartInterviewPhase()
         {
@@ -429,11 +418,10 @@ namespace MawangHR
             cardUsed = null;
         }
 
-        /// 새 지원자 — 카드 전부 복귀 + 질문 포인트·긴장 리셋
+        /// 새 지원자 — 카드 전부 복귀 + 질문 포인트 리셋
         private void ResetCardsForApplicant()
         {
             pointsLeft = Mathf.Max(1, day.questionPoints + dayQpBonus); // 드링크 보너스 (어젯밤 구매분)
-            tension = TensionStart;
             if (cardUsed == null) return;
             for (int i = 0; i < cardRts.Count; i++)
             {
@@ -471,26 +459,17 @@ namespace MawangHR
                 ReturnCardHome(i);
                 return;
             }
-            // 드롭 속도 = 질문 톤 (살살 = 정중 / 휙 = 압박)
-            var drag = cardRts[i].GetComponent<PhotoDraggable>();
-            bool hard = drag != null && drag.DropSpeed >= HardThrowSpeed;
-
             pointsLeft -= def.cost;
             cardUsed[i] = true;
             UpdateHudProgress();
-            StartCoroutine(AskRoutine(i, hard));
+            StartCoroutine(AskRoutine(i));
         }
 
-        private IEnumerator AskRoutine(int i, bool hard)
+        private IEnumerator AskRoutine(int i)
         {
             var def = data.cards[i];
             var a = lineup[index];
             var rt = cardRts[i];
-
-            // 긴장 온도계 — 발끈 판정은 "던지기 전" 긴장 기준 (85 이상에서 또 압박하면 폭발)
-            bool snapped = hard && tension >= SnapLine;
-            tension = Mathf.Clamp(tension + (hard ? TensionHard : TensionSoft), 0, 100);
-            UpdateHudProgress();
 
             // 카드가 지원자에게 날아가 마법으로 흡수
             Sfx.Swish();
@@ -515,52 +494,30 @@ namespace MawangHR
             }
 
             // 질문 → (텀) → 답변 + 반응 지시문
-            string qTone = hard
-                ? $"<color=#B03A2E><b>Q!</b></color> {def.prompt}  <size=22><color=#B03A2E>(압박)</color></size>"
-                : $"<color=#D98F3E><b>Q.</b></color> {def.prompt}";
-            ShowMonsterBubble(qTone, 30f);
-            if (hard) rig.MonsterReact(true); // 쾅 — 움찔
+            ShowMonsterBubble($"<color=#D98F3E><b>Q.</b></color> {def.prompt}", 30f);
             yield return new WaitForSeconds(0.8f);
             if (!IsInterview || index >= lineup.Count || lineup[index] != a) yield break; // 지원자가 바뀌었으면 중단
-
-            // 발끈 — 과열 상태에서 또 몰아붙이면 답변 거부 (포인트만 날아감)
-            if (snapped)
-            {
-                rig.MonsterReact(true);
-                StartCoroutine(rig.CamShake());
-                ShowMonsterBubble("“…….”\n<size=25><color=#A6947C><i>씩씩대며 입을 다물었다 — 너무 몰아붙였다</i></color></size>", 5.5f);
-                if (resumeContent != null && !stamping)
-                {
-                    AddClueLine(resumeContent, $"<color=#6B5A42>[{def.label}]</color> (압박 과열 — 답변 거부)",
-                        "", UiKit.Ink, stmtX, stmtY, stmtW, stmtH);
-                    stmtY += stmtStep;
-                }
-                yield break;
-            }
 
             Answer ans = null;
             foreach (var x in a.answers) if (x.cardId == def.id) { ans = x; break; }
             if (ans == null) yield break; // 검증기가 막지만 방어
 
-            // 반응 지시문(tell)은 긴장이 올라야 샌다 — 평온한 지원자는 능숙하게 숨긴다
-            bool tellVisible = !string.IsNullOrEmpty(ans.tell) && tension >= TellLine;
             string bubble = $"“{ans.text}”";
-            if (tellVisible)
+            if (!string.IsNullOrEmpty(ans.tell))
             {
                 bubble += $"\n<size=25><color=#A6947C><i>{ans.tell}</i></color></size>";
                 rig.MonsterReact(true); // 반응 연출 = 긴장 움찔
             }
             ShowMonsterBubble(bubble, 6.5f);
-            AddStatementLine(def, ans, tellVisible);
+            AddStatementLine(def, ans);
         }
 
-        /// 답변을 이력서의 '진술 기록'에 단서 줄로 추가 (마킹 가능 — 답변도 단서다).
-        /// tell은 긴장이 충분해 실제로 드러났을 때만 기록에 남는다.
-        private void AddStatementLine(QuestionCard def, Answer ans, bool tellVisible)
+        /// 답변을 이력서의 '진술 기록'에 단서 줄로 추가 (마킹 가능 — 답변도 단서다)
+        private void AddStatementLine(QuestionCard def, Answer ans)
         {
             if (resumeContent == null || stamping) return;
             string text = $"<color=#6B5A42>[{def.label}]</color> “{ans.text}”";
-            if (tellVisible && !string.IsNullOrEmpty(ans.tell))
+            if (!string.IsNullOrEmpty(ans.tell))
                 text += $"\n<size=19><color=#6B5A42><i>{ans.tell}</i></color></size>";
             AddClueLine(resumeContent, text, ans.evidence, UiKit.Ink, stmtX, stmtY, stmtW, stmtH);
             stmtY += stmtStep;
@@ -664,11 +621,7 @@ namespace MawangHR
             if (IsInterview)
             {
                 string stars = pointsLeft > 0 ? new string('★', pointsLeft) : "소진";
-                // 긴장 온도계 — 발끈 위험권이면 빨강, tell이 새는 구간이면 주황
-                string tens = tension >= SnapLine ? $"<color=#B03A2E>긴장 {tension} ⚠</color>"
-                    : tension >= TellLine ? $"<color=#D98F3E>긴장 {tension}</color>"
-                    : $"긴장 {tension}";
-                progressLabel.text = $"면접 {index + 1} / {lineup.Count}    ·    질문 포인트 {stars}    ·    {tens}    ·    합격 {passCount}명";
+                progressLabel.text = $"면접 {index + 1} / {lineup.Count}    ·    질문 포인트 {stars}    ·    합격 {passCount}명";
             }
             else
                 progressLabel.text = $"서류 {index + 1} / {lineup.Count}    ·    통과 {passCount}명";
