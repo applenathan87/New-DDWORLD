@@ -143,3 +143,6 @@ $RECYCLE.BIN/
 *.msm
 *.msp
 *.lnk
+
+# === 로컬 참고 이미지 (Pinterest 무드보드 — 커밋 안 함) ===
+image/
