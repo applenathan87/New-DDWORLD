@@ -1,8 +1,8 @@
 # Blender → Unity 파이프라인
 
-> **Status**: Draft (실제 모델 작업하며 검증 예정)
+> **Status**: Draft — ⚠️ **2026-08-18 부분 폐기**: 캐릭터도 복셀풍 로우폴리(블렌더)로 전환되어 **MagicaVoxel 단계는 폐기**. 블렌더→유니티 구간(단위·FBX·임포트)만 참고 유효, 정점색 전제는 폐기. 현행 제작 가이드 = [Origin/docs/blender-lowpoly-desk-guide.md](../../Origin/docs/blender-lowpoly-desk-guide.md)
 > **Last Updated**: 2026-05-28
-> **Stack**: MagicaVoxel → Blender → Unity 6.3 LTS + URP
+> **Stack**: ~~MagicaVoxel →~~ Blender → Unity 6.3 LTS + URP
 > **관련 문서**: [art-bible.md](../../design/art/art-bible.md) §1 (Rigid Voxel Animation), [ADR-002](../architecture/ADR-002-visual-style-low-poly-3d.md)
 
 DDworld의 캐릭터/환경 에셋이 MagicaVoxel → Blender → Unity로 흘러가는 전체 파이프라인을 정리한 문서. 첫 모델 작업 시 이 문서를 따라가면 누락 없이 셋업할 수 있도록 작성됨.

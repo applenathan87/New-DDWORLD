@@ -30,10 +30,10 @@
 
 ## Visual Style
 
-**캐릭터 = Low-poly Voxel / 환경 = Low-poly 3D 모델링** (스타일 근거 = [ADR-002](docs/architecture/ADR-002-visual-style-low-poly-3d.md), 단 아래대로 갱신)
+**전체 = Low-poly 3D 모델링 — 캐릭터는 복셀풍(블로키) 룩** (스타일 근거 = [ADR-002](docs/architecture/ADR-002-visual-style-low-poly-3d.md), 단 아래대로 갱신. ⚠️ 2026-08-18: 캐릭터 제작 방식 복셀 → 복셀풍 로우폴리로 변경)
 
-- **캐릭터(몬스터·플레이어 손)**: MagicaVoxel 복셀 모델링.
-- **환경(책상·사무실·소품)**: Low-poly 3D 메쉬 (복셀 아님).
+- **캐릭터(몬스터·플레이어 손)**: **복셀풍 로우폴리 메쉬** — 네모네모한 복셀 룩은 유지하되, 복셀 단위 제작이 아니라 블렌더 박스 모델링 (MagicaVoxel 폐기, 2026-08-18).
+- **환경(책상·사무실·소품)**: Low-poly 3D 메쉬 — 캐릭터와 동일 파이프라인 (블렌더 단일).
 - **톤**: 촛불 켜진 마왕성 사무실 — 따뜻+어두운 대비, "귀여운데 사악한" 대비. **코지 미니어처/틸트시프트 디오라마 톤은 미승계**(옛 헥사 전투 게임 기준).
 - **애니메이션**: 면접 리액션 2종(긴장/안도) + 이펙트 수준. *전투용 부위분리 풀 리깅·400명 크라우드 렌더링([ADR-003](docs/architecture/ADR-003-rigid-instancing-crowd-rendering.md))은 폐기.*
 - **카메라**: 고정 데스크 클로즈업.
@@ -44,7 +44,7 @@
 - **Engine**: Unity **6000.5.1f1** (Unity 6.5 — 2026-07-02 실측. 기존 프로토타입·Origin 새 프로젝트 동일 버전)
 - **Language**: C#
 - **Rendering**: URP (Universal Render Pipeline) — 고정 데스크 뷰 3D + Post-processing (Bloom/DOF/비네트)
-- **3D 모델링**: MagicaVoxel (캐릭터 복셀) + Low-poly 3D 메쉬 (환경·소품)
+- **3D 모델링**: Blender 로우폴리 단일 파이프라인 — 캐릭터(복셀풍 블로키 룩)·환경·소품 전부 (MagicaVoxel 폐기, 2026-08-18)
 - **Version Control**: Git with trunk-based development
 - **Asset Pipeline**: Addressables
 - **UI**: UI Toolkit
