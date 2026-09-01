@@ -1,7 +1,7 @@
 # Work Queue — DDworld
 
 > **Purpose**: 세션 간 영구 추적 작업 큐. (TodoWrite는 세션 한정 → 영구 추적은 이 파일.)
-> **Last Updated**: 2026-07-03
+> **Last Updated**: 2026-09-02
 
 ---
 
@@ -14,6 +14,22 @@
 
 > "todo 찾아봐" = **이 블록만** 읽기.
 
+- **[최우선] 문서 정합성 복구 — 본격 개발 전 필수 (2026-09-02 결정)**
+  진단: 폐기 문서(art-bible·복셀 research·technical-preferences·game-designer 에이전트/메모리)가 현행 트리·자동 로드 경로에 남아 복셀/전투 맥락이 재유입됨. 결정이 본문 수정 없이 헤더 주석으로 누적되어 본문이 옛 결정을 따름. 면접 뎁스는 문서 4개(mvp-design §7 / interview_idea v0.3 / interview-depth / interview-catch)가 미조정 상태.
+  1. **격리** — "현행 트리엔 현행만". **자동 로드되는 하네스(CCGS) 설정 파일부터** 현행 기준으로 수정 — 하네스가 아니라 컨셉 전환 때 안 고친 설정이 복셀·전투 맥락 재유입 통로. art-bible·복셀 research·옛 큐는 `_archive/`로 이동
+     - `.claude/docs/technical-preferences.md` (CLAUDE.md에 `@` 임포트 → 매 세션 로드) — L9 "쿼터뷰 3D", L16 "카드 드래그 & 그리드 배치", L34 "쿼터뷰 2.5D", L41 "RPS 상성·틱 기반 전투·루트 계산·덱 셔플" 테스트 요건 → 데스크 클로즈업·물성 드래그·면접 판정 기준으로 교체
+     - Claude 전역 메모리 `~/.claude/projects/c--New-DDWORLD/memory/MEMORY.md` — "⭐ 코어 전환: PvE 헥사"·async_pvp·ADR-003 항목이 현행처럼 남음 → 폐기 표시 + 「마왕성 인사팀」 항목 추가
+     - `.claude/docs/templates/game-concept.md` — 헥사 예시 잔존 (경미)
+     - ✅ 이미 정상: `agents/game-designer.md`·`agent-memory/game-designer/`(현행 반영됨), `.claude/rules/`(전투 전제 없음) — 2026-09-02 점검
+  2. **결정 원장** `design/decisions.md` 신설 — 각 문서 헤더에 흩어진 확정 사항을 "날짜·결정·폐기한 것·근거" 한 줄씩 집약 (유일한 정본). 이후 규칙: 결정 변경 = 원장 1줄 + 해당 문서 **본문** 수정, 옛 내용은 주석 대신 아카이브
+  3. **면접 뎁스 결정** — 덱빌딩(v0.3) vs 캐치(v0.1) 관계 확정. 이게 안 되면 면접 GDD 작성 불가
+  4. **GDD 새로 쓰기** — 원장 + ideation 재료로 `design/gdd/`에 확정 시스템만 8섹션 작성(코어 루프·판정/결산·진행/가젯·밤 파트·면접). 승격된 ideation 문서는 "참고용, 정본 아님"으로 동결
+  5. **아트 바이블 재작성(짧게)** — 복셀풍 로우폴리 + 핸드페인팅 텍스처 여부 결정 후 20~30줄
+  → 1·2는 Claude가 changeset 초안 → 사용자 승인 후 실행. 3은 사용자 결정. 이 work-queue 파일 자체도 1단계에서 재작성 대상.
+- **[다음] 도구 연동 — 문서 정합성 복구 뒤 (2026-09-02 결정)**
+  1. **codex-plugin-cc 연동** (OpenAI 공식, [github.com/openai/codex-plugin-cc](https://github.com/openai/codex-plugin-cc)) — 용도 = **교차 리뷰**(작성은 Claude, 검토는 Codex). 첫 시험 = GDD 초안에 `/codex:adversarial-review`. 전제: ChatGPT Plus 구독 + Node 18.18+. 설치: `/plugin marketplace add openai/codex-plugin-cc` → `/plugin install codex@openai-codex` → `/reload-plugins` → `/codex:setup`. ⚠️ `--enable-review-gate`는 끄고 시작(Claude↔Codex 루프로 양쪽 한도 소진 경고). Codex엔 프로젝트 맥락이 없으므로 결정 원장(2번)을 같이 넘길 것.
+  2. **Unity MCP 검토** — Unity 6.5 호환 확인 후 Origin 트랙에서 시험. 용도 한정 = 컴파일 에러·콘솔·테스트·플레이 모드만 (씬 조작 X). 도입 시 `/context`로 세션 시작 점유량 측정 후 유지 여부 결정.
+  3. **CCGS review-mode** — `production/review-mode.txt`에 `solo` 생성 (현재 파일 없음 → 기본 lean).
 - **[진행중] MVP 프로토 스프린트 (7/4~7/7)**: [docs/mawang-hr-proto-brief.md](../docs/mawang-hr-proto-brief.md) — S1 완료, S2(도장 물성+면접 루프)부터 계속
 - **현행 학습**: [Origin/roadmap.md](../Origin/roadmap.md) (사용자 개인 진행 — 유니티 친해지기)
 - **현행 기획**: [ideation/mvp-design.md](../ideation/mvp-design.md) — 프로토 검증 결과 반영 → 확정 시 `design/gdd/` 승격
