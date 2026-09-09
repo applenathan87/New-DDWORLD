@@ -62,7 +62,15 @@
   </div>
 </div>
 
-<div id="stamp" class="stamp" hidden><span id="stamp-text"></span></div>
+<!-- 도장 연출: 출근/복귀=초록, 부재=노랑, 퇴근=초록+인사말+컨페티 -->
+<div id="stamp" class="stamp" hidden>
+  <div class="stamp-inner">
+    <span id="stamp-text" class="stamp-box"></span>
+    <div id="stamp-msg" class="stamp-msg"></div>
+    <div id="stamp-sub" class="stamp-sub"></div>
+  </div>
+</div>
+<canvas id="confetti" class="confetti" hidden></canvas>
 <div id="toast" class="toast" hidden></div>
 
 <script src="app.js"></script>

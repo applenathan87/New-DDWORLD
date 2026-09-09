@@ -54,22 +54,146 @@ let heatIndex = {};      // date → day 요약 (툴팁용)
 async function load() {
   S = await api('/api/state');
   render();
+  // 새로고침 전에 돌던 뽀모도로가 있으면 이어서 (근무 중일 때만)
+  if (pomo) {
+    if (S.active && S.active.status === 'open') pomoSchedule();
+    else pomoCancel();
+  }
+  updateTitle();
 }
 
-/** 출근 중이면 열린 세션의 경과 분 */
-function elapsedMinutes() {
-  if (!S.active) return 0;
-  const [h, m] = S.active.openSince.split(':').map(Number);
-  const start = parseDate(S.active.date);
-  start.setHours(h, m, 0, 0);
-  return Math.max(0, Math.floor((Date.now() - start.getTime()) / 60000));
+// ───────────────────────── 뽀모도로 (브라우저 안에서 돎, 상태는 localStorage) ─────────────────────────
+const POMO_KEY = 'desk.pomo';
+let pomo = loadPomo();   // { phase: 'focus' | 'break', endsAt, total } 또는 null
+let pomoAlarm = null;    // 끝나는 시각에 맞춘 단일 타이머
+let audioCtx = null;
+
+function loadPomo() {
+  try { const p = JSON.parse(localStorage.getItem(POMO_KEY)); return p && p.endsAt ? p : null; } catch { return null; }
+}
+function savePomo() {
+  try { pomo ? localStorage.setItem(POMO_KEY, JSON.stringify(pomo)) : localStorage.removeItem(POMO_KEY); } catch {}
+}
+const pomoCfg = () => Object.assign({ focus: 50, break: 10 }, (S && S.config.pomodoro) || {});
+const pomoRemaining = () => (pomo ? Math.max(0, pomo.endsAt - Date.now()) : 0);
+const pomoProgress = () => (pomo ? Math.min(100, 100 * (1 - pomoRemaining() / pomo.total)) : 0);
+const fmtClock = (ms) => { const s = Math.ceil(ms / 1000); return `${pad2(Math.floor(s / 60))}:${pad2(s % 60)}`; };
+
+function pomoStart(phase) {
+  const mins = phase === 'focus' ? pomoCfg().focus : pomoCfg().break;
+  pomo = { phase, endsAt: Date.now() + mins * 60000, total: mins * 60000 };
+  savePomo();
+  pomoSchedule();
+  renderWork();
+  updateTitle();
 }
 
-/** 날짜별 작업시간 (출근 중이면 경과 시간을 오늘에 더함) */
+/** 끝나는 시각에 딱 한 번 울리는 타이머. 체인이 아니라서 탭이 뒤에 있어도 거의 제때 울린다 */
+function pomoSchedule() {
+  clearTimeout(pomoAlarm);
+  if (pomo) pomoAlarm = setTimeout(pomoFinish, pomoRemaining() + 50);
+}
+
+function pomoCancel() {
+  pomo = null;
+  savePomo();
+  clearTimeout(pomoAlarm);
+  updateTitle();
+}
+
+async function pomoFinish() {
+  if (!pomo) return;
+  const cfg = pomoCfg();
+  const wasFocus = pomo.phase === 'focus';
+  pomo = null; // 두 번 울리지 않게 먼저 비운다
+  savePomo();
+  if (wasFocus) {
+    notify(`${cfg.focus}분 집중 끝`, `${cfg.break}분 쉬세요. 휴식 타이머가 시작됐습니다.`);
+    chime();
+    try { const r = await api('/api/pomodoro', { action: 'done' }); S = r.state; } catch (e) { toast(e.message, true); }
+    if (S.active && S.active.status === 'open') pomoStart('break');
+    else { renderWork(); updateTitle(); }
+  } else {
+    notify('휴식 끝', '준비되면 다음 집중을 시작하세요.');
+    chime();
+    renderWork();
+    updateTitle();
+  }
+}
+
+async function startFocus() {
+  ensureAudio(); // 소리는 클릭 안에서 준비해 둬야 나중에 울릴 수 있다
+  const ok = await ensureNotifyPermission();
+  if (!ok) toast('크롬 알림이 꺼져 있어 화면 안내와 소리로만 알립니다.');
+  pomoStart('focus');
+}
+
+async function ensureNotifyPermission() {
+  if (!('Notification' in window)) return false;
+  if (Notification.permission === 'granted') return true;
+  if (Notification.permission === 'denied') return false;
+  try { return (await Notification.requestPermission()) === 'granted'; } catch { return false; }
+}
+
+/** 크롬 알림 + 화면 토스트. 탭이 뒤에 있어도 윈도우 알림으로 뜬다 */
+function notify(title, body) {
+  toast(`${title} — ${body}`);
+  if ('Notification' in window && Notification.permission === 'granted') {
+    try {
+      const n = new Notification(title, { body, tag: 'desk-pomo' });
+      n.onclick = () => { window.focus(); n.close(); };
+    } catch {}
+  }
+}
+
+function ensureAudio() {
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  } catch {}
+}
+
+/** 짧은 3음 차임 (파일 없이 합성) */
+function chime() {
+  if (!audioCtx) return;
+  const t0 = audioCtx.currentTime;
+  [[880, 0], [1175, 0.18], [1568, 0.36]].forEach(([freq, dt]) => {
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = 'sine';
+    o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t0 + dt);
+    g.gain.exponentialRampToValueAtTime(0.25, t0 + dt + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dt + 0.5);
+    o.connect(g).connect(audioCtx.destination);
+    o.start(t0 + dt);
+    o.stop(t0 + dt + 0.55);
+  });
+}
+
+function updateTitle() {
+  document.title = pomo ? `${fmtClock(pomoRemaining())} ${pomo.phase === 'focus' ? '집중' : '휴식'} · 출근부` : '마왕성 인사팀 · 출근부';
+}
+
+/** 그날 HH:MM 부터 지금까지 지난 분 */
+function minutesSince(date, hhmm) {
+  const [h, m] = hhmm.split(':').map(Number);
+  const t = parseDate(date);
+  t.setHours(h, m, 0, 0);
+  return Math.max(0, Math.floor((Date.now() - t.getTime()) / 60000));
+}
+/** 근무 중이면 현재 세션의 경과 분 (부재 중이면 0) */
+const elapsedMinutes = () => (S.active && S.active.status === 'open' ? minutesSince(S.active.date, S.active.openSince) : 0);
+/** 부재 중이면 부재 시작 후 지난 분 */
+const awayMinutes = () => (S.active && S.active.status === 'away' ? minutesSince(S.active.date, S.active.awaySince) : 0);
+/** 오늘 누적 근무 분 = 닫힌 세션 합 + 현재 세션 경과. 부재 시간은 세션 사이 빈 틈이라 자동으로 빠진다 */
+const todayWorkedMinutes = () => (S.active ? S.active.workedMinutes + elapsedMinutes() : 0);
+
+/** 날짜별 작업시간 (활성인 날은 분 단위로 정확히) */
 function hoursByDate() {
   const map = {};
   for (const d of S.days) map[d.date] = d.hours;
-  if (S.active) map[S.active.date] = (map[S.active.date] || 0) + elapsedMinutes() / 60;
+  if (S.active) map[S.active.date] = todayWorkedMinutes() / 60;
   return map;
 }
 
@@ -98,16 +222,26 @@ function renderWork() {
 
   if (S.active) {
     if (view === 'clockout') return renderClockOutForm(c);
+    const away = S.active.status === 'away';
     c.append(
       el('div', { class: 'work-head' },
-        el('span', { class: 'status-badge open' }, '출근 중'),
-        el('span', { class: 'work-time' }, `${S.active.openSince} 출근 · 경과 `, el('strong', { id: 'elapsed' }, fmtDuration(elapsedMinutes()))),
+        el('span', { class: `status-badge ${away ? 'away' : 'open'}` }, away ? '부재 중' : '출근 중'),
+        el('span', { class: 'work-time' },
+          '오늘 누적 ', el('strong', { id: 'elapsed' }, fmtDuration(todayWorkedMinutes())),
+          away
+            ? [` · ${S.active.awaySince} 부재 시작, `, el('strong', { id: 'away-elapsed' }, fmtDuration(awayMinutes())), ' 지남']
+            : ` · ${S.active.openSince}부터 근무 중`,
+        ),
       ),
       el('h2', {}, `Day ${S.active.day} · 오늘 할 일`),
       renderPickedList(),
       renderAddToToday(),
+      away ? el('p', { class: 'muted small-text pomo-note' }, '부재 중에는 뽀모도로가 멈춥니다. 복귀하면 다시 시작할 수 있습니다.') : renderPomodoro(),
       el('div', { class: 'actions' },
-        el('button', { class: 'btn primary big', onclick: () => { view = 'clockout'; renderWork(); } }, '퇴근'),
+        away
+          ? el('button', { class: 'btn primary big', onclick: doBack }, '복귀')
+          : el('button', { class: 'btn big', onclick: doAway }, '부재'),
+        el('button', { class: `btn big${away ? '' : ' primary'}`, onclick: () => { view = 'clockout'; renderWork(); } }, '퇴근'),
       ),
     );
     return;
@@ -169,7 +303,32 @@ async function doClockIn() {
     view = 'idle';
     S = r.state;
     render();
-    stamp('출근');
+    stamp('출근', 'green');
+  } catch (e) {
+    toast(e.message, true);
+  }
+}
+
+/** 부재: 세션을 닫고 시간 계산에서 빠지게. 돌아가던 뽀모도로는 멈춘다 */
+async function doAway() {
+  try {
+    const r = await api('/api/away', {});
+    pomoCancel();
+    S = r.state;
+    render();
+    stamp('부재', 'yellow');
+  } catch (e) {
+    toast(e.message, true);
+  }
+}
+
+/** 복귀: 새 세션을 연다 */
+async function doBack() {
+  try {
+    const r = await api('/api/back', {});
+    S = r.state;
+    render();
+    stamp('복귀', 'green');
   } catch (e) {
     toast(e.message, true);
   }
@@ -202,6 +361,39 @@ function renderAddToToday() {
   if (!rest.length) ul.append(el('li', { class: 'muted' }, '남은 할 일이 없습니다.'));
   det.append(ul);
   return det;
+}
+
+/** 뽀모도로 패널 (근무 중일 때만). 대기 / 집중 / 휴식 세 모습 */
+function renderPomodoro() {
+  const cfg = pomoCfg();
+  const count = S.active.pomodoros || 0;
+  const box = el('div', { class: 'pomo' });
+  const head = (label) => el('div', { class: 'pomo-head' },
+    el('span', { class: 'pomo-label' }, label),
+    el('span', { class: 'muted small-text' }, `오늘 ${count}개 완료`),
+  );
+  if (!pomo) {
+    box.append(
+      head('뽀모도로'),
+      el('div', { class: 'pomo-row' },
+        el('button', { class: 'btn primary', onclick: startFocus }, `집중 시작 · ${cfg.focus}분`),
+        el('span', { class: 'muted small-text' }, `${cfg.focus}분 집중이 끝나면 알림과 함께 ${cfg.break}분 휴식이 이어집니다.`),
+      ),
+    );
+    return box;
+  }
+  const isFocus = pomo.phase === 'focus';
+  box.classList.add(isFocus ? 'focus' : 'break');
+  box.append(
+    head(isFocus ? '집중 중' : '휴식 중'),
+    el('div', { class: 'pomo-time', id: 'pomo-time' }, fmtClock(pomoRemaining())),
+    el('div', { class: 'pomo-bar' }, el('div', { class: 'pomo-fill', id: 'pomo-fill', style: `width:${pomoProgress()}%` })),
+    el('div', { class: 'pomo-row' },
+      el('button', { class: 'btn small', onclick: () => { pomoCancel(); renderWork(); } }, isFocus ? '중지' : '휴식 끝내기'),
+      el('span', { class: 'muted small-text' }, isFocus ? '끝나면 크롬 알림과 소리로 알립니다.' : '끝나면 알림이 오고, 다음 집중은 버튼으로 시작합니다.'),
+    ),
+  );
+  return box;
 }
 
 const field = (label, input) => el('label', { class: 'field' }, el('span', { class: 'field-label' }, label), input);
@@ -240,8 +432,15 @@ async function doClockOut(e) {
     const r = await api('/api/clockout', body);
     view = 'idle';
     S = r.state;
+    pomoCancel();
     render();
-    stamp('퇴근');
+    const d = r.day;
+    stamp('퇴근', 'green', {
+      message: '오늘도 수고하셨습니다!',
+      sub: `Day ${d.day} · ${fmtDuration(d.workedMinutes)}${d.pomodoros ? ` · 뽀모도로 ${d.pomodoros}개` : ''}`,
+      duration: 3200,
+      confetti: true,
+    });
     const g = r.git || {};
     if (g.skipped) toast(`저장 완료 (git 건너뜀: ${g.reason})`);
     else if (!g.ok) toast(`저장은 됐지만 git 커밋 실패: ${g.error}`, true);
@@ -322,13 +521,15 @@ function computeStats() {
   return { todayH: hours[S.today] || 0, week, month, total, days, streak };
 }
 
+const todayPomodoros = () => ((S.todayDay || {}).pomodoros || 0);
+
 function renderStats() {
   const s = computeStats();
   const tile = (label, value, sub) => el('div', { class: 'tile' }, el('div', { class: 'tile-value' }, value), el('div', { class: 'tile-label' }, label), sub ? el('div', { class: 'tile-sub muted' }, sub) : null);
   const row = $('#stats-row');
   row.innerHTML = '';
   row.append(
-    tile('오늘', fmtHours(s.todayH)),
+    tile('오늘', fmtHours(s.todayH), todayPomodoros() ? `뽀모도로 ${todayPomodoros()}개` : null),
     tile('이번 주', fmtHours(s.week)),
     tile('이번 달', fmtHours(s.month)),
     tile('연속 출근', `${s.streak}일`),
@@ -350,7 +551,7 @@ function level(h, hasRecord) {
 function renderHeatmap() {
   const hours = hoursByDate();
   heatIndex = Object.fromEntries(S.days.map((d) => [d.date, d]));
-  const CELL = 12, GAP = 3, STEP = CELL + GAP, LEFT = 26, TOP = 18;
+  const GAP = 3, LEFT = 24, TOP = 18;
   const monday = (d) => addDays(d, -((d.getDay() + 6) % 7));
   const today = parseDate(S.today);
   const heatStart = parseDate(S.config.heatStart);
@@ -359,14 +560,18 @@ function renderHeatmap() {
   let end = monday(windowEnd);
   if (monday(today) > end) { end = monday(today); windowEnd = addDays(end, 6); } // 1년을 넘기면 오늘 주까지 늘림
   const WEEKS = Math.round((end - start) / (7 * 86400000)) + 1;
+  // 칸 크기는 카드 너비에 맞춰 계산 → 위 통계 타일과 좌우 끝이 맞는다 (창 크기가 바뀌면 다시 그림)
+  const avail = $('.heatmap-wrap').clientWidth || 1000;
+  const STEP = Math.max(10, Math.floor((avail - LEFT) / WEEKS));
+  const CELL = STEP - GAP;
   const width = LEFT + WEEKS * STEP, height = TOP + 7 * STEP;
   const ym = (d) => `${d.getFullYear()}.${pad2(d.getMonth() + 1)}`;
   $('#season-label').textContent = `${ym(heatStart)} ~ ${ym(windowEnd)} · 시즌 시작 ${S.config.seasonStart}`;
 
-  let svg = `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="출근 히트맵">`;
-  for (const [name, r] of [['월', 0], ['수', 2], ['금', 4]]) {
-    svg += `<text class="hm-label" x="0" y="${TOP + r * STEP + CELL - 2}">${name}</text>`;
-  }
+  let svg = `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="출근 히트맵">`;
+  ['월', '화', '수', '목', '금', '토', '일'].forEach((name, r) => {
+    svg += `<text class="hm-label" x="0" y="${TOP + r * STEP + CELL - 3}">${name}</text>`;
+  });
   for (let w = 0; w < WEEKS; w++) {
     const weekStart = addDays(start, w * 7);
     // 그 주에 1일이 들어 있으면 달 이름표. 첫 열은 시작일의 달로.
@@ -420,7 +625,7 @@ function tooltipHtml(ds) {
   return (
     head +
     `<div class="tt-title">${esc(d.summary || '(퇴근 전)')}</div>` +
-    `<div class="tt-hours">${fmtHours(h)}${d.status === 'open' ? ' · 출근 중' : ''}</div>` +
+    `<div class="tt-hours">${fmtHours(h)}${d.status === 'open' ? ' · 출근 중' : d.status === 'away' ? ' · 부재 중' : ''}${d.pomodoros ? ` · 뽀모도로 ${d.pomodoros}` : ''}</div>` +
     (items.length ? `<ul>${items.map((i) => `<li>${esc(i)}</li>`).join('')}</ul>` : '')
   );
 }
@@ -449,6 +654,8 @@ heat.addEventListener('focusout', hideTooltip);
 heat.addEventListener('click', (e) => { const c = e.target.closest('.hm-cell'); if (c && heatIndex[c.dataset.date]) openDevlog(c.dataset.date); });
 heat.addEventListener('keydown', (e) => { const c = e.target.closest('.hm-cell'); if (c && e.key === 'Enter' && heatIndex[c.dataset.date]) openDevlog(c.dataset.date); });
 $('.heatmap-wrap').addEventListener('scroll', hideTooltip);
+let resizeTimer = null;
+window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { if (S) renderHeatmap(); }, 150); });
 
 // ── 지난 데브로그 ──
 function renderHistory() {
@@ -460,7 +667,7 @@ function renderHistory() {
       el('button', { class: 'history-item', onclick: () => openDevlog(d.date) },
         el('span', { class: 'h-date' }, `${d.date.slice(0, 4) === S.today.slice(0, 4) ? d.date.slice(5) : d.date} (${WEEKDAYS[parseDate(d.date).getDay()]})`),
         el('span', { class: 'pill small' }, `Day ${d.day}`),
-        el('span', { class: 'h-hours' }, d.status === 'open' ? '출근 중' : fmtHours(d.hours)),
+        el('span', { class: 'h-hours' }, d.status === 'open' ? '출근 중' : d.status === 'away' ? '부재 중' : fmtHours(d.hours)),
         el('span', { class: 'h-title' }, d.summary || '(퇴근 전)'),
       ),
     ));
@@ -519,14 +726,75 @@ function renderMarkdown(text) {
 }
 
 // ── 도장 · 토스트 · 타이머 ──
-function stamp(text) {
+/**
+ * 도장 연출. kind = 'green'(출근·복귀·퇴근) | 'yellow'(부재) | 'red'
+ * opts: { message, sub, duration(ms), confetti }
+ */
+let stampTimer = null;
+function stamp(text, kind = 'red', opts = {}) {
   const s = $('#stamp');
+  const dur = opts.duration || 1500;
   $('#stamp-text').textContent = text;
+  $('#stamp-msg').textContent = opts.message || '';
+  $('#stamp-sub').textContent = opts.sub || '';
+  s.className = `stamp ${kind}${opts.message ? ' with-msg' : ''}`;
+  s.style.setProperty('--stamp-dur', `${dur}ms`);
   s.hidden = false;
-  s.classList.remove('play');
   void s.offsetWidth; // 애니메이션 재시작용
   s.classList.add('play');
-  setTimeout(() => { s.hidden = true; }, 1500);
+  clearTimeout(stampTimer);
+  stampTimer = setTimeout(() => { s.hidden = true; }, dur);
+  if (opts.confetti) confetti();
+}
+
+/** 캔버스 컨페티 — 양쪽 아래 대포 두 발 + 위에서 내리는 색종이 비. 라이브러리 없음 */
+function confetti(duration = 3000) {
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const cv = $('#confetti');
+  const ctx = cv.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const W = window.innerWidth, H = window.innerHeight;
+  cv.width = W * dpr; cv.height = H * dpr;
+  cv.style.width = `${W}px`; cv.style.height = `${H}px`;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  cv.hidden = false;
+  const colors = ['#f2a93b', '#f7b955', '#5fcf6e', '#f3ede4', '#c8452f', '#fad599'];
+  const parts = [];
+  const push = (q) => parts.push(Object.assign({
+    w: 6 + Math.random() * 6, h: 8 + Math.random() * 8, rot: Math.random() * Math.PI, vr: (Math.random() - 0.5) * 0.3,
+    color: colors[Math.floor(Math.random() * colors.length)], life: 1, phase: Math.random() * Math.PI * 2,
+  }, q));
+  const cannon = (x, y, dir) => {
+    for (let i = 0; i < 80; i++) {
+      const angle = -Math.PI / 2 + dir * (Math.PI / 7) + (Math.random() - 0.5) * (Math.PI / 4);
+      const speed = 13 + Math.random() * 10;
+      push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, g: 0.28, drag: 0.975 });
+    }
+  };
+  cannon(W * 0.1, H * 0.95, 1);
+  cannon(W * 0.9, H * 0.95, -1);
+  const t0 = performance.now();
+  function frame(t) {
+    const p = (t - t0) / duration;
+    if (p < 0.45) for (let i = 0; i < 3; i++) push({ x: Math.random() * W, y: -12, vx: (Math.random() - 0.5) * 1.5, vy: 2 + Math.random() * 3, g: 0.02, drag: 1 }); // 색종이 비
+    ctx.clearRect(0, 0, W, H);
+    for (const q of parts) {
+      q.vy += q.g; q.vx *= q.drag; q.vy *= q.drag;
+      q.x += q.vx + Math.sin(t / 180 + q.phase) * 0.6; q.y += q.vy; q.rot += q.vr;
+      if (p > 0.7) q.life = Math.max(0, 1 - (p - 0.7) / 0.3);
+      if (q.y > H + 20) continue;
+      ctx.save();
+      ctx.globalAlpha = q.life;
+      ctx.translate(q.x, q.y);
+      ctx.rotate(q.rot);
+      ctx.fillStyle = q.color;
+      ctx.fillRect(-q.w / 2, -q.h / 2, q.w, q.h);
+      ctx.restore();
+    }
+    if (p < 1) requestAnimationFrame(frame);
+    else { ctx.clearRect(0, 0, W, H); cv.hidden = true; }
+  }
+  requestAnimationFrame(frame);
 }
 
 let toastTimer = null;
@@ -541,10 +809,22 @@ function toast(msg, isError = false) {
 
 let tick = 0;
 setInterval(() => {
-  if (!S || !S.active) return;
-  const e = $('#elapsed');
-  if (e) e.textContent = fmtDuration(elapsedMinutes());
-  if (++tick % 60 === 0) { renderStats(); renderHeatmap(); }
+  if (!S) return;
+  if (S.active) {
+    const e = $('#elapsed');
+    if (e) e.textContent = fmtDuration(todayWorkedMinutes());
+    const a = $('#away-elapsed');
+    if (a) a.textContent = fmtDuration(awayMinutes());
+    if (++tick % 60 === 0) { renderStats(); renderHeatmap(); }
+  }
+  if (pomo) {
+    const t = $('#pomo-time');
+    if (t) t.textContent = fmtClock(pomoRemaining());
+    const f = $('#pomo-fill');
+    if (f) f.style.width = `${pomoProgress()}%`;
+    updateTitle();
+    if (Date.now() >= pomo.endsAt) pomoFinish(); // 예비: 단일 타이머가 밀렸을 때
+  }
 }, 1000);
 
 load().catch((e) => toast('서버에 연결할 수 없습니다: ' + e.message, true));

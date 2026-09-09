@@ -27,6 +27,7 @@ const DEFAULTS = {
   autoPush: true,
   heatLevels: [1, 2, 4, 6], // 색 단계 경계(시간). 경계 개수 + 1 = 단계 수
   maxPick: 3,
+  pomodoro: { focus: 50, break: 10 }, // 뽀모도로 집중/휴식 (분)
 };
 
 function loadConfig() {
@@ -205,11 +206,15 @@ function listDays() {
 
 const isOpenSession = (s) => typeof s === 'string' && s.endsWith('-');
 const openSessionOf = (day) => (day.fm.sessions || []).find(isOpenSession) || null;
+/** 근무 중(열린 세션)이거나 부재 중이면 "활성" — 아직 퇴근하지 않은 날 */
+const isActiveDay = (day) => !!openSessionOf(day) || day.fm.status === 'away';
+/** 닫힌 세션들의 합(분). 부재로 나뉜 세션 사이의 빈 시간은 자연히 빠진다 */
+const closedMinutes = (sessions) => (sessions || []).reduce((acc, s) => acc + sessionMinutes(s), 0);
 
-/** 열린 세션이 있는 날(자정을 넘긴 경우 어제일 수 있음) */
+/** 활성인 날(자정을 넘긴 경우 어제일 수 있음) */
 function findActiveDay() {
   const days = listDays();
-  for (let i = days.length - 1; i >= 0; i--) if (openSessionOf(days[i])) return days[i];
+  for (let i = days.length - 1; i >= 0; i--) if (isActiveDay(days[i])) return days[i];
   return null;
 }
 
@@ -226,16 +231,22 @@ const stripDayPrefix = (title) => String(title || '').replace(/^Day\s*\d+\s*([�
 function summarizeDay(d) {
   const secs = parseSections(d.body);
   const find = (n) => secs.find((s) => s.name === n);
+  const sessions = d.fm.sessions || [];
   const open = openSessionOf(d);
+  const status = open ? 'open' : d.fm.status === 'away' ? 'away' : 'closed';
+  const last = sessions[sessions.length - 1] || '';
   return {
     date: d.date,
     day: d.fm.day || 0,
     title: d.fm.title || '',
     summary: stripDayPrefix(d.fm.title),
-    status: open ? 'open' : 'closed',
+    status,
     hours: Number(d.fm.hours) || 0,
-    sessions: d.fm.sessions || [],
+    sessions,
     openSince: open ? open.slice(0, -1) : null,
+    awaySince: status === 'away' ? last.split('-')[1] || null : null, // 부재 버튼을 누른 시각
+    workedMinutes: closedMinutes(sessions),                            // 닫힌 세션 합(분) — 화면의 "오늘 누적"용
+    pomodoros: Number(d.fm.pomodoros) || 0,
     picked: d.fm.picked || [],
     done: d.fm.done || [],
     did: bulletsOf(find('한 일')),
@@ -345,7 +356,7 @@ function clockIn(pickedRaw) {
     const day = nextDayNumber(date);
     d = {
       date,
-      fm: { title: `Day ${day}`, date, day, status: 'open', sessions: [`${now}-`], hours: 0, picked, done: [], tags: [] },
+      fm: { title: `Day ${day}`, date, day, status: 'open', sessions: [`${now}-`], hours: 0, picked, done: [], pomodoros: 0, tags: [] },
       body: buildBody({}, ''),
     };
   }
@@ -360,7 +371,7 @@ function clockOut(fields) {
   if (!summary) throw new Error('오늘을 한 줄로 적어야 퇴근할 수 있습니다');
   const sessions = [...(d.fm.sessions || [])];
   const i = sessions.findIndex(isOpenSession);
-  sessions[i] = sessions[i] + timeStr();
+  if (i >= 0) sessions[i] = sessions[i] + timeStr(); // 부재 중에 퇴근하면 닫을 세션이 없다
   d.fm.sessions = sessions;
   d.fm.status = 'closed';
   d.fm.hours = computeHours(sessions);
@@ -370,6 +381,41 @@ function clockOut(fields) {
     { did: asLines(fields.did), learned: asLines(fields.learned), blocked: asLines(fields.blocked), next: asLines(fields.next) },
     d.body,
   );
+  writeDay(d);
+  return d;
+}
+
+// ───────────────────────── 부재 / 복귀 / 뽀모도로 ─────────────────────────
+/** 부재: 현재 세션을 닫고 status=away. 복귀 전까지의 시간은 근무에서 빠진다 */
+function goAway() {
+  const d = findActiveDay();
+  if (!d) throw new Error('출근 상태가 아닙니다');
+  if (d.fm.status === 'away') throw new Error('이미 부재 중입니다');
+  const sessions = [...(d.fm.sessions || [])];
+  const i = sessions.findIndex(isOpenSession);
+  sessions[i] = sessions[i] + timeStr();
+  d.fm.sessions = sessions;
+  d.fm.status = 'away';
+  d.fm.hours = computeHours(sessions);
+  writeDay(d);
+  return d;
+}
+
+/** 복귀: 새 세션을 열고 status=open */
+function comeBack() {
+  const d = findActiveDay();
+  if (!d || d.fm.status !== 'away') throw new Error('부재 중이 아닙니다');
+  d.fm.sessions = [...(d.fm.sessions || []), `${timeStr()}-`];
+  d.fm.status = 'open';
+  writeDay(d);
+  return d;
+}
+
+/** 집중 블록 하나 완료 → 그날 파일의 pomodoros 를 1 올린다 (통계·툴팁용) */
+function addPomodoro() {
+  const d = findActiveDay() || readDay(todayStr());
+  if (!d) throw new Error('오늘 출근 기록이 없습니다');
+  d.fm.pomodoros = (Number(d.fm.pomodoros) || 0) + 1;
   writeDay(d);
   return d;
 }
@@ -404,7 +450,7 @@ async function pushData(message) {
 function stateJson() {
   const today = todayStr();
   const days = listDays().map(summarizeDay);
-  const active = days.find((d) => d.status === 'open') || null;
+  const active = days.find((d) => d.status === 'open' || d.status === 'away') || null;
   const todayDay = days.find((d) => d.date === today) || null;
   return {
     now: new Date().toISOString(),
@@ -419,6 +465,7 @@ function stateJson() {
       heatStart: /^\d{4}-\d{2}-\d{2}$/.test(config.heatStart || '') ? config.heatStart : `${config.seasonStart.slice(0, 7)}-01`,
       heatLevels: config.heatLevels,
       maxPick: config.maxPick,
+      pomodoro: Object.assign({}, DEFAULTS.pomodoro, config.pomodoro || {}),
       autoPush: config.autoPush && !NO_GIT,
     },
     dataDir: DATA_DIR,
@@ -487,6 +534,23 @@ async function handle(req, res) {
       return json(res, { ok: true, day: summarizeDay(d), git: gitResult, state: stateJson() });
     }
 
+    if (req.method === 'POST' && p === '/api/away') {
+      const d = goAway();
+      return json(res, { ok: true, day: summarizeDay(d), state: stateJson() });
+    }
+
+    if (req.method === 'POST' && p === '/api/back') {
+      const d = comeBack();
+      return json(res, { ok: true, day: summarizeDay(d), state: stateJson() });
+    }
+
+    if (req.method === 'POST' && p === '/api/pomodoro') {
+      const body = await readBody(req);
+      if (body.action !== 'done') throw new Error('알 수 없는 동작: ' + body.action);
+      const d = addPomodoro();
+      return json(res, { ok: true, day: summarizeDay(d), state: stateJson() });
+    }
+
     if (req.method === 'POST' && p === '/api/todos') {
       const body = await readBody(req);
       todoAction(body.action, body.text);
@@ -513,8 +577,9 @@ function openBrowser(url) {
 fs.mkdirSync(DEVLOG_DIR, { recursive: true });
 if (!fs.existsSync(TODO_PATH)) writeTodos({ open: [], done: [] });
 
+const PORT = Number(process.env.DESK_PORT) || config.port; // DESK_PORT 는 테스트용 포트 바꾸기
 const server = http.createServer(handle);
-const url = `http://localhost:${config.port}`;
+const url = `http://localhost:${PORT}`;
 
 server.on('error', (e) => {
   if (e.code === 'EADDRINUSE') {
@@ -527,7 +592,7 @@ server.on('error', (e) => {
   }
 });
 
-server.listen(config.port, '127.0.0.1', () => {
+server.listen(PORT, '127.0.0.1', () => {
   console.log('┌──────────────────────────────────────────┐');
   console.log('│  마왕성 인사팀 · 출근부                    │');
   console.log('└──────────────────────────────────────────┘');

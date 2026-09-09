@@ -149,6 +149,21 @@ h1 { font-size: 30px; margin-top: 2px; }
 .add-today summary { cursor: pointer; color: var(--muted); font-size: 13px; }
 .add-today summary:hover { color: var(--ink-2); }
 .add-today .list li { padding: 6px 4px; }
+.status-badge.away { border-color: var(--ink-2); color: var(--ink-2); }
+
+/* ── 뽀모도로 ── */
+.pomo { margin-top: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--card-2); }
+.pomo.focus { border-color: var(--accent); }
+.pomo.break { border-color: var(--good); }
+.pomo-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.pomo-label { font-weight: 700; }
+.pomo-time { font-size: 40px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; margin: 6px 0; }
+.pomo.break .pomo-time { color: var(--good); }
+.pomo-bar { height: 6px; background: #14100e; border-radius: 3px; overflow: hidden; margin-bottom: 10px; }
+.pomo-fill { height: 100%; width: 0; background: var(--accent); transition: width 1s linear; }
+.pomo.break .pomo-fill { background: var(--good); }
+.pomo-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.pomo-note { margin-top: 12px; }
 
 /* ── 목록 ── */
 .list li {
@@ -200,8 +215,8 @@ textarea { resize: vertical; min-height: 64px; }
 @media (max-width: 720px) { .stats-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 .heatmap-wrap { overflow-x: auto; padding: 4px 0 8px; }
-#heatmap svg { display: block; font-family: var(--font); }
-.hm-label { fill: var(--muted); font-size: 10px; }
+#heatmap svg { display: block; width: 100%; height: auto; font-family: var(--font); } /* 카드 너비를 꽉 채움 */
+.hm-label { fill: var(--muted); font-size: 11px; }
 .hm-cell { fill: var(--heat-0); cursor: pointer; outline: none; }
 .hm-cell.lvl-1 { fill: var(--heat-1); }
 .hm-cell.lvl-2 { fill: var(--heat-2); }
@@ -284,12 +299,19 @@ textarea { resize: vertical; min-height: 64px; }
 .md a { color: var(--accent); }
 
 /* ── 도장 ── */
-.stamp { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; pointer-events: none; }
-.stamp span {
+.stamp { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; pointer-events: none; --stamp-color: var(--danger); --stamp-dur: 1500ms; }
+.stamp.green { --stamp-color: #5fcf6e; }   /* 출근 · 복귀 · 퇴근 */
+.stamp.yellow { --stamp-color: #f5c542; }  /* 부재 */
+.stamp-inner { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+/* 인사말이 있는 도장(퇴근)은 뒤에 어두운 막을 깔아 글이 읽히게 */
+.stamp.with-msg::before { content: ""; position: absolute; inset: 0; background: rgba(10, 8, 6, 0.6); opacity: 0; }
+.stamp.with-msg.play::before { animation: fade-in 0.3s ease forwards, stamp-out 0.4s ease forwards calc(var(--stamp-dur) - 0.4s); }
+@keyframes fade-in { to { opacity: 1; } }
+.stamp-box {
   font-size: 108px;
   font-weight: 900;
-  color: var(--danger);
-  border: 9px solid var(--danger);
+  color: var(--stamp-color);
+  border: 9px solid var(--stamp-color);
   border-radius: 14px;
   padding: 0 30px;
   line-height: 1.25;
@@ -298,13 +320,33 @@ textarea { resize: vertical; min-height: 64px; }
   opacity: 0;
   text-shadow: 0 0 1px rgba(0, 0, 0, 0.5);
 }
-.stamp.play span { animation: stamp-in 1.5s cubic-bezier(0.2, 0.9, 0.3, 1) forwards; }
+.stamp-msg { font-size: 34px; font-weight: 700; color: var(--ink); opacity: 0; margin-top: 14px; text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6); }
+.stamp-sub { font-size: 16px; color: var(--ink-2); opacity: 0; text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6); }
+.stamp-msg:empty, .stamp-sub:empty { display: none; }
+/* 찍히는 동작(0.4초) + 끝나기 0.4초 전부터 사라짐. 전체 길이는 --stamp-dur */
+.stamp.play .stamp-box {
+  animation: stamp-in 0.4s cubic-bezier(0.2, 0.9, 0.3, 1) forwards,
+             stamp-out 0.4s ease forwards calc(var(--stamp-dur) - 0.4s);
+}
+.stamp.play .stamp-msg, .stamp.play .stamp-sub {
+  animation: msg-in 0.5s ease forwards 0.3s,
+             stamp-out 0.4s ease forwards calc(var(--stamp-dur) - 0.4s);
+}
+.stamp.play .stamp-sub { animation-delay: 0.5s, calc(var(--stamp-dur) - 0.4s); }
 @keyframes stamp-in {
   0% { transform: rotate(-12deg) scale(2.4); opacity: 0; }
-  16% { transform: rotate(-12deg) scale(1); opacity: 1; }
-  70% { opacity: 1; }
-  100% { transform: rotate(-12deg) scale(1); opacity: 0; }
+  100% { transform: rotate(-12deg) scale(1); opacity: 1; }
 }
+@keyframes msg-in {
+  0% { transform: translateY(10px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+@keyframes stamp-out {
+  to { opacity: 0; }
+}
+
+/* ── 컨페티 (퇴근) ── */
+.confetti { position: fixed; inset: 0; z-index: 69; pointer-events: none; }
 
 /* ── 토스트 ── */
 .toast {
