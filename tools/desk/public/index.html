@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>마왕성 인사팀 · 출근부</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='44' fill='none' stroke='%23c8452f' stroke-width='8'/%3E%3Ctext x='50' y='62' font-size='40' text-anchor='middle' fill='%23c8452f' font-weight='700'%3E출%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <div class="brand-sub">마왕성 인사팀</div>
+    <h1>출근부</h1>
+  </div>
+  <div class="top-right">
+    <div class="date" id="top-date"></div>
+    <div class="pill" id="top-day"></div>
+  </div>
+</header>
+
+<main class="grid">
+  <!-- 근무 상태: 출근 전 / 출근 중 / 퇴근 완료 — app.js 가 통째로 그린다 -->
+  <section class="card" id="work-card" aria-live="polite"></section>
+
+  <section class="card" id="todo-card">
+    <h2>할 일</h2>
+    <form id="todo-form" class="row">
+      <input id="todo-input" type="text" placeholder="새 할 일" autocomplete="off">
+      <button type="submit" class="btn small">추가</button>
+    </form>
+    <ul id="todo-list" class="list"></ul>
+    <details id="done-details">
+      <summary>완료 <span id="done-count" class="muted"></span></summary>
+      <ul id="done-list" class="list done"></ul>
+    </details>
+  </section>
+
+  <section class="card wide" id="stats-card">
+    <div class="card-head">
+      <h2>근태 통계</h2>
+      <div class="muted small-text" id="season-label"></div>
+    </div>
+    <div class="stats-row" id="stats-row"></div>
+    <div class="heatmap-wrap"><div id="heatmap"></div></div>
+    <div class="legend" id="legend"></div>
+  </section>
+
+  <section class="card wide" id="history-card">
+    <h2>지난 데브로그</h2>
+    <ul id="history-list" class="list history"></ul>
+  </section>
+</main>
+
+<div id="tooltip" class="tooltip" role="tooltip" hidden></div>
+
+<div id="modal" class="modal" hidden>
+  <div class="modal-backdrop" data-close></div>
+  <div class="modal-panel" role="dialog" aria-modal="true">
+    <button class="modal-close" data-close aria-label="닫기">×</button>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<div id="stamp" class="stamp" hidden><span id="stamp-text"></span></div>
+<div id="toast" class="toast" hidden></div>
+
+<script src="app.js"></script>
+</body>
+</html>
