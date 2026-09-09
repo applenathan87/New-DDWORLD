@@ -14,6 +14,7 @@
 
 > "todo 찾아봐" = **이 블록만** 읽기.
 
+- **[진행중] 출근부 ver02 (2026-09-09 결정)** — 계획·결정·순서 전부 [tools/desk/ROADMAP.md](../tools/desk/ROADMAP.md). 다음 세션은 그 파일의 "첫 묶음" 1번부터. ver01은 완성·커밋됨(`tools/desk`, 데이터 `production/desk`). 9월 시범 운영 → 10월 1일 새 시즌.
 - **[최우선] 문서 정합성 복구 — 본격 개발 전 필수 (2026-09-02 결정)**
   진단: 폐기 문서(art-bible·복셀 research·technical-preferences·game-designer 에이전트/메모리)가 현행 트리·자동 로드 경로에 남아 복셀/전투 맥락이 재유입됨. 결정이 본문 수정 없이 헤더 주석으로 누적되어 본문이 옛 결정을 따름. 면접 뎁스는 문서 4개(mvp-design §7 / interview_idea v0.3 / interview-depth / interview-catch)가 미조정 상태.
   1. **격리** — "현행 트리엔 현행만". **자동 로드되는 하네스(CCGS) 설정 파일부터** 현행 기준으로 수정 — 하네스가 아니라 컨셉 전환 때 안 고친 설정이 복셀·전투 맥락 재유입 통로. art-bible·복셀 research·옛 큐는 `_archive/`로 이동
