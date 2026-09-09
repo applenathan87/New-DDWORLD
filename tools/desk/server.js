@@ -18,7 +18,7 @@ const { execFile } = require('child_process');
 
 // ───────────────────────── 설정 ─────────────────────────
 const ROOT = __dirname; // tools/desk
-const CONFIG_PATH = path.join(ROOT, 'desk.config.json');
+const CONFIG_PATH = process.env.DESK_CONFIG ? path.resolve(process.env.DESK_CONFIG) : path.join(ROOT, 'desk.config.json'); // DESK_CONFIG 는 테스트용
 const DEFAULTS = {
   port: 4123,
   dataDir: '../../production/desk',
@@ -48,6 +48,21 @@ const TODO_PATH = path.join(DATA_DIR, 'todo.md');
 const PUBLIC_DIR = path.join(ROOT, 'public');
 const NO_OPEN = process.argv.includes('--no-open');
 const NO_GIT = process.argv.includes('--no-git') || process.env.DESK_NO_GIT === '1';
+
+// --log <파일>: 콘솔 출력을 파일에도 남긴다 (창 없이 실행할 때 사용). 여러 프로세스가 같이 써도 안전하게 appendFileSync 로.
+const LOG_FILE = (() => {
+  const i = process.argv.indexOf('--log');
+  return i >= 0 && process.argv[i + 1] ? path.resolve(process.argv[i + 1]) : null;
+})();
+if (LOG_FILE) {
+  for (const level of ['log', 'warn', 'error']) {
+    const orig = console[level].bind(console);
+    console[level] = (...args) => {
+      orig(...args);
+      try { fs.appendFileSync(LOG_FILE, `[${new Date().toISOString()}] ${args.map(String).join(' ')}\n`); } catch {}
+    };
+  }
+}
 
 // ───────────────────────── 날짜/시간 ─────────────────────────
 const pad2 = (n) => String(n).padStart(2, '0');
@@ -382,6 +397,7 @@ function clockOut(fields) {
     d.body,
   );
   writeDay(d);
+  pomoClear(); // 퇴근하면 뽀모도로는 멈춘다
   return d;
 }
 
@@ -398,6 +414,7 @@ function goAway() {
   d.fm.status = 'away';
   d.fm.hours = computeHours(sessions);
   writeDay(d);
+  pomoClear(); // 자리를 비우면 뽀모도로는 멈춘다
   return d;
 }
 
@@ -418,6 +435,77 @@ function addPomodoro() {
   d.fm.pomodoros = (Number(d.fm.pomodoros) || 0) + 1;
   writeDay(d);
   return d;
+}
+
+// ───────────────────────── 뽀모도로 시계 (서버가 갖는다 — 크롬을 꺼도 알림이 울림) ─────────────────────────
+const POMO_FILE = path.join(ROOT, '.pomo.json'); // 서버가 재시작해도 이어가도록 (git 무시)
+let pomo = null;      // { phase: 'focus' | 'break', startedAt, endsAt, total } — 모두 ms
+let pomoTimer = null;
+
+const pomoCfg = () => Object.assign({}, DEFAULTS.pomodoro, config.pomodoro || {});
+
+function pomoLoad() {
+  try { const p = JSON.parse(fs.readFileSync(POMO_FILE, 'utf8')); if (p && p.endsAt) pomo = p; } catch {}
+}
+function pomoSave() {
+  try {
+    if (pomo) fs.writeFileSync(POMO_FILE, JSON.stringify(pomo));
+    else if (fs.existsSync(POMO_FILE)) fs.unlinkSync(POMO_FILE);
+  } catch {}
+}
+function pomoSchedule() {
+  clearTimeout(pomoTimer);
+  if (pomo) pomoTimer = setTimeout(pomoFire, Math.max(0, pomo.endsAt - Date.now()));
+}
+function pomoStart(phase) {
+  const mins = phase === 'focus' ? pomoCfg().focus : pomoCfg().break;
+  pomo = { phase, startedAt: Date.now(), endsAt: Date.now() + mins * 60000, total: mins * 60000 };
+  pomoSave();
+  pomoSchedule();
+}
+function pomoClear() {
+  pomo = null;
+  pomoSave();
+  clearTimeout(pomoTimer);
+}
+/** 시간이 다 됐을 때: 집중이면 기록 + 알림 + 휴식 자동 시작, 휴식이면 알림만 (다음 집중은 버튼으로) */
+function pomoFire() {
+  if (!pomo) return;
+  const cfg = pomoCfg();
+  const wasFocus = pomo.phase === 'focus';
+  pomo = null;
+  pomoSave();
+  if (wasFocus) {
+    try { addPomodoro(); } catch (e) { console.warn('[desk] 뽀모도로 기록 실패:', e.message); }
+    notifyOS(`${cfg.focus}분 집중 끝`, `${cfg.break}분 쉬세요. 휴식 타이머가 시작됐습니다.`);
+    const d = findActiveDay();
+    if (d && openSessionOf(d)) pomoStart('break'); // 근무 중일 때만 휴식을 이어간다
+  } else {
+    notifyOS('휴식 끝', '준비되면 다음 집중을 시작하세요.');
+  }
+}
+
+/** OS 알림 + 소리. 윈도우는 PowerShell 로 토스트, 맥은 osascript. 브라우저가 닫혀 있어도 뜬다 */
+function notifyOS(title, body) {
+  console.log(`[desk] 알림: ${title} — ${body}`);
+  const done = (label) => (err, so, se) => { if (err) console.warn(`[desk] ${label} 실패:`, String(se || err.message).trim()); };
+  if (process.platform === 'win32') {
+    const escXml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c]));
+    const xml = `<toast duration="long"><visual><binding template="ToastGeneric"><text>${escXml(title)}</text><text>${escXml(body)}</text></binding></visual><audio silent="true"/></toast>`;
+    const ps = [
+      '[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null',
+      '[Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime] | Out-Null',
+      '$x = New-Object Windows.Data.Xml.Dom.XmlDocument',
+      `$x.LoadXml('${xml}')`,
+      '$t = New-Object Windows.UI.Notifications.ToastNotification $x',
+      "[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\\WindowsPowerShell\\v1.0\\powershell.exe').Show($t)",
+      '(New-Object Media.SoundPlayer "$env:WINDIR\\Media\\Alarm01.wav").PlaySync()', // 방해 금지 모드여도 소리는 난다
+    ].join('; ');
+    execFile('powershell', ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-Command', ps], { windowsHide: true }, done('윈도우 알림'));
+  } else if (process.platform === 'darwin') {
+    const q = (s) => String(s).replace(/["\\]/g, '\\$&');
+    execFile('osascript', ['-e', `display notification "${q(body)}" with title "${q(title)}" sound name "Glass"`], done('맥 알림'));
+  }
 }
 
 // ───────────────────────── git (데이터 폴더만 커밋 → 푸시) ─────────────────────────
@@ -454,9 +542,11 @@ function stateJson() {
   const todayDay = days.find((d) => d.date === today) || null;
   return {
     now: new Date().toISOString(),
+    nowMs: Date.now(),
     today,
     active,
     todayDay,
+    pomo, // 서버의 뽀모도로 시계 (없으면 null)
     nextDayNumber: todayDay ? todayDay.day : nextDayNumber(today),
     todos: readTodos(),
     days,
@@ -544,11 +634,26 @@ async function handle(req, res) {
       return json(res, { ok: true, day: summarizeDay(d), state: stateJson() });
     }
 
+    if (req.method === 'GET' && p === '/api/pomo') {
+      // 화면이 2초마다 묻는 가벼운 상태 (전체 state 보다 싸다)
+      const d = findActiveDay() || readDay(todayStr());
+      return json(res, { now: Date.now(), pomo, pomodoros: d ? Number(d.fm.pomodoros) || 0 : 0 });
+    }
+
     if (req.method === 'POST' && p === '/api/pomodoro') {
       const body = await readBody(req);
-      if (body.action !== 'done') throw new Error('알 수 없는 동작: ' + body.action);
-      const d = addPomodoro();
-      return json(res, { ok: true, day: summarizeDay(d), state: stateJson() });
+      if (body.action === 'start') {
+        const d = findActiveDay();
+        if (!d || !openSessionOf(d)) throw new Error('근무 중일 때만 시작할 수 있습니다');
+        pomoStart('focus');
+      } else if (body.action === 'stop') {
+        pomoClear();
+      } else if (body.action === 'test') {
+        notifyOS('출근부 알림 테스트', '이 알림이 보이면 크롬을 꺼도 뽀모도로 알림이 옵니다.');
+      } else {
+        throw new Error('알 수 없는 동작: ' + body.action);
+      }
+      return json(res, { ok: true, state: stateJson() });
     }
 
     if (req.method === 'POST' && p === '/api/todos') {
@@ -576,6 +681,8 @@ function openBrowser(url) {
 
 fs.mkdirSync(DEVLOG_DIR, { recursive: true });
 if (!fs.existsSync(TODO_PATH)) writeTodos({ open: [], done: [] });
+pomoLoad();      // 재시작 전에 돌던 뽀모도로가 있으면 이어간다 (이미 지났으면 바로 울림)
+pomoSchedule();
 
 const PORT = Number(process.env.DESK_PORT) || config.port; // DESK_PORT 는 테스트용 포트 바꾸기
 const server = http.createServer(handle);
@@ -583,7 +690,7 @@ const url = `http://localhost:${PORT}`;
 
 server.on('error', (e) => {
   if (e.code === 'EADDRINUSE') {
-    console.log(`[desk] 이미 켜져 있는 출근부가 있습니다 → 브라우저만 엽니다 (${url})`);
+    console.log(`[desk] 이미 켜져 있는 출근부가 있습니다 (${url})${NO_OPEN ? ' — 그대로 씁니다' : ' → 브라우저만 엽니다'}`);
     openBrowser(url);
     setTimeout(() => process.exit(0), 300);
   } else {

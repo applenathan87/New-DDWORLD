@@ -53,127 +53,51 @@ let heatIndex = {};      // date → day 요약 (툴팁용)
 
 async function load() {
   S = await api('/api/state');
+  clockOffset = S.nowMs - Date.now();
   render();
-  // 새로고침 전에 돌던 뽀모도로가 있으면 이어서 (근무 중일 때만)
-  if (pomo) {
-    if (S.active && S.active.status === 'open') pomoSchedule();
-    else pomoCancel();
-  }
   updateTitle();
 }
 
-// ───────────────────────── 뽀모도로 (브라우저 안에서 돎, 상태는 localStorage) ─────────────────────────
-const POMO_KEY = 'desk.pomo';
-let pomo = loadPomo();   // { phase: 'focus' | 'break', endsAt, total } 또는 null
-let pomoAlarm = null;    // 끝나는 시각에 맞춘 단일 타이머
-let audioCtx = null;
-
-function loadPomo() {
-  try { const p = JSON.parse(localStorage.getItem(POMO_KEY)); return p && p.endsAt ? p : null; } catch { return null; }
-}
-function savePomo() {
-  try { pomo ? localStorage.setItem(POMO_KEY, JSON.stringify(pomo)) : localStorage.removeItem(POMO_KEY); } catch {}
-}
+// ───────────────────────── 뽀모도로 (시계·알림은 서버가 담당 — 크롬을 꺼도 울림) ─────────────────────────
+let clockOffset = 0; // 서버 시각 − 브라우저 시각 (같은 PC라 거의 0)
 const pomoCfg = () => Object.assign({ focus: 50, break: 10 }, (S && S.config.pomodoro) || {});
-const pomoRemaining = () => (pomo ? Math.max(0, pomo.endsAt - Date.now()) : 0);
-const pomoProgress = () => (pomo ? Math.min(100, 100 * (1 - pomoRemaining() / pomo.total)) : 0);
+const pomoRemaining = () => (S && S.pomo ? Math.max(0, S.pomo.endsAt - (Date.now() + clockOffset)) : 0);
+const pomoProgress = () => (S && S.pomo ? Math.min(100, 100 * (1 - pomoRemaining() / S.pomo.total)) : 0);
 const fmtClock = (ms) => { const s = Math.ceil(ms / 1000); return `${pad2(Math.floor(s / 60))}:${pad2(s % 60)}`; };
 
-function pomoStart(phase) {
-  const mins = phase === 'focus' ? pomoCfg().focus : pomoCfg().break;
-  pomo = { phase, endsAt: Date.now() + mins * 60000, total: mins * 60000 };
-  savePomo();
-  pomoSchedule();
-  renderWork();
-  updateTitle();
+function updateTitle() {
+  document.title = S && S.pomo ? `${fmtClock(pomoRemaining())} ${S.pomo.phase === 'focus' ? '집중' : '휴식'} · 출근부` : '마왕성 인사팀 · 출근부';
 }
 
-/** 끝나는 시각에 딱 한 번 울리는 타이머. 체인이 아니라서 탭이 뒤에 있어도 거의 제때 울린다 */
-function pomoSchedule() {
-  clearTimeout(pomoAlarm);
-  if (pomo) pomoAlarm = setTimeout(pomoFinish, pomoRemaining() + 50);
-}
-
-function pomoCancel() {
-  pomo = null;
-  savePomo();
-  clearTimeout(pomoAlarm);
-  updateTitle();
-}
-
-async function pomoFinish() {
-  if (!pomo) return;
-  const cfg = pomoCfg();
-  const wasFocus = pomo.phase === 'focus';
-  pomo = null; // 두 번 울리지 않게 먼저 비운다
-  savePomo();
-  if (wasFocus) {
-    notify(`${cfg.focus}분 집중 끝`, `${cfg.break}분 쉬세요. 휴식 타이머가 시작됐습니다.`);
-    chime();
-    try { const r = await api('/api/pomodoro', { action: 'done' }); S = r.state; } catch (e) { toast(e.message, true); }
-    if (S.active && S.active.status === 'open') pomoStart('break');
-    else { renderWork(); updateTitle(); }
-  } else {
-    notify('휴식 끝', '준비되면 다음 집중을 시작하세요.');
-    chime();
-    renderWork();
-    updateTitle();
-  }
-}
-
-async function startFocus() {
-  ensureAudio(); // 소리는 클릭 안에서 준비해 둬야 나중에 울릴 수 있다
-  const ok = await ensureNotifyPermission();
-  if (!ok) toast('크롬 알림이 꺼져 있어 화면 안내와 소리로만 알립니다.');
-  pomoStart('focus');
-}
-
-async function ensureNotifyPermission() {
-  if (!('Notification' in window)) return false;
-  if (Notification.permission === 'granted') return true;
-  if (Notification.permission === 'denied') return false;
-  try { return (await Notification.requestPermission()) === 'granted'; } catch { return false; }
-}
-
-/** 크롬 알림 + 화면 토스트. 탭이 뒤에 있어도 윈도우 알림으로 뜬다 */
-function notify(title, body) {
-  toast(`${title} — ${body}`);
-  if ('Notification' in window && Notification.permission === 'granted') {
-    try {
-      const n = new Notification(title, { body, tag: 'desk-pomo' });
-      n.onclick = () => { window.focus(); n.close(); };
-    } catch {}
-  }
-}
-
-function ensureAudio() {
+/** start | stop | test — 서버에 요청하고 돌아온 상태로 다시 그린다 */
+async function pomoAction(action) {
   try {
-    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const r = await api('/api/pomodoro', { action });
+    S = r.state;
+    clockOffset = S.nowMs - Date.now();
+    render();
+    updateTitle();
+    if (action === 'test') toast('알림을 보냈습니다. 화면 오른쪽 아래 윈도우 알림을 확인하세요.');
+  } catch (e) {
+    toast(e.message, true);
+  }
+}
+
+/** 2초마다 서버의 뽀모도로 상태를 확인 — 단계가 바뀌면(집중→휴식→끝) 화면을 새로 그린다 */
+async function pomoPoll() {
+  if (!S || !S.active || document.hidden) return;
+  try {
+    const r = await api('/api/pomo');
+    clockOffset = r.now - Date.now();
+    if (JSON.stringify(r.pomo) === JSON.stringify(S.pomo)) return;
+    const prev = S.pomo, next = r.pomo;
+    await load();
+    if (prev && prev.phase === 'focus' && next && next.phase === 'break') toast(`${pomoCfg().focus}분 집중 끝 — ${pomoCfg().break}분 휴식 시작`);
+    else if (prev && prev.phase === 'break' && !next) toast('휴식 끝 — 준비되면 다음 집중을 시작하세요.');
   } catch {}
 }
-
-/** 짧은 3음 차임 (파일 없이 합성) */
-function chime() {
-  if (!audioCtx) return;
-  const t0 = audioCtx.currentTime;
-  [[880, 0], [1175, 0.18], [1568, 0.36]].forEach(([freq, dt]) => {
-    const o = audioCtx.createOscillator();
-    const g = audioCtx.createGain();
-    o.type = 'sine';
-    o.frequency.value = freq;
-    g.gain.setValueAtTime(0.0001, t0 + dt);
-    g.gain.exponentialRampToValueAtTime(0.25, t0 + dt + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dt + 0.5);
-    o.connect(g).connect(audioCtx.destination);
-    o.start(t0 + dt);
-    o.stop(t0 + dt + 0.55);
-  });
-}
-
-function updateTitle() {
-  document.title = pomo ? `${fmtClock(pomoRemaining())} ${pomo.phase === 'focus' ? '집중' : '휴식'} · 출근부` : '마왕성 인사팀 · 출근부';
-}
+setInterval(pomoPoll, 2000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) pomoPoll(); });
 
 /** 그날 HH:MM 부터 지금까지 지난 분 */
 function minutesSince(date, hhmm) {
@@ -313,7 +237,6 @@ async function doClockIn() {
 async function doAway() {
   try {
     const r = await api('/api/away', {});
-    pomoCancel();
     S = r.state;
     render();
     stamp('부재', 'yellow');
@@ -366,6 +289,7 @@ function renderAddToToday() {
 /** 뽀모도로 패널 (근무 중일 때만). 대기 / 집중 / 휴식 세 모습 */
 function renderPomodoro() {
   const cfg = pomoCfg();
+  const pomo = S.pomo;
   const count = S.active.pomodoros || 0;
   const box = el('div', { class: 'pomo' });
   const head = (label) => el('div', { class: 'pomo-head' },
@@ -376,8 +300,9 @@ function renderPomodoro() {
     box.append(
       head('뽀모도로'),
       el('div', { class: 'pomo-row' },
-        el('button', { class: 'btn primary', onclick: startFocus }, `집중 시작 · ${cfg.focus}분`),
-        el('span', { class: 'muted small-text' }, `${cfg.focus}분 집중이 끝나면 알림과 함께 ${cfg.break}분 휴식이 이어집니다.`),
+        el('button', { class: 'btn primary', onclick: () => pomoAction('start') }, `집중 시작 · ${cfg.focus}분`),
+        el('span', { class: 'muted small-text' }, `${cfg.focus}분이 끝나면 윈도우 알림과 소리가 울리고 ${cfg.break}분 휴식이 이어집니다. 크롬을 꺼도 됩니다.`),
+        el('button', { class: 'btn small', onclick: () => pomoAction('test') }, '알림 테스트'),
       ),
     );
     return box;
@@ -389,8 +314,8 @@ function renderPomodoro() {
     el('div', { class: 'pomo-time', id: 'pomo-time' }, fmtClock(pomoRemaining())),
     el('div', { class: 'pomo-bar' }, el('div', { class: 'pomo-fill', id: 'pomo-fill', style: `width:${pomoProgress()}%` })),
     el('div', { class: 'pomo-row' },
-      el('button', { class: 'btn small', onclick: () => { pomoCancel(); renderWork(); } }, isFocus ? '중지' : '휴식 끝내기'),
-      el('span', { class: 'muted small-text' }, isFocus ? '끝나면 크롬 알림과 소리로 알립니다.' : '끝나면 알림이 오고, 다음 집중은 버튼으로 시작합니다.'),
+      el('button', { class: 'btn small', onclick: () => pomoAction('stop') }, isFocus ? '중지' : '휴식 끝내기'),
+      el('span', { class: 'muted small-text' }, isFocus ? '끝나면 서버가 윈도우 알림과 소리로 알립니다. 이 창을 닫아도 됩니다.' : '끝나면 알림이 오고, 다음 집중은 버튼으로 시작합니다.'),
     ),
   );
   return box;
@@ -432,7 +357,7 @@ async function doClockOut(e) {
     const r = await api('/api/clockout', body);
     view = 'idle';
     S = r.state;
-    pomoCancel();
+    updateTitle();
     render();
     const d = r.day;
     stamp('퇴근', 'green', {
@@ -817,13 +742,13 @@ setInterval(() => {
     if (a) a.textContent = fmtDuration(awayMinutes());
     if (++tick % 60 === 0) { renderStats(); renderHeatmap(); }
   }
-  if (pomo) {
+  if (S.pomo) {
     const t = $('#pomo-time');
     if (t) t.textContent = fmtClock(pomoRemaining());
     const f = $('#pomo-fill');
     if (f) f.style.width = `${pomoProgress()}%`;
     updateTitle();
-    if (Date.now() >= pomo.endsAt) pomoFinish(); // 예비: 단일 타이머가 밀렸을 때
+    if (pomoRemaining() === 0) pomoPoll(); // 끝났으면 바로 서버 상태를 확인해 화면을 바꾼다
   }
 }, 1000);
 

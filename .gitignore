@@ -146,3 +146,6 @@ $RECYCLE.BIN/
 
 # === 로컬 참고 이미지 (Pinterest 무드보드 — 커밋 안 함) ===
 image/
+
+# === 출근부 로컬 상태 (tools/desk) ===
+tools/desk/.pomo.json
