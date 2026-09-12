@@ -28,6 +28,8 @@
 
 ## 첫 묶음 — 다음 세션에 할 일 (순서대로)
 
+> **2026-09-12 순서 조정** (PM 결정, 항목 = [production/milestones/M00-prep.md](../../production/milestones/M00-prep.md)): 10월에 매일 쓰는 것을 먼저 — ① 3번(다음에 할 것 → todo.md) ② 두 번째 묶음의 **마일스톤 파일 읽기 + 진행 게이지**(`production/milestones/` status: active 파일, 출근 추천에 백로그 상위 3개) ③ 1번(퇴근 보고 3칸) ④ 5·6번(today.md·훅). 2·4·7·8번은 여유 있을 때. 마일스톤 파일 형식은 M00·M01 파일이 기준(frontmatter: title·start·due·status·done_when, 백로그 = `- [ ] NN 이름 (S/M/L) — 완료 조건`).
+
 1. **퇴근 보고 간소화** — `server.js` SECTIONS = ['한 일', '메모', '다음에 할 것']. 기존 파일의 "배운 것/막힌 것"은 "모르는 섹션 보존" 로직으로 그대로 남긴다. `app.js` 폼 3칸. README 예시 갱신.
 2. **오늘 커밋 요약** — `server.js`에 `git log --since="YYYY-MM-DD 00:00" --format=...`(리포 루트) → 커밋 메시지 첫 줄 + 건드린 최상위 폴더로 묶어 줄 목록 생성. 퇴근 폼 "한 일"에 프리필(완료 할 일 + 커밋 요약). 같은 날 두 번째 퇴근은 중복 없이(이미 있는 줄은 건너뜀). `desk.config.json`에 `repos: ["."]`(나중에 볼트 추가 자리).
 3. **다음에 할 것 → todo.md** — 퇴근 처리 시 각 줄을 열린 할 일로 추가(중복 제외). 출근 추천 목록(`renderPickPanel`)에서 "어제의 다음에 할 것"을 맨 위 + 미리 체크.

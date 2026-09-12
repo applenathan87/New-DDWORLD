@@ -16,7 +16,8 @@
 ├── docs/                        # 기술 문서 — architecture/(ADR) · pipeline/(블렌더 로우폴리 가이드, 블렌더→유니티) · onboarding-brief · WORKFLOW-GUIDE
 │   └── engine-reference/        # Curated engine API snapshots (version-pinned)
 ├── production/                  # 기록·PM
-│   ├── desk/                    # 출근부 데이터 (todo.md · devlog/YYYY-MM-DD.md) — 유일한 작업 기록
+│   ├── desk/                    # 출근부 데이터 (todo.md = 오늘 할 일(당긴 것 ≤3 + 잡무) · devlog/YYYY-MM-DD.md) — 유일한 작업 기록
+│   ├── milestones/              # 마일스톤 파일 (M00 준비 · M01 GDD v1 …) — 한 번에 하나만 active, 백로그 = 세션 단위 항목. 세부 목록은 도메인 문서(시스템 인덱스·에셋 체크리스트)
 │   ├── session-state/           # Session state (active.md)
 │   ├── session-logs/            # Session audit trail (gitignored)
 │   └── reorg-2026-09.md         # 2026-09 폴더 재정비 기록
