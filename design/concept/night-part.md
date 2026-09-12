@@ -3,6 +3,7 @@
 > 상태: **Draft v0.2** (2026-07-05 — 사용자 결정 반영) · 부모 문서: [mvp-design.md](mvp-design.md)
 > 레퍼런스 근거: [ref-games/README.md](../research/ref-games/README.md) (5종 교차 조사)
 > **v0.2 확정 결정**: ① 데모에 밤 파트 구현 ② 장소 = **내 방** ③ 행동 횟수 **제한 없음** ④ 상점·미니게임 = **직급별 언락** ⑤ 톤 = **경쾌·코믹** (디스토피아식 생계 압박 배제)
+> ⚠️ **2026-09-12 (v0.3 예정)**: 컨셉 문서([design/gdd/game-concept.md](../gdd/game-concept.md))에서 밤 허브를 **미니맵 UI**(포셔노믹스식 지도·아이콘 클릭)로, 내용을 **상점·바·인물 이벤트·관계 서브스토리(→ 카드)·뇌물 청탁**으로 확장하기로 결정. "내 방 3D 허브"는 대체됨. 관계 설계 근거 = [potionomics-night-rapport.md](../research/ref-games/potionomics-night-rapport.md) (결정 포인트 3개: 관계 전용 카드 범위·인물 로테이션·랭크 구조). 이 문서의 v0.3 갱신은 밤 파트 GDD 작성 때.
 
 ---
 

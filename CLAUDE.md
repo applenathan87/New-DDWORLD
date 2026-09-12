@@ -5,8 +5,8 @@ Papers, Please식 심문·판단 + 책상 위 물건(도장·이력서·질문�
 
 ## 정본 (내용은 여기서 설명하지 않는다 — 링크만)
 
-- **컨셉·후크**: [design/concept/concept-demon-hr.md](design/concept/concept-demon-hr.md) · **MVP 기획**: [design/concept/mvp-design.md](design/concept/mvp-design.md) · 인덱스: [design/concept/_index.md](design/concept/_index.md) · 화면 목업: [design/concept/refs/면접화면-목업.png](design/concept/refs/면접화면-목업.png)
-- **비주얼 방향** (아트 정본 재작성 전까지 이 두 줄이 기준): 전체 로우폴리 3D, 캐릭터는 복셀풍(블로키) 로우폴리 — 블렌더 단일 파이프라인(MagicaVoxel 폐기, 2026-08-18). 톤 = 촛불 켜진 마왕성 사무실, 따뜻+어두운 대비, "귀여운데 사악한". 카메라 = 고정 데스크 클로즈업. 애니 = 면접 리액션 2종(긴장/안도) + 이펙트 수준. 코지 미니어처·틸트시프트 톤은 미승계. 근거 = [ADR-002](docs/architecture/ADR-002-visual-style-low-poly-3d.md) 헤더 갱신분. 아트바이블은 STALE(옛 헥사 기준).
+- **게임 컨셉 정본**: [design/gdd/game-concept.md](design/gdd/game-concept.md) (2026-09-12 v1 — 피치·후크·필라·코어 루프·MVP 정의) · 상세 기획: [design/concept/mvp-design.md](design/concept/mvp-design.md) · 컨셉 원문: [concept-demon-hr.md](design/concept/concept-demon-hr.md) · 인덱스: [design/concept/_index.md](design/concept/_index.md) · 화면 목업: [design/concept/refs/면접화면-목업.png](design/concept/refs/면접화면-목업.png). 어긋나면 game-concept.md가 우선.
+- **비주얼 방향** (아트 정본 재작성 전까지 이 두 줄이 기준): 캐릭터·환경·소품 전부 **로우폴리 3D — 블렌더 + Substance Painter(핸드페인트풍 텍스처)**. 복셀풍(블로키) 캐릭터 룩은 2026-09-12 폐기 (MagicaVoxel은 2026-08-18 폐기). 톤 = 촛불 켜진 마왕성 사무실, 따뜻+어두운 대비, "귀여운데 사악한". 카메라 = 고정 데스크 클로즈업. 애니 = 면접 리액션 2종(긴장/안도) + 이펙트 수준. 코지 미니어처·틸트시프트 톤은 미승계. [ADR-002](docs/architecture/ADR-002-visual-style-low-poly-3d.md)·아트바이블·에셋 체크리스트의 "복셀풍" 표기는 STALE — GDD v1 후 아트 정본 재작성 때 갱신.
 - **폐기 컨셉(참조 금지)**: [design/gdd/_archive/README.md](design/gdd/_archive/README.md) — **PvP·고스트·매칭·판돈·심리전 / 헥사·영토 확장·내 군대·400명 전투·소모전·permadeath·오토배틀러** 키워드가 나오면 옛 맥락이다. ADR-001·003도 Superseded.
 
 ## 지금 — 어디서 무엇을
