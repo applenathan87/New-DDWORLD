@@ -1,8 +1,8 @@
 # DDworld
 
 > ⚠️ **2026-07-03 코어 전환: (PvE 헥사 오토배틀러) → 「마왕성 인사팀」(가제) — 다크판타지 코미디 HR 시뮬 + 다이어제틱 데스크.**
-> **현행 기준 = [ideation/concept-demon-hr.md](ideation/concept-demon-hr.md) + [ideation/mvp-design.md](ideation/mvp-design.md).**
-> 정식 GDD는 아직 미작성 — ideation에서 확정 후 `design/gdd/`로 승격 예정 ([design/gdd/README.md](design/gdd/README.md)).
+> **현행 기준 = [design/concept/concept-demon-hr.md](design/concept/concept-demon-hr.md) + [design/concept/mvp-design.md](design/concept/mvp-design.md).**
+> 정식 GDD는 아직 미작성 — `design/concept/`(옛 ideation/, 2026-09-12 이동)에서 확정 후 `design/gdd/`로 승격 예정 ([design/gdd/README.md](design/gdd/README.md)). **10월 새 시즌 첫 마일스톤 = GDD v1 확정.**
 > **폐기(참조 금지) — 컨셉이 두 번 죽었다**: ① 1세대 PvP 심리전 ② 2세대 PvE 헥사 영토 확장. 옛 문서 전부 `design/gdd/_archive/`(01-pvp-psychological·02-pve-hex) + `design/research/_archive/`로 이동. 인덱스 = [_archive/README.md](design/gdd/_archive/README.md).
 > **다음 키워드가 나오면 폐기 맥락이다**: PvP·고스트·매칭·판돈·심리전 / 헥사·영토 확장·내 군대·400명 전투·소모전·permadeath·오토배틀러.
 
@@ -13,7 +13,7 @@
 **당분간 메인 작업은 [`Origin/`](Origin/CLAUDE.md)에서 진행한다.**
 유니티를 처음부터 하나하나 이해하며 「마왕성 인사팀」 MVP("간파가 재밌고 도장이 손맛 있는 면접 데스크")를 직접 만드는 학습·제작 트랙.
 
-- 전체 지도: [Origin/roadmap.md](Origin/roadmap.md) (0~9단계) · 작업일지: `Origin/journal/`
+- 전체 지도: [Origin/roadmap.md](Origin/roadmap.md) (0~9단계) · 유니티 프로젝트 = 최상위 `game/`(0단계에서 Unity Hub로 생성) · 작업 기록 = 출근부(`production/desk/`) 한 곳 (Origin/journal은 2026-09-12 폐지)
 - **작업 방식의 핵심 = 사용자의 이해도 축적**: 이해를 쌓아 확실한 디렉션을 주고, 직접 고칠 부분은 직접 고칠 수 있게 되는 것이 목표. 분담은 유연 — 사용자가 직접 하는 부분도, Claude에게 맡기는 부분도 있다. 단 Claude는 항상 "왜/어떻게"를 설명하며 진행. 상세는 [Origin/CLAUDE.md](Origin/CLAUDE.md).
 - Origin 폴더에서의 작업은 학습 공간이므로 아래 프로덕션 기준(coding standards의 GDD 8섹션, 테스트 게이트 등)을 적용하지 않는다 (프로토타입 수준).
 - 기획 문서 작업(GDD·아트바이블 등)은 기존대로 이 저장소 규칙을 따른다.
@@ -37,7 +37,7 @@
 - **톤**: 촛불 켜진 마왕성 사무실 — 따뜻+어두운 대비, "귀여운데 사악한" 대비. **코지 미니어처/틸트시프트 디오라마 톤은 미승계**(옛 헥사 전투 게임 기준).
 - **애니메이션**: 면접 리액션 2종(긴장/안도) + 이펙트 수준. *전투용 부위분리 풀 리깅·400명 크라우드 렌더링([ADR-003](docs/architecture/ADR-003-rigid-instancing-crowd-rendering.md))은 폐기.*
 - **카메라**: 고정 데스크 클로즈업.
-- **레퍼런스**: Papers, Please · Strange Horticulture(다이어제틱 데스크). 화면 목업 = [ideation/refs/면접화면-목업.png](ideation/refs/면접화면-목업.png).
+- **레퍼런스**: Papers, Please · Strange Horticulture(다이어제틱 데스크). 화면 목업 = [design/concept/refs/면접화면-목업.png](design/concept/refs/면접화면-목업.png).
 
 ## Technology Stack
 
@@ -62,7 +62,7 @@
 
 ### 저장소 = 옵시디언 볼트 (2026-09-12 통합)
 
-옛 볼트 `C:\ProjectDDWORLD`는 폐기. **이 저장소 폴더 하나가 게임 저장소이자 옵시디언 볼트**다. 옵시디언 검색 제외: `prototypes/`, `image/`, `.claude/`, `Origin/project/`.
+옛 볼트 `C:\ProjectDDWORLD`는 폐기. **이 저장소 폴더 하나가 게임 저장소이자 옵시디언 볼트**다. 옵시디언 검색 제외: `game/`, `_archive/unity-prototype/`, `image/`, `.claude/`, `production/session-logs/`. 2026-09-12 폴더 재정비(ideation→design/concept, REF_GAME→design/research/ref-games, 프로토→_archive, 옛 데브로그·src·.github·registry 삭제) 기록 = [production/reorg-2026-09.md](production/reorg-2026-09.md).
 
 ## Engine Version Reference
 

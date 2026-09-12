@@ -35,17 +35,19 @@
 5. **today.md** — 출근·복귀·할 일 변경·퇴근 때 갱신. 내용: 날짜/Day/상태, 오늘 할 일(완료 표시), 어제의 다음에 할 것, 최근 결정 3개, (있으면) 현재 마일스톤. 위치 `production/desk/today.md` (자동 커밋 범위 안).
 6. **SessionStart 훅** — `.claude/settings.json`의 `hooks.SessionStart`에 matcher `startup|resume|clear|compact`로 명령 추가: today.md 출력 + `git log --since=today --oneline` 출력. 기존 훅(active.md 안내)과 공존. Windows에서 돌아야 하므로 node 스크립트(`tools/desk/briefing.js`)로 작성해 훅이 `node tools/desk/briefing.js`를 호출.
 7. **스킬 삭제** — `.claude/commands/세션시작.md`, `세션종료.md`(게임 리포) 삭제. 볼트의 같은 두 파일도 삭제하되, 볼트 세션시작에 있던 "읽을거리(안읽음 아티클) 확인"은 주간 회고(두 번째 묶음)로 이관한다는 메모를 이 파일에 남긴다. `.claude/session_start.txt` 삭제.
-8. **문서 갱신** — `tools/desk/README.md`, 루트 `CLAUDE.md`의 협업 규칙(세션 상태 항목: today.md·데브로그가 기록, 세션 스킬 없음). `Origin/CLAUDE.md`의 작업일지(DAY 파일·000-log) 규칙은 10월 재정비 때 출근부로 일원화.
+8. **문서 갱신** — `tools/desk/README.md`, 루트 `CLAUDE.md`의 협업 규칙(세션 상태 항목: today.md·데브로그가 기록, 세션 스킬 없음). ~~`Origin/CLAUDE.md`의 작업일지(DAY 파일·000-log) 규칙은 10월 재정비 때 출근부로 일원화.~~ → 2026-09-12 완료 (journal 폐지, Origin/CLAUDE.md 갱신).
 9. **테스트** — 임시 데이터 폴더(`DESK_DATA_DIR`)로 퇴근 프리필·decisions.md·today.md·다음 할 일 이어가기 확인. 훅은 새 창을 열어 브리핑이 뜨는지 확인. 실제 서버는 `출근.bat`로 재시작.
 
-## 두 번째 묶음 — 10월 재정비(GDD·볼트 폴더 리뉴얼) 후
+## 두 번째 묶음 — 10월 재정비(GDD 작성) 후
+
+> 볼트 폴더 리뉴얼은 2026-09-12에 선행 완료 ([production/reorg-2026-09.md](../../production/reorg-2026-09.md)). 10월 재정비에 남은 것 = GDD v1 작성 + 마일스톤·주간 계획 형식.
 
 - 마일스톤 파일(이름·목표일·완료 조건·백로그) + 상단 진행 게이지 카드(D-day, 끝난 할 일/전체)
 - 주간 계획 파일(`production/desk/weekly/YYYY-Www.md`) + 출근 추천 연결
 - 주간 회고 화면: 지난주 통계 자동(시간·출근일·뽀모도로·끝낸 할 일·데브로그 제목) + 3문항(잘된 것·막힌 것·다음 주 3가지) + 읽을거리 확인 → 주간 파일
 - 할 일 3칸(지금 3개 제한 / 다음 / 나중) + 마일스톤 태그
-- 볼트 리포 포함 방식 결정 (결정 사항 2번)
-- Origin 작업일지 규칙 정리, 첫 마일스톤 = "GDD v1 확정"
+- ~~볼트 리포 포함 방식 결정~~ (2026-09-12 볼트 통합으로 소멸)
+- ~~Origin 작업일지 규칙 정리~~ (2026-09-12 완료) · 첫 마일스톤 = "GDD v1 확정"
 
 ## ver03 후보
 

@@ -2,6 +2,16 @@
 
 When authoring or editing files in this directory, follow these standards.
 
+## Concept Docs (`design/concept/`)
+
+현행 기획 정본 — GDD 승격 전 단계 (옛 `ideation/`, 2026-09-12 이동). 인덱스 = `design/concept/_index.md`.
+8섹션 표준과 `/design-review`는 **적용하지 않는다** — 날것의 아이디어를 쌓는 곳.
+확정된 시스템만 `/design-system`으로 `design/gdd/`에 승격한다.
+
+## Research (`design/research/`)
+
+`notes/` 기획 이론 노트 · `takeaways.md` 읽기 볼트(C:\Reading)에서 가져온 결론 한 줄씩 · `ref-games/` 레퍼런스 게임 조사 (옛 `REF_GAME/`).
+
 ## GDD Files (`design/gdd/`)
 
 Every GDD must include all **8 required sections** in this order:

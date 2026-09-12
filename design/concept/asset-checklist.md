@@ -1,6 +1,6 @@
 # 에셋 체크리스트 — 마왕성 인사팀 (현행 스펙 전수)
 
-> 상태: **v0.2** (2026-08-18) · 부모: [mvp-design.md](mvp-design.md) · 참조: [interview_idea.md](interview_idea.md)(덱빌딩 v0.3) · [night-part.md](night-part.md)(밤 파트 v0.2) · [../prototypes/unity-prototype/README.md](../prototypes/unity-prototype/README.md)(프로토 현황)
+> 상태: **v0.2** (2026-08-18) · 부모: [mvp-design.md](mvp-design.md) · 참조: [interview_idea.md](interview_idea.md)(덱빌딩 v0.3) · [night-part.md](night-part.md)(밤 파트 v0.2) · [_archive/unity-prototype/README.md](../../_archive/unity-prototype/README.md)(프로토 현황)
 > 목적: 현행 스펙이 요구하는 제작물의 **전체 슬롯 목록**. 지금 다 만드는 목록이 아니라, 로드맵 **M5(아트 패스)~M6(데모 폴리시)** 때 갈아끼울 자리 표시.
 > 현 프로토는 그레이박스 + 절차생성 사운드로 **전체 루프가 이미 가동 중** — ✅는 "임시 구현이 자리를 지키고 있음"이지 최종 에셋 보유가 아님.
 
@@ -32,11 +32,11 @@
 
 | 항목 | 상태 | 비고 |
 |---|---|---|
-| 책상·석벽 사무실·촛대 | ✅ | 그레이박스. 블렌더 가이드 = [blender-lowpoly-desk-guide.md](../Origin/docs/blender-lowpoly-desk-guide.md) |
+| 책상·석벽 사무실·촛대 | ✅ | 그레이박스. 블렌더 가이드 = [blender-lowpoly-desk-guide.md](../../Origin/docs/blender-lowpoly-desk-guide.md) |
 | 도장 (통과/탈락 + 스케줄 확정 초록) | ✅ | 보류 도장 추가 여부 = mvp-design 열린 질문 #6 |
 | 이력서·공문 종이류, 대기/완료 더미 | ✅ | 종이 자체는 2D 템플릿 축 (§3) |
 | 깃펜 | ✅ | 비행·트윗치 연출 포함 가동 중 |
-| 수정구 (전화) | ✅ | 연출·에셋 명세 = [crystal-orb-guide.md](../prototypes/unity-prototype/tools/crystal-orb-guide.md) |
+| 수정구 (전화) | ✅ | 연출·에셋 명세 = [crystal-orb-guide.md](../../_archive/unity-prototype/tools/crystal-orb-guide.md) |
 | 캘린더 일정표·사진 트레이·통화 메모장·근거 메모 패드 | ✅ | 스케줄링 세트 |
 | 던질 수 있는 잡소품 (해골·책 더미·머그) | ✅ | 블렌더 머그는 사이드 옵션 이월 항목 |
 | 서랍 1칸 (JD 공문·수배 전단 거점) | 🔲 | S3 가젯 단계에서 구현 예정 |
@@ -58,7 +58,7 @@
 
 | 항목 | 상태 | 비고 |
 |---|---|---|
-| 이력서 양피지 템플릿 | ✅ | **실에셋 적용 완료** — 교체 = 이미지+layout.json만 ([template-layout-guide.md](../prototypes/unity-prototype/tools/template-layout-guide.md)) |
+| 이력서 양피지 템플릿 | ✅ | **실에셋 적용 완료** — 교체 = 이미지+layout.json만 ([template-layout-guide.md](../../_archive/unity-prototype/tools/template-layout-guide.md)) |
 | 공문/JD 문서 템플릿 | 🔲 | 현재 텍스트 위주 — 이력서와 같은 템플릿 방식 권장 |
 | 수배 전단 | 🔲 | 서랍(S3)과 세트 |
 | 카드 아트 — 질문 5종 + 기술 3종 | 🔲 | 확장 대비 **프레임 템플릿 + 아이콘** 구조 권장 (카드마다 풀 일러스트 금지 — 비용 방파제) |
@@ -150,7 +150,7 @@
 |---|---|---|
 | 지원자 케이스 (서류 34 / 면접 16 / 스케줄 14) | ✅ | 목표 분량 초과 달성 |
 | 기존 케이스 태깅 (온도 창 tell 4~6건 + 결정타 2경로 점검) | ⏸ | 덱빌딩 §6 확정 후 — 구현 순서 ④ |
-| 시트 저작 파이프라인 전환 | 🔲 | **서류 20건+ 도달로 전환 시점 이미 지남** — 가이드·변환기 있음 ([case-sheet-guide.md](../prototypes/unity-prototype/tools/case-sheet-guide.md)) |
+| 시트 저작 파이프라인 전환 | 🔲 | **서류 20건+ 도달로 전환 시점 이미 지남** — 가이드·변환기 있음 ([case-sheet-guide.md](../../_archive/unity-prototype/tools/case-sheet-guide.md)) |
 | 신문 기사 풀 | ✅ | 8종 — 본편에서 확장 |
 | 대사 매트릭스 | ✅ | 현행 커버 — 질문 카드 추가 시에만 증산 (기술 카드는 대사 불필요) |
 

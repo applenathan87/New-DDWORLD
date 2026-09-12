@@ -1,7 +1,7 @@
 # DDworld — 신규 모델/협업자 온보딩 브리핑
 
 > **용도**: 새 AI 모델이나 협업자에게 프로젝트를 "다 읽지 않고" 빠르게 파악시키는 큐레이션 읽기 가이드.
-> **Last Updated**: 2026-07-03 (「마왕성 인사팀」 전환 반영)
+> **Last Updated**: 2026-09-12 (폴더 재정비 반영 — ideation→design/concept, 프로토→_archive)
 
 ---
 
@@ -23,9 +23,9 @@
 
 ## ① 먼저 읽어라 (현행 정본)
 
-1. **[ideation/concept-demon-hr.md](../ideation/concept-demon-hr.md)** — 컨셉·후크·물성 원칙·업무 스코프 확장(가젯 진행)·커리어 아크.
-2. **[ideation/mvp-design.md](../ideation/mvp-design.md)** — MVP 전체 기획: 3일+승진(성과), JD 적합 판정, 가젯 진행(촛불→질문카드→돋보기), 하루 결산+지연 사고, 질문 횟수 제한.
-3. **[ideation/refs/면접화면-목업.png](../ideation/refs/면접화면-목업.png)** — 사용자 제작 화면 목업 (비주얼·UX 타깃).
+1. **[design/concept/concept-demon-hr.md](../design/concept/concept-demon-hr.md)** — 컨셉·후크·물성 원칙·업무 스코프 확장(가젯 진행)·커리어 아크.
+2. **[design/concept/mvp-design.md](../design/concept/mvp-design.md)** — MVP 전체 기획: 3일+승진(성과), JD 적합 판정, 가젯 진행(촛불→질문카드→돋보기), 하루 결산+지연 사고, 질문 횟수 제한.
+3. **[design/concept/refs/면접화면-목업.png](../design/concept/refs/면접화면-목업.png)** — 사용자 제작 화면 목업 (비주얼·UX 타깃).
 
 ## ② 지금 실제 제작 (작업 트랙)
 
@@ -47,4 +47,4 @@
 ## 사용 팁
 
 - 목적이 명확하면 ①의 2개(concept + mvp-design)만으로 충분할 때가 많다.
-- 이 문서도 전환이 진행되면 갱신 대상. 현행 정본(ideation/)과 어긋나면 정본이 우선.
+- 이 문서도 전환이 진행되면 갱신 대상. 현행 정본(design/concept/)과 어긋나면 정본이 우선.

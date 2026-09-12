@@ -143,7 +143,7 @@ fbx를 Unity에 넣으면 Inspector에 4개 탭이 보인다.
 - 블루팀 / 레드팀이 같은 머티리얼 인스턴스를 쓰면서도 색 분리 가능 → GPU Instancing 유지
 
 ```csharp
-// 예시 코드 (실제 코드 작업 시 src/에 구현)
+// 예시 코드 (실제 코드 작업 시 game/ 유니티 프로젝트에 구현)
 var props = new MaterialPropertyBlock();
 props.SetColor("_TeamColor", teamColor);
 renderer.SetPropertyBlock(props);

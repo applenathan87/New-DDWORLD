@@ -16,7 +16,7 @@ Papers, Please식 판단·심문 + 다이어제틱 데스크(책상 위 물건�
 - 오판 대가 = **하루 결산 + 지연 사고**(오채용 며칠 뒤 사건 보고서). 압박 = **질문 횟수 제한**.
 - 물성(정체성) = 도장 쾅 손맛이 최우선 폴리시.
 
-**현행 기준 문서**: ideation/concept-demon-hr.md + ideation/mvp-design.md.
+**현행 기준 문서**: design/concept/concept-demon-hr.md + design/concept/mvp-design.md (2026-09-12 ideation/ → design/concept/ 이동. 인덱스 = design/concept/_index.md).
 **폐기(참조 금지)**: 1세대 PvP 심리전(배틀십+가위바위보, 5판3선승, 병종 밸런스) + 2세대 PvE 헥사(내 군대·400명 전투·소모전·permadeath). 옛 문서 = design/gdd/_archive/.
 
 **Why:** 이 게임의 재미 = 세상을 한번 꼬아서 보기 + 가젯으로 업무가 늘어나는 성장.

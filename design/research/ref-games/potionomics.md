@@ -1,6 +1,6 @@
 # Potionomics (포셔노믹스)
 
-> 조사일: 2026-07-15 · 용도: **면접 덱빌딩 설계 레퍼런스** ([ideation/interview_idea.md](../ideation/interview_idea.md)) — 다른 4종(밤 파트용)과 조사 목적이 다름.
+> 조사일: 2026-07-15 · 용도: **면접 덱빌딩 설계 레퍼런스** ([design/concept/interview_idea.md](../../concept/interview_idea.md)) — 다른 4종(밤 파트용)과 조사 목적이 다름.
 > 12+ 출처 교차 검증 (공식 위키 API 원문·개발자 인터뷰·가이드 4종·리뷰 4종·스팀 커뮤니티 스레드 3종·공식 발표). 단일 출처 정보는 ⚠️ 표시.
 
 ## 개요

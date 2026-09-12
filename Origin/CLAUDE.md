@@ -1,7 +1,7 @@
 # Origin
 
 > **마왕성 인사팀 MVP**(면접 데스크 게임)를 **유니티 처음부터 하나하나 이해하며** 직접 만드는 학습·제작 워크스페이스.
-> (2026-07-03 컨셉 전환: 전투 MVP → 마왕성 인사팀. 기획 기준 = [ideation/mvp-design.md](../ideation/mvp-design.md))
+> (2026-07-03 컨셉 전환: 전투 MVP → 마왕성 인사팀. 기획 기준 = [design/concept/mvp-design.md](../design/concept/mvp-design.md))
 > 위치: `C:\DungeonHR\Origin` (게임 저장소 안 — 2026-09-12 폴더명 New-DDWORLD → DungeonHR). 기획/문서는 상위 저장소(= 옵시디언 볼트)에 있고, 여기는 **손으로 만드는 실전 공간**.
 
 ## 큰 목표
@@ -20,21 +20,20 @@
 
 ## 세션 루틴 (Claude가 매번 수행)
 
-**시작 시**: ① `roadmap.md`의 "현재 위치" 확인 → ② 최신 `journal/DAY-NN.md`의 "다음에 할 것" 확인 → ③ "오늘은 여기서 이어갑니다" 한 줄로 정렬 후 시작.
+**시작 시**: ① `roadmap.md`의 "현재 위치" 확인 → ② 출근부의 오늘 할 일·어제 "다음에 할 것" 확인(`production/desk/todo.md`, 최신 `production/desk/devlog/`) → ③ "오늘은 여기서 이어갑니다" 한 줄로 정렬 후 시작.
 
-**종료 시**: ① 사용자에게 "오늘 배운 것/느낀 것" 초안 요청 → ② `journal/DAY-NN.md` 작성 → ③ `journal/000-log.md`에 O/X 행 추가 → ④ `roadmap.md` "현재 위치" 갱신 → ⑤ 사용자 지시가 있으면 커밋·푸시.
+**종료 시**: ① `roadmap.md` "현재 위치" 갱신 → ② 배운 유니티/Blender 개념은 해당 단계 워크북(`docs/phase-N-*.md`)의 "배운 것" 섹션에 축적 → ③ 사용자 지시가 있으면 커밋·푸시. 하루 기록(제목·메모·다음에 할 것)은 사용자가 출근부 퇴근 보고로 남긴다.
 
-## 작업일지 (journal/)
+## 작업 기록 = 출근부 한 곳
 
-- 매 작업일 = `DAY-N`. 사용자가 "오늘 배운 것/한 것" 초안을 주면 Claude가 정리해 `journal/DAY-NN.md`에 기록.
-- `journal/000-log.md` = 전체 진행 로그. 한 날/안 한 날을 O/X로 체크.
-- 배운 유니티/Blender 개념은 일지의 "배운 것" 섹션에 반드시 축적 (까먹으면 다시 보는 용도).
+- 2026-09-12 재정비로 `journal/`(DAY 파일·000-log)은 폐지. 기록은 출근부(`tools/desk` 앱, 데이터 `production/desk/`)로 일원화 — 이중 기록 금지.
+- 배운 개념의 축적처는 단계 워크북(`docs/`) — 일지가 아니라 "다시 볼 문서"에 남긴다.
 
 ## 본 저장소 규칙과의 관계
 
 - Origin은 **학습·프로토타입 공간** — 상위 저장소의 프로덕션 기준(GDD 8섹션, 테스트 게이트, 커밋 태스크 ID 등)을 적용하지 않는다.
 - 단, 비주얼 방향(복셀풍 로우폴리 캐릭터 + 로우폴리 환경, 촛불 데스크의 "귀여운데 사악한" 톤)과 아트 파이프라인(블렌더→Unity 단일 — 2026-08-18부터 MagicaVoxel 폐기)은 상위 CLAUDE.md·ADR-002를 따른다.
-- 여기서 검증된 것이 본 프로토타입(`prototypes/unity-prototype`)으로 이식된다.
+- 옛 프로토타입(2026-07 그레이박스)은 `_archive/unity-prototype/`에 참고 전용으로 보관 — 3단계(서류 루프)에서 데이터 구조·판정 코드를 들춰볼 때만 연다. 여기서 만드는 `game/`이 본 프로젝트다.
 
 ## 로드맵
 
@@ -42,19 +41,22 @@
 
 ## 환경
 
-- **엔진**: Unity **6000.5.1f1** + URP (새 프로젝트, `project/`에 생성 예정) — 기존 프로토타입(`prototypes/unity-prototype`)과 동일 버전이라 이식 호환 확보.
+- **엔진**: Unity **6000.5.1f1** + URP — 새 프로젝트는 저장소 최상위 `game/`에 생성 (Unity Hub: Location = `C:\DungeonHR`, Project name = `game`. 폴더가 미리 있으면 Hub가 거부하므로 만들어 두지 않는다). 옛 프로토타입(`_archive/unity-prototype`)과 동일 버전이라 필요 시 에셋 이식 가능.
 - **GPU**: RTX 4090 (24GB) — 로컬 렌더링/생성 최상급
 - **모델링**: 캐릭터·몬스터·환경·책상 소품 전부 = **블렌더 로우폴리** (캐릭터는 복셀풍 블로키 룩 — 2026-08-18 변경, MagicaVoxel 폐기) → 유니티. 리액션 애니 2종(긴장/안도) 수준이라 **풀 리깅은 필요해질 때만** (전투 트랙 대비 애니 부담 대폭↓)
-- **이식 계획**: MVP가 검증되면 본 프로젝트로 승격. (기존 전투 프로토타입 `prototypes/unity-prototype` 이식 계획은 컨셉 전환으로 보류)
+- **승격 계획**: `game/`이 곧 본 프로젝트다 — MVP가 검증되면 그대로 프로덕션 기준(GDD·테스트)을 적용해 이어간다. 별도 이식 없음.
 
 ## 폴더 구조
 
 ```text
-C:\DungeonHR\Origin\
-├── CLAUDE.md        # 이 파일
-├── roadmap.md       # 전체 지도
-├── docs\            # 단계별 상세 워크북
-├── journal\         # 작업일지 (000-log.md + DAY-NN.md)
-├── refs\            # 레퍼런스 이미지
-└── project\         # 유니티 새 프로젝트 (Unity Hub로 생성)
+C:\DungeonHR\
+├── Origin\                    # 학습 트랙 문서 (이 폴더)
+│   ├── CLAUDE.md              # 이 파일
+│   ├── roadmap.md             # 전체 지도
+│   ├── docs\                  # 단계별 상세 워크북 + 블렌더 가이드
+│   └── refs\                  # 읽기자료 목록·레퍼런스
+├── game\                      # 유니티 프로젝트 (0단계에서 Unity Hub로 생성 — 아직 없음)
+├── design\concept\            # 기획 정본 (mvp-design 등)
+├── production\desk\           # 출근부 기록
+└── _archive\unity-prototype\  # 옛 프로토 (참고 전용)
 ```

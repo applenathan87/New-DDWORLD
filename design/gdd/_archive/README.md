@@ -3,7 +3,7 @@
 > ⚠️ **2026-09-12 저장소 정리: 이 폴더의 문서 본문은 삭제됐다.** 남은 것은 이 README(연혁·사인 요약)뿐. 원문이 필요하면 git 히스토리(2026-09-12 이전 커밋)에서 본다. `design/research/_archive/`(경쟁작 비교 등)도 같은 날 삭제.
 
 > 이 폴더의 모든 문서는 **폐기된 옛 컨셉**이다. 현행 게임과 무관 — 참조하면 오정보를 준다.
-> **현행 기준 = 「마왕성 인사팀」 (악당 면접 HR 시뮬).** → [ideation/concept-demon-hr.md](../../../ideation/concept-demon-hr.md) + [ideation/mvp-design.md](../../../ideation/mvp-design.md)
+> **현행 기준 = 「마왕성 인사팀」 (악당 면접 HR 시뮬).** → [design/concept/concept-demon-hr.md](../../concept/concept-demon-hr.md) + [design/concept/mvp-design.md](../../concept/mvp-design.md)
 
 ## DDworld 컨셉 연혁 (죽은 것 → 산 것)
 
@@ -11,7 +11,7 @@
 |------|------|------|------|
 | 1세대 | **PvP 심리전 오토배틀러** (비동기 고스트 대전) | ☠️ 폐기 (2026-06-29) | `01-pvp-psychological/` |
 | 2세대 | **PvE 헥사 영토 확장 오토배틀러** (내 군대로 정복) | ☠️ 폐기 (2026-07-03) | `02-pve-hex/` |
-| **현행** | **「마왕성 인사팀」** (악당 면접 · 다이어제틱 데스크) | ✅ 진행 중 | `ideation/` (여기 아님) |
+| **현행** | **「마왕성 인사팀」** (악당 면접 · 다이어제틱 데스크) | ✅ 진행 중 | `design/concept/` (여기 아님) |
 
 ## 왜 죽었나 (한 줄씩)
 

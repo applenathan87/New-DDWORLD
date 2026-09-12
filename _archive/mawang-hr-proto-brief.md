@@ -1,6 +1,8 @@
 # 마왕성 인사팀 프로토 — 작업 명령서 (Fable 스프린트 7/4~7/7)
 
-> **작성**: 2026-07-04 · **목적**: Fable 가용 기간(≤7/7) 안에 [mvp-design.md](../ideation/mvp-design.md) v0.2를 플레이 가능한 그레이박스로 구현.
+> 📦 **2026-09-12 아카이브** — 이 프로토(`_archive/unity-prototype/`)는 참고 전용. 현행 제작 트랙 = Origin → `game/`.
+
+> **작성**: 2026-07-04 · **목적**: Fable 가용 기간(≤7/7) 안에 [mvp-design.md](../design/concept/mvp-design.md) v0.2를 플레이 가능한 그레이박스로 구현.
 > **역할 분담**: 코드·콘텐츠 초안 = Claude 전담 / 사용자 = 플레이 판정(손맛·"오?"·코미디 톤)·디렉션·Play+콘솔 에러 전달. 사용자의 유니티 학습(Origin)은 독립 병행 — 이 프로토에 의존하지 않음.
 
 ## 가설 (mvp-design §12)
@@ -39,7 +41,7 @@
 ## 완료 판정 (S4 종료 시)
 
 - 15~20분 데모 1회 완주 가능 + mvp-design §12 플레이테스트 질문 4개에 답할 수 있음
-- REPORT.md에 가설 판정(성립/기각/보류) 기록 → ideation/mvp-design.md 다음 버전에 반영
+- REPORT.md에 가설 판정(성립/기각/보류) 기록 → design/concept/mvp-design.md 다음 버전에 반영
 
 ## 7/7 이후 (Fable 없이)
 
