@@ -1,7 +1,7 @@
 # ADR-002: 비주얼 스타일 — Low-poly Voxel 3D 채택
 
 > **Status**: Accepted — ⚠️ 2026-07-03 「마왕성 인사팀」 전환: **캐릭터 복셀 결정은 유효**하나 (1) 환경 = **로우폴리 3D**로 명확화, (2) 미니어처·틸트시프트 톤 / 부위분리(전투 애니) / 400명 크라우드([ADR-003](ADR-003-rigid-instancing-crowd-rendering.md), Superseded) 전제는 폐기. 상세 = design/gdd/_archive/README.md
-> ⚠️ **2026-08-18 캐릭터 제작 방식 변경**: MagicaVoxel 복셀 → **복셀풍 로우폴리(블로키) 메쉬** — 블렌더 박스 모델링 (필요시 Blockbench 검토). 네모네모한 룩과 "귀여운데 사악한" 대비는 유지, **복셀 단위 제작·MagicaVoxel 도구·정점색 전제만 폐기.** 본문의 도구 체인(MagicaVoxel 단계)·정점색 항목은 이 갱신으로 대체됨. 파이프라인 = [Origin/docs/blender-lowpoly-desk-guide.md](../../Origin/docs/blender-lowpoly-desk-guide.md)(로우폴리 박스 + 픽셀 텍스처)를 캐릭터까지 확장.
+> ⚠️ **2026-08-18 캐릭터 제작 방식 변경**: MagicaVoxel 복셀 → **복셀풍 로우폴리(블로키) 메쉬** — 블렌더 박스 모델링 (필요시 Blockbench 검토). 네모네모한 룩과 "귀여운데 사악한" 대비는 유지, **복셀 단위 제작·MagicaVoxel 도구·정점색 전제만 폐기.** 본문의 도구 체인(MagicaVoxel 단계)·정점색 항목은 이 갱신으로 대체됨. 파이프라인 = [docs/pipeline/blender-lowpoly-desk-guide.md](../pipeline/blender-lowpoly-desk-guide.md)(로우폴리 박스 + 픽셀 텍스처)를 캐릭터까지 확장.
 > **Date**: 2026-05-25
 > **Decider**: nathan
 > **Tags**: visual, art-direction, scope, tooling

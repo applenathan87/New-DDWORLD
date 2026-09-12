@@ -7,7 +7,7 @@
 
 | 항목 | 무엇 | 왜 보관 | 언제 다시 볼까 |
 |---|---|---|---|
-| [unity-prototype/](unity-prototype/README.md) | 2026-07(7/4~7/14) 「마왕성 인사팀」 그레이박스 프로토 (MawangHR, S1~S3a: 서류 심사·3D 데스크·면접 루프·밤 파트). 옛 `prototypes/unity-prototype` | 이력서·JD·판정 데이터 구조와 판정 코드를 한 번 짜 본 기록. Unity 6000.5.1f1 + URP | Origin 3단계(서류 루프)에서 데이터 구조 참고. 3단계를 넘기면 삭제 여부 재결정 |
+| [unity-prototype/](unity-prototype/README.md) | 2026-07(7/4~7/14) 「마왕성 인사팀」 그레이박스 프로토 (MawangHR, S1~S3a: 서류 심사·3D 데스크·면접 루프·밤 파트). 옛 `prototypes/unity-prototype` | 이력서·JD·판정 데이터 구조와 판정 코드를 한 번 짜 본 기록. Unity 6000.5.1f1 + URP | game/ 구현의 서류 루프 단계에서 데이터 구조 참고. 그 단계를 넘기면 삭제 여부 재결정 |
 | [mawang-hr-proto-brief.md](mawang-hr-proto-brief.md) | 위 프로토의 작업 명령서 (Fable 스프린트 7/4~7/7). 옛 `docs/` | 가설·기술 규칙·세션 플랜 기록 | 프로토 코드를 읽을 때 같이 |
 
 `unity-prototype/`의 Library·Temp·Logs·UserSettings·csproj·slnx(약 2GB 캐시)는 삭제했다. Unity Hub에서 "Add project from disk"로 열면 Library가 재생성된다(수 분 소요).

@@ -6,13 +6,13 @@
 ## ⭐ 다음 세션 시작점 (2026-09-12 기록)
 
 **2026-09-12 저장소 폴더 재정비 완료** — 내역 = [production/reorg-2026-09.md](../reorg-2026-09.md).
-요약: ideation → `design/concept`, REF_GAME → `design/research/ref-games`, 프로토 → `_archive/unity-prototype`(캐시 삭제), 옛 데브로그·Origin/journal·src·.github·registry 삭제, 유니티 프로젝트 자리 = 최상위 `game/`(아직 없음), 작업 기록은 출근부 한 곳.
+요약: ideation → `design/concept`, REF_GAME → `design/research/ref-games`, 프로토 → `_archive/unity-prototype`(캐시 삭제), 옛 데브로그·Origin/journal·src·.github·registry 삭제, 유니티 프로젝트 자리 = 최상위 `game/`(아직 없음), 작업 기록은 출근부 한 곳. 같은 날 저녁: 루트 CLAUDE.md를 "일하는 법" 중심 36줄로 개편, **Origin 트랙 해체**(로드맵만 `design/concept/build-roadmap.md`로), 순서 = **GDD v1 → game/** (병행 안 함).
 
 다음에 할 일 (우선순위):
 
 1. **출근부 ver02 첫 묶음** — [tools/desk/ROADMAP.md](../../tools/desk/ROADMAP.md) "첫 묶음" 1번부터 (퇴근 보고 3칸 → 커밋 요약 → 다음 할 일 이어가기 → …).
 2. **10월 1일 새 시즌** (`tools/desk/desk.config.json` seasonStart → 2026-10-01) — 첫 마일스톤 = **GDD v1 확정**: `design/concept/`의 mvp-design·interview_idea를 `/design-system`으로 `design/gdd/`에 승격. 마일스톤·주간 계획 파일 형식은 그때 확정 (ROADMAP 두 번째 묶음).
-3. **Origin 0단계** — Unity Hub로 `game/` 생성 (Location `C:\DungeonHR`, Project name `game`) → [Origin/roadmap.md](../../Origin/roadmap.md).
+3. **game/ 착수 (GDD v1 뒤)** — Unity Hub로 `game/` 생성 (Location `C:\DungeonHR`, Project name `game`) + `game/CLAUDE.md` → 구현 순서 초안 [design/concept/build-roadmap.md](../../design/concept/build-roadmap.md).
 
 창 여러 개 사용 규칙: 창마다 담당 폴더, 커밋은 자기 파일만(뺀 것은 알림).
 
@@ -21,7 +21,7 @@
 DDworld 코어를 **2026-07-03에 전환**했다: (2세대 PvE 헥사 오토배틀러) → **「마왕성 인사팀」** (Papers, Please식 악당 면접 + 다이어제틱 데스크). 후크 = **판단축 반전**(악당을 뽑기에 거짓말·잔인함이 장점).
 
 - 현행 기준: [design/concept/concept-demon-hr.md](../../design/concept/concept-demon-hr.md) + [design/concept/mvp-design.md](../../design/concept/mvp-design.md) · 인덱스 [_index.md](../../design/concept/_index.md)
-- 제작 트랙: [Origin/roadmap.md](../../Origin/roadmap.md) · 옛 프로토(참고 전용): [_archive/unity-prototype/README.md](../../_archive/unity-prototype/README.md)
+- 구현 순서 초안: [design/concept/build-roadmap.md](../../design/concept/build-roadmap.md) (GDD v1 뒤 마일스톤으로 재작성) · 옛 프로토(참고 전용): [_archive/unity-prototype/README.md](../../_archive/unity-prototype/README.md)
 - 옛 컨셉(폐기) 인덱스: [design/gdd/_archive/README.md](../../design/gdd/_archive/README.md)
 
 ## 프로토 상태 (2026-07-14 기준 — 2026-09-12 아카이브됨)

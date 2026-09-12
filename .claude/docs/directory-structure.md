@@ -4,17 +4,16 @@
 
 ```text
 /
-├── CLAUDE.md                    # Master configuration
+├── CLAUDE.md                    # Master configuration (일하는 법 · 정본 링크 · 지금 어디)
 ├── .claude/                     # Agent definitions, skills, hooks, rules, docs
-├── game/                        # ⭐ 유니티 프로젝트 (Unity 6000.5.1f1 + URP) — Origin 0단계에서 Unity Hub로 생성 (아직 없음)
-│                                #   Hub: Location=C:\DungeonHR, Project name=game. 미리 만들어 두지 않는다 (Hub가 거부)
-├── Origin/                      # ⭐ 현재 작업 트랙 문서 — 유니티 학습·제작 (CLAUDE.md · roadmap · docs 워크북 · refs)
+├── game/                        # ⭐ 유니티 프로젝트 (Unity 6000.5.1f1 + URP) — GDD v1 확정 뒤 Unity Hub로 생성 (아직 없음)
+│                                #   Hub: Location=C:\DungeonHR, Project name=game. 미리 만들어 두지 않는다 (Hub가 거부). 생성 직후 game/CLAUDE.md 추가
 ├── design/                      # 기획 = 볼트의 심장
-│   ├── concept/                 # 현행 기획 정본 (concept-demon-hr · mvp-design · interview_idea … + refs/ 목업) ← 옛 ideation/
+│   ├── concept/                 # 현행 기획 정본 (concept-demon-hr · mvp-design · interview_idea … · build-roadmap(구현 순서 초안) · refs/ 목업) ← 옛 ideation/
 │   ├── gdd/                     # 정식 GDD (8섹션 표준) — 10월 첫 마일스톤 "GDD v1"에서 작성. _archive/README = 죽은 컨셉 연혁
 │   ├── art/                     # 아트 바이블(STALE, 재작성 대기) · visual-polish
 │   └── research/                # notes/(기획 이론 노트) · takeaways.md(읽기 볼트 결론) · ref-games/(레퍼런스 게임 조사 ← 옛 REF_GAME/)
-├── docs/                        # 기술 문서 — architecture/(ADR) · pipeline/ · onboarding-brief · WORKFLOW-GUIDE
+├── docs/                        # 기술 문서 — architecture/(ADR) · pipeline/(블렌더 로우폴리 가이드, 블렌더→유니티) · onboarding-brief · WORKFLOW-GUIDE
 │   └── engine-reference/        # Curated engine API snapshots (version-pinned)
 ├── production/                  # 기록·PM
 │   ├── desk/                    # 출근부 데이터 (todo.md · devlog/YYYY-MM-DD.md) — 유일한 작업 기록
@@ -30,5 +29,6 @@
 ```
 
 - **삭제된 것** (2026-09-12, git 히스토리에 보존 — 삭제 직전 트리 = 커밋 86ac21f): `production/devlog/`(옛 Day 01~29), `Origin/journal/`, `src/`, `.github/`, `docs/registry/`, `docs/architecture/tr-registry.yaml`, `prototypes/`(→ _archive), `ideation/`(→ design/concept), `REF_GAME/`(→ design/research/ref-games).
+- **`Origin/` 트랙 해체** (같은 날 저녁): roadmap → `design/concept/build-roadmap.md`, 블렌더 가이드 → `docs/pipeline/`, 80lv 읽기 목록 3개 → 읽기 볼트 `C:\Reading\아티클\읽기목록\`, 작업 방식 원칙 → 루트 CLAUDE.md "일하는 법". Origin/CLAUDE.md 삭제.
 - **`.claude/` 템플릿 문서·스킬이 말하는 `src/`·`tests/`·`assets/`는 이 저장소에 없다** — 코드는 전부 `game/`(유니티 프로젝트) 안. 그 스킬들은 GDD·ADR이 생긴 뒤 필요할 때만 쓴다.
 - 아티클·일반 공부 자료는 저장소 밖 읽기 볼트 `C:\Reading`.

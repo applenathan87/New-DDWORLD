@@ -1,88 +1,36 @@
-# DDworld
+# DDworld — 「마왕성 인사팀」(가제)
 
-> ⚠️ **2026-07-03 코어 전환: (PvE 헥사 오토배틀러) → 「마왕성 인사팀」(가제) — 다크판타지 코미디 HR 시뮬 + 다이어제틱 데스크.**
-> **현행 기준 = [design/concept/concept-demon-hr.md](design/concept/concept-demon-hr.md) + [design/concept/mvp-design.md](design/concept/mvp-design.md).**
-> 정식 GDD는 아직 미작성 — `design/concept/`(옛 ideation/, 2026-09-12 이동)에서 확정 후 `design/gdd/`로 승격 예정 ([design/gdd/README.md](design/gdd/README.md)). **10월 새 시즌 첫 마일스톤 = GDD v1 확정.**
-> **폐기(참조 금지) — 컨셉이 두 번 죽었다**: ① 1세대 PvP 심리전 ② 2세대 PvE 헥사 영토 확장. 옛 문서 전부 `design/gdd/_archive/`(01-pvp-psychological·02-pve-hex) + `design/research/_archive/`로 이동. 인덱스 = [_archive/README.md](design/gdd/_archive/README.md).
-> **다음 키워드가 나오면 폐기 맥락이다**: PvP·고스트·매칭·판돈·심리전 / 헥사·영토 확장·내 군대·400명 전투·소모전·permadeath·오토배틀러.
+1인 인디 게임. **다크판타지 코미디 HR 시뮬** — 악당을 뽑는 인사팀이라 판단축이 비틀린다(직무 JD에 따라 거짓말·잔인함이 장점, "알고 보니 착함"이 위험 신호).
+Papers, Please식 심문·판단 + 책상 위 물건(도장·이력서·질문카드·촛불·돋보기)을 직접 만지는 다이어제틱 데스크. PC(Steam) · 솔로 개발 · 싱글플레이.
 
-1인 인디 게임 "DDworld"(현 작업명 「마왕성 인사팀」) 개발 프로젝트.
+## 정본 (내용은 여기서 설명하지 않는다 — 링크만)
 
-## ⭐ 현재 작업 트랙 (2026-07-02~): Origin — 이해하며 직접 만들기
+- **컨셉·후크**: [design/concept/concept-demon-hr.md](design/concept/concept-demon-hr.md) · **MVP 기획**: [design/concept/mvp-design.md](design/concept/mvp-design.md) · 인덱스: [design/concept/_index.md](design/concept/_index.md) · 화면 목업: [design/concept/refs/면접화면-목업.png](design/concept/refs/면접화면-목업.png)
+- **비주얼 방향** (아트 정본 재작성 전까지 이 두 줄이 기준): 전체 로우폴리 3D, 캐릭터는 복셀풍(블로키) 로우폴리 — 블렌더 단일 파이프라인(MagicaVoxel 폐기, 2026-08-18). 톤 = 촛불 켜진 마왕성 사무실, 따뜻+어두운 대비, "귀여운데 사악한". 카메라 = 고정 데스크 클로즈업. 애니 = 면접 리액션 2종(긴장/안도) + 이펙트 수준. 코지 미니어처·틸트시프트 톤은 미승계. 근거 = [ADR-002](docs/architecture/ADR-002-visual-style-low-poly-3d.md) 헤더 갱신분. 아트바이블은 STALE(옛 헥사 기준).
+- **폐기 컨셉(참조 금지)**: [design/gdd/_archive/README.md](design/gdd/_archive/README.md) — **PvP·고스트·매칭·판돈·심리전 / 헥사·영토 확장·내 군대·400명 전투·소모전·permadeath·오토배틀러** 키워드가 나오면 옛 맥락이다. ADR-001·003도 Superseded.
 
-**당분간 메인 작업은 [`Origin/`](Origin/CLAUDE.md)에서 진행한다.**
-유니티를 처음부터 하나하나 이해하며 「마왕성 인사팀」 MVP("간파가 재밌고 도장이 손맛 있는 면접 데스크")를 직접 만드는 학습·제작 트랙.
+## 지금 — 어디서 무엇을
 
-- 전체 지도: [Origin/roadmap.md](Origin/roadmap.md) (0~9단계) · 유니티 프로젝트 = 최상위 `game/`(0단계에서 Unity Hub로 생성) · 작업 기록 = 출근부(`production/desk/`) 한 곳 (Origin/journal은 2026-09-12 폐지)
-- **작업 방식의 핵심 = 사용자의 이해도 축적**: 이해를 쌓아 확실한 디렉션을 주고, 직접 고칠 부분은 직접 고칠 수 있게 되는 것이 목표. 분담은 유연 — 사용자가 직접 하는 부분도, Claude에게 맡기는 부분도 있다. 단 Claude는 항상 "왜/어떻게"를 설명하며 진행. 상세는 [Origin/CLAUDE.md](Origin/CLAUDE.md).
-- Origin 폴더에서의 작업은 학습 공간이므로 아래 프로덕션 기준(coding standards의 GDD 8섹션, 테스트 게이트 등)을 적용하지 않는다 (프로토타입 수준).
-- 기획 문서 작업(GDD·아트바이블 등)은 기존대로 이 저장소 규칙을 따른다.
+- 순서 = **기획 → 제작.** 지금은 기획: design/concept → 10/1 새 시즌 첫 마일스톤 **"GDD v1 확정"**(design/gdd로 승격) ← **지금 여기**. 제작은 GDD v1 확정 뒤 최상위 `game/`에 유니티 프로젝트를 만들며 시작 (병행 안 함, 2026-09-12 결정). 구현 순서 초안 = [design/concept/build-roadmap.md](design/concept/build-roadmap.md) (옛 Origin 로드맵 — GDD v1 뒤 마일스톤으로 재작성). 옛 프로토 코드는 구조·데이터 참고만, 재작성.
+- 작업 기록 = 출근부([tools/desk](tools/desk/README.md), 데이터 `production/desk/`) 한 곳 · 세션 상태 = `production/session-state/active.md` · 2026-09-12 폴더 재정비 기록 = [production/reorg-2026-09.md](production/reorg-2026-09.md)
 
-## Game Overview
+## 일하는 법
 
-- **게임명**: DDworld — 현 작업명 「마왕성 인사팀」(가제)
-- **장르**: 다크판타지 코미디 HR 시뮬 (Papers, Please 계열 판단·심문 + 다이어제틱 데스크)
-- **핵심 경험 / 후크**: 악당을 뽑는 인사팀이라 **판단축이 비틀린다** — 거짓말·잔인함이 (직무 JD에 따라) 장점, "알고 보니 착함"이 위험 신호. "세상을 한번 꼬아서 본다" + 가젯으로 업무 스코프가 늘어나는 성장.
-- **코어 루프**: 지원 몬스터 등장 → 질문 카드로 심문 → 서류·진술·반응 대조로 거짓 간파 → 도장으로 판단(JD 적합 합·불).
-- **핵심 원칙 = 물성**: UI 클릭이 아니라 책상 위 물건(도장·이력서·질문카드·서랍·촛불·돋보기)을 직접 잡고 만진다.
-- **플랫폼**: PC (Steam) · **개발 규모**: 솔로 인디
-- **멀티플레이어**: 없음 (싱글플레이). *비동기 PvP는 폐기 — [ADR-001](docs/architecture/ADR-001-async-pvp.md) Superseded.*
+- **Question → Options → Decision → Draft → Approval.** Write/Edit 전 승인("May I write this to …?"), 다중 파일 변경은 changeset 전체 승인, 사용자 지시 없이 commit 금지.
+- **코드 작업(game/) = 이해하며 만들기**: 한 번에 한 걸음, 항상 "왜/어떻게"를 설명, 이해 기준 = 디렉터 수준(뭘 하는지·왜 이 방식인지 설명할 수 있으면 통과 — 엔진 밑바닥까지 파지 않는다). "그냥 해줘"로 쌓지 않는다 — 이해가 곧 디렉팅 능력(2026-07-02 결정). 분담은 유연하되 맡길 때도 설명과 함께. 프로덕션 기준(GDD 8섹션·테스트 게이트·태스크 ID)의 적용 범위는 game/ 착수 때 정한다.
+- **기획 문서**: `design/concept/` = 날것(표준 미적용) · `design/gdd/` = 8섹션 표준(`/design-system`) · 기술 결정 = `docs/architecture/` ADR.
+- **참고 전용(요청 시만 읽기)**: `CONTEST/`, 읽기 볼트 `C:\Reading`. 가져온 결론은 [design/research/takeaways.md](design/research/takeaways.md)에 한 줄.
+- **이 저장소 = 옵시디언 볼트.** 검색 제외: `game/`, `_archive/unity-prototype/`, `image/`, `.claude/`, `production/session-logs/`.
 
-## Visual Style
+## 기술
 
-**전체 = Low-poly 3D 모델링 — 캐릭터는 복셀풍(블로키) 룩** (스타일 근거 = [ADR-002](docs/architecture/ADR-002-visual-style-low-poly-3d.md), 단 아래대로 갱신. ⚠️ 2026-08-18: 캐릭터 제작 방식 복셀 → 복셀풍 로우폴리로 변경)
-
-- **캐릭터(몬스터·플레이어 손)**: **복셀풍 로우폴리 메쉬** — 네모네모한 복셀 룩은 유지하되, 복셀 단위 제작이 아니라 블렌더 박스 모델링 (MagicaVoxel 폐기, 2026-08-18).
-- **환경(책상·사무실·소품)**: Low-poly 3D 메쉬 — 캐릭터와 동일 파이프라인 (블렌더 단일).
-- **톤**: 촛불 켜진 마왕성 사무실 — 따뜻+어두운 대비, "귀여운데 사악한" 대비. **코지 미니어처/틸트시프트 디오라마 톤은 미승계**(옛 헥사 전투 게임 기준).
-- **애니메이션**: 면접 리액션 2종(긴장/안도) + 이펙트 수준. *전투용 부위분리 풀 리깅·400명 크라우드 렌더링([ADR-003](docs/architecture/ADR-003-rigid-instancing-crowd-rendering.md))은 폐기.*
-- **카메라**: 고정 데스크 클로즈업.
-- **레퍼런스**: Papers, Please · Strange Horticulture(다이어제틱 데스크). 화면 목업 = [design/concept/refs/면접화면-목업.png](design/concept/refs/면접화면-목업.png).
-
-## Technology Stack
-
-- **Engine**: Unity **6000.5.1f1** (Unity 6.5 — 2026-07-02 실측. 기존 프로토타입·Origin 새 프로젝트 동일 버전)
-- **Language**: C#
-- **Rendering**: URP (Universal Render Pipeline) — 고정 데스크 뷰 3D + Post-processing (Bloom/DOF/비네트)
-- **3D 모델링**: Blender 로우폴리 단일 파이프라인 — 캐릭터(복셀풍 블로키 룩)·환경·소품 전부 (MagicaVoxel 폐기, 2026-08-18)
-- **Version Control**: Git with trunk-based development
-- **Asset Pipeline**: Addressables
-- **UI**: UI Toolkit
-
-## Project Structure
-
-@.claude/docs/directory-structure.md
-
-### 참고 전용 (자동 참조 금지 — 토큰 절약)
-
-- `CONTEST/` — 공모전 캘린더·목표
-- **읽기 볼트 `C:\Reading`** (별도 옵시디언 볼트, 이 저장소 밖) — 인디 개발 아티클·번역·일반 이론 노트·게임분석. **프로젝트와 무관한 개인 공부 자료.** 2026-09-12에 `article/`과 옛 볼트에서 이관.
-
-둘 다 **아이디에이션·일반 작업 시 자동으로 읽지 않는다.** 사용자가 명시적으로 요청할 때만 참조. 읽은 것에서 프로젝트로 가져온 결론은 [design/research/takeaways.md](design/research/takeaways.md)에 한 줄씩 기록한다.
-
-### 저장소 = 옵시디언 볼트 (2026-09-12 통합)
-
-옛 볼트 `C:\ProjectDDWORLD`는 폐기. **이 저장소 폴더 하나가 게임 저장소이자 옵시디언 볼트**다. 옵시디언 검색 제외: `game/`, `_archive/unity-prototype/`, `image/`, `.claude/`, `production/session-logs/`. 2026-09-12 폴더 재정비(ideation→design/concept, REF_GAME→design/research/ref-games, 프로토→_archive, 옛 데브로그·src·.github·registry 삭제) 기록 = [production/reorg-2026-09.md](production/reorg-2026-09.md).
-
-## Engine Version Reference
+- Unity **6000.5.1f1**(Unity 6.5) + URP · C# · Blender 로우폴리 단일 파이프라인 · UI Toolkit · Addressables · Git(trunk-based)
+- ⚠ `technical-preferences.md`·`coding-standards.md`는 템플릿 시절 파일 — 쿼터뷰·카드 드래그·RPS·틱 전투·덱 셔플 등 **옛 컨셉 잔재는 무시**(GDD v1 때 정리). 네이밍·금지 패턴·허용 라이브러리·스페셜리스트 라우팅은 유효.
 
 @docs/engine-reference/unity/VERSION.md
-
-## Technical Preferences
-
 @.claude/docs/technical-preferences.md
-
-## Coding Standards
-
 @.claude/docs/coding-standards.md
 
-## Collaboration Protocol
+## 지도
 
-**User-driven collaboration, not autonomous execution.**
-Every task follows: **Question → Options → Decision → Draft → Approval**
-
-- Write/Edit 도구 사용 전 "May I write this to [filepath]?" 확인
-- 변경 전 드래프트 또는 요약 제시 후 승인 요청
-- 다중 파일 변경은 전체 changeset 명시적 승인 필요
-- 사용자 지시 없이 commit 금지
-- Session state는 `production/session-state/active.md`에 기록 (재시작 시 자동 복구)
+@.claude/docs/directory-structure.md

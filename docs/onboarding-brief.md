@@ -29,7 +29,7 @@
 
 ## ② 지금 실제 제작 (작업 트랙)
 
-- **[Origin/](../Origin/CLAUDE.md)** — 유니티를 처음부터 이해하며 만드는 학습·제작 트랙. 지도 = [Origin/roadmap.md](../Origin/roadmap.md) (마왕성 인사팀 MVP로 개편됨).
+- **제작은 GDD v1 확정 뒤** 최상위 `game/`에 유니티 프로젝트를 만들며 시작 (2026-09-12 결정, 병행 안 함). 구현 순서 초안 = [design/concept/build-roadmap.md](../design/concept/build-roadmap.md) (옛 Origin 트랙 로드맵). 작업 방식 = 루트 CLAUDE.md "일하는 법"의 이해하며 만들기 원칙.
 
 ## ③ 아트
 

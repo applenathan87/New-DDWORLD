@@ -1,6 +1,6 @@
 # Blender → Unity 파이프라인
 
-> **Status**: Draft — ⚠️ **2026-08-18 부분 폐기**: 캐릭터도 복셀풍 로우폴리(블렌더)로 전환되어 **MagicaVoxel 단계는 폐기**. 블렌더→유니티 구간(단위·FBX·임포트)만 참고 유효, 정점색 전제는 폐기. 현행 제작 가이드 = [Origin/docs/blender-lowpoly-desk-guide.md](../../Origin/docs/blender-lowpoly-desk-guide.md)
+> **Status**: Draft — ⚠️ **2026-08-18 부분 폐기**: 캐릭터도 복셀풍 로우폴리(블렌더)로 전환되어 **MagicaVoxel 단계는 폐기**. 블렌더→유니티 구간(단위·FBX·임포트)만 참고 유효, 정점색 전제는 폐기. 현행 제작 가이드 = [blender-lowpoly-desk-guide.md](blender-lowpoly-desk-guide.md)
 > **Last Updated**: 2026-05-28
 > **Stack**: ~~MagicaVoxel →~~ Blender → Unity 6.3 LTS + URP
 > **관련 문서**: [art-bible.md](../../design/art/art-bible.md) §1 (Rigid Voxel Animation), [ADR-002](../architecture/ADR-002-visual-style-low-poly-3d.md)

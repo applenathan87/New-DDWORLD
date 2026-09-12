@@ -32,7 +32,7 @@
 
 | 항목 | 상태 | 비고 |
 |---|---|---|
-| 책상·석벽 사무실·촛대 | ✅ | 그레이박스. 블렌더 가이드 = [blender-lowpoly-desk-guide.md](../../Origin/docs/blender-lowpoly-desk-guide.md) |
+| 책상·석벽 사무실·촛대 | ✅ | 그레이박스. 블렌더 가이드 = [blender-lowpoly-desk-guide.md](../../docs/pipeline/blender-lowpoly-desk-guide.md) |
 | 도장 (통과/탈락 + 스케줄 확정 초록) | ✅ | 보류 도장 추가 여부 = mvp-design 열린 질문 #6 |
 | 이력서·공문 종이류, 대기/완료 더미 | ✅ | 종이 자체는 2D 템플릿 축 (§3) |
 | 깃펜 | ✅ | 비행·트윗치 연출 포함 가동 중 |
