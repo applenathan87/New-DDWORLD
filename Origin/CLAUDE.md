@@ -50,7 +50,7 @@
 ## 폴더 구조
 
 ```text
-c:\New-DDWORLD\Origin\
+C:\DungeonHR\Origin\
 ├── CLAUDE.md        # 이 파일
 ├── roadmap.md       # 전체 지도
 ├── docs\            # 단계별 상세 워크북
