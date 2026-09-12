@@ -1,7 +1,7 @@
 # design/gdd/ — 현재 상태
 
-> **2026-09-12: 게임 컨셉 문서 v1 완성** — [game-concept.md](game-concept.md). `/design-system`이 읽는 상위 정본.
-> 시스템별 GDD(8섹션 표준)는 아직 없다. **10월 새 시즌 첫 마일스톤 = GDD v1 확정** — 이 폴더가 채워지는 시점.
+> **2026-09-12: 게임 컨셉 문서 v1 + 시스템 인덱스 v1 완성** — [game-concept.md](game-concept.md) · [systems-index.md](systems-index.md). `/design-system`이 읽는 상위 정본 두 개.
+> 시스템별 GDD(8섹션 표준)는 아직 없다. **10월 새 시즌 첫 마일스톤 = GDD v1 확정(코어 7개)**, 이어서 GDD v1.1(변주·밤 3개) — 이 폴더가 채워지는 시점.
 
 ## 지금 어디를 봐야 하나
 
@@ -11,6 +11,6 @@
 
 ## 다음 작업
 
-1. `systems-index.md` — MVP를 시스템으로 분해하고 의존·우선순위·설계 순서를 정한다 (템플릿 = `.claude/docs/templates/systems-index.md`. `/map-systems` 스킬은 이 저장소에 없으므로 손으로 작성).
-2. 시스템별 GDD — `/design-system [시스템]`으로 8섹션 표준(Overview · Player Fantasy · Detailed Rules · Formulas · Edge Cases · Dependencies · Tuning Knobs · Acceptance Criteria) 작성. 후보(game-concept.md 열린 질문 표 기준): 판정(도장·마킹·JD) · 지침 누적 · 면접(카드·코스트) · 가젯 · 하루 구조(근무 시간·결산·지연 사고) · 경제(공적·직급·골드) · 밤 파트(미니맵 허브·인물·카드) · 미니게임 · 콘텐츠 파이프라인.
-3. 각 GDD는 새 세션에서 `/design-review [파일] --depth lean`, 전부 쓰면 `/review-all-gdds`.
+1. ~~`systems-index.md` 작성~~ → 완료 (2026-09-12). 시스템 12개, MVP 10개, 설계 순서 = 케이스 데이터 → 지침 → 판정 → 물성 → 하루 구조·결산 → 승진·경제 → 면접 (1차) → 스케줄링 → 밤 허브 → 미니게임 (2차).
+2. 시스템별 GDD — `/design-system [시스템]`으로 8섹션 표준(Overview · Player Fantasy · Detailed Rules · Formulas · Edge Cases · Dependencies · Tuning Knobs · Acceptance Criteria) 작성. 순서와 범위는 [systems-index.md](systems-index.md). 질문은 텍스트로, 에이전트는 값이 필요한 섹션에만.
+3. 각 GDD는 새 세션에서 `/design-review [파일] --depth lean`, 1차 7개 끝나면 `/review-all-gdds`.
