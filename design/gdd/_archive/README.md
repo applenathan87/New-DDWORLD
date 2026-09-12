@@ -1,5 +1,7 @@
 # _archive — 죽은 컨셉 보관소 (참조 금지)
 
+> ⚠️ **2026-09-12 저장소 정리: 이 폴더의 문서 본문은 삭제됐다.** 남은 것은 이 README(연혁·사인 요약)뿐. 원문이 필요하면 git 히스토리(2026-09-12 이전 커밋)에서 본다. `design/research/_archive/`(경쟁작 비교 등)도 같은 날 삭제.
+
 > 이 폴더의 모든 문서는 **폐기된 옛 컨셉**이다. 현행 게임과 무관 — 참조하면 오정보를 준다.
 > **현행 기준 = 「마왕성 인사팀」 (악당 면접 HR 시뮬).** → [ideation/concept-demon-hr.md](../../../ideation/concept-demon-hr.md) + [ideation/mvp-design.md](../../../ideation/mvp-design.md)
 

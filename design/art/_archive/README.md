@@ -1,5 +1,7 @@
 # Art Archive — HD-2D (폐기)
 
+> ⚠️ **2026-09-12 저장소 정리: 이 폴더의 자료(`hd2d/`, `hex-kingdom-refs/`, HD-2D 셋업 플랜)는 삭제됐다.** 이 README만 기록으로 남김. 원문은 git 히스토리(2026-09-12 이전 커밋)에 있다. 같은 날 `design/art/research/`(복셀·MagicaVoxel 리서치)와 `design/art/references/`(헥사 게임 연출 레퍼런스)도 삭제 — MagicaVoxel 폐기(2026-08-18)·헥사 컨셉 폐기로 무용.
+
 > **격리일**: 2026-06-29
 > **이유**: 비주얼 스타일이 HD-2D → Low-poly Voxel 3D로 전환됨 ([ADR-002](../../../docs/architecture/ADR-002-visual-style-low-poly-3d.md)).
 

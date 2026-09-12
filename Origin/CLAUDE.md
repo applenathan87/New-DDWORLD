@@ -2,7 +2,7 @@
 
 > **마왕성 인사팀 MVP**(면접 데스크 게임)를 **유니티 처음부터 하나하나 이해하며** 직접 만드는 학습·제작 워크스페이스.
 > (2026-07-03 컨셉 전환: 전투 MVP → 마왕성 인사팀. 기획 기준 = [ideation/mvp-design.md](../ideation/mvp-design.md))
-> 위치: `c:\New-DDWORLD\Origin` (게임 저장소 안). 기획/문서는 상위 `c:\New-DDWORLD`·`C:\ProjectDDWORLD` 볼트에 있고, 여기는 **손으로 만드는 실전 공간**.
+> 위치: `C:\DungeonHR\Origin` (게임 저장소 안 — 2026-09-12 폴더명 New-DDWORLD → DungeonHR). 기획/문서는 상위 저장소(= 옵시디언 볼트)에 있고, 여기는 **손으로 만드는 실전 공간**.
 
 ## 큰 목표
 
